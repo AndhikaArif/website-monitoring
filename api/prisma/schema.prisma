@@ -1,0 +1,176 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  HEAD_WORKER
+}
+
+enum FileType {
+  PHOTO
+  VIDEO
+}
+
+enum AttendanceStatus {
+  HADIR
+  IZIN
+  ALPHA
+}
+
+enum DocumentationSession {
+  PAGI
+  SORE
+}
+
+enum ProjectStatus {
+  AKTIF
+  LIBUR
+  SELESAI
+}
+
+model User {
+  id       String   @id @default(uuid())
+  name     String
+  username String   @unique
+  email    String   @unique
+  password String
+  role     UserRole
+
+  documentations Documentation[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model Worker {
+  id       String  @id @default(uuid())
+  name     String
+  position String?
+
+  dailySalary Int
+
+  attendances Attendance[]
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  deletedAt         DateTime?
+  workerAssignments WorkerAssignment[]
+}
+
+model WorkerAssignment {
+  id        String @id @default(uuid())
+  workerId  String
+  projectId String
+
+  startDate DateTime
+  endDate   DateTime?
+
+  role String?
+
+  worker  Worker  @relation(fields: [workerId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([workerId])
+  @@index([projectId])
+}
+
+model Project {
+  id          String    @id @default(uuid())
+  projectName String
+  location    String
+  startDate   DateTime
+  endDate     DateTime?
+  description String?
+
+  status         ProjectStatus   @default(AKTIF)
+  documentations Documentation[]
+  attendances    Attendance[]
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  deletedAt         DateTime?
+  projectHolidays   ProjectHoliday[]
+  workerAssignments WorkerAssignment[]
+}
+
+model ProjectHoliday {
+  id        String   @id @default(uuid())
+  projectId String
+  date      DateTime
+  note      String?
+
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@unique([projectId, date])
+}
+
+model Documentation {
+  id String @id @default(uuid())
+
+  fileUrl  String
+  fileType FileType
+
+  // waktu
+  reportDate DateTime
+  session    DocumentationSession
+  takenAt    DateTime
+  uploadedAt DateTime             @default(now())
+
+  // format laporan HEAD_WORKER
+  workArea        String
+  task            String
+  assignedWorkers String?
+
+  target   String?
+  progress String?
+
+  isSynced Boolean @default(true)
+
+  userId    String
+  projectId String
+
+  user    User    @relation(fields: [userId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@index([projectId, reportDate])
+  @@index([projectId, userId])
+}
+
+model Attendance {
+  id     String           @id @default(uuid())
+  date   DateTime
+  status AttendanceStatus
+  note   String?
+
+  workerId  String
+  projectId String
+
+  worker  Worker  @relation(fields: [workerId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+
+  isSynced Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([workerId, projectId, date])
+  @@index([projectId, date])
+}
