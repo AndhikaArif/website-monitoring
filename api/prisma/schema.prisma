@@ -32,6 +32,12 @@ enum AttendanceStatus {
   ALPHA
 }
 
+enum WorkerPosition {
+  TUKANG
+  KENEK
+  MANDOR
+}
+
 enum DocumentationSession {
   PAGI
   SORE
@@ -51,7 +57,10 @@ model User {
   password String
   role     UserRole
 
-  documentations Documentation[]
+  documentationsCreated Documentation[] @relation("DocumentationCreatedBy")
+  documentationsUpdated Documentation[] @relation("DocumentationUpdatedBy")
+
+  attendancesCreated Attendance[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -59,9 +68,9 @@ model User {
 }
 
 model Worker {
-  id       String  @id @default(uuid())
+  id       String          @id @default(uuid())
   name     String
-  position String?
+  position WorkerPosition?
 
   dailySalary Int
 
@@ -71,6 +80,8 @@ model Worker {
   updatedAt         DateTime           @updatedAt
   deletedAt         DateTime?
   workerAssignments WorkerAssignment[]
+
+  @@index([deletedAt])
 }
 
 model WorkerAssignment {
@@ -88,8 +99,10 @@ model WorkerAssignment {
 
   createdAt DateTime @default(now())
 
+  @@unique([workerId, projectId, startDate])
   @@index([workerId])
   @@index([projectId])
+  @@index([workerId, endDate])
 }
 
 model Project {
@@ -109,6 +122,8 @@ model Project {
   deletedAt         DateTime?
   projectHolidays   ProjectHoliday[]
   workerAssignments WorkerAssignment[]
+
+  @@index([deletedAt])
 }
 
 model ProjectHoliday {
@@ -125,8 +140,9 @@ model ProjectHoliday {
 model Documentation {
   id String @id @default(uuid())
 
-  fileUrl  String
-  fileType FileType
+  fileUrl      String
+  cloudinaryId String?
+  fileType     FileType
 
   // waktu
   reportDate DateTime
@@ -144,14 +160,19 @@ model Documentation {
 
   isSynced Boolean @default(true)
 
-  userId    String
+  createdById String
+  updatedById String?
+
+  createdBy User  @relation("DocumentationCreatedBy", fields: [createdById], references: [id])
+  updatedBy User? @relation("DocumentationUpdatedBy", fields: [updatedById], references: [id])
+
   projectId String
 
-  user    User    @relation(fields: [userId], references: [id])
   project Project @relation(fields: [projectId], references: [id])
 
   @@index([projectId, reportDate])
-  @@index([projectId, userId])
+  @@index([projectId, session, reportDate])
+  @@index([createdById])
 }
 
 model Attendance {
@@ -171,6 +192,11 @@ model Attendance {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  createdById String?
+
+  createdBy User? @relation(fields: [createdById], references: [id])
+
   @@unique([workerId, projectId, date])
   @@index([projectId, date])
+  @@index([workerId, date])
 }
