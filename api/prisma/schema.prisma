@@ -17,7 +17,7 @@ datasource db {
 
 enum UserRole {
   ADMIN
-  MANAGER
+  MANDOR
   HEAD_WORKER
 }
 
@@ -35,7 +35,11 @@ enum AttendanceStatus {
 enum WorkerPosition {
   TUKANG
   KENEK
-  MANDOR
+}
+
+enum AssignmentRole {
+  WORKER
+  HEAD_WORKER
 }
 
 enum DocumentationSession {
@@ -57,6 +61,15 @@ model User {
   password String
   role     UserRole
 
+  // 🔥 worker yang punya akun ini
+  worker Worker? @relation("WorkerUserAccount")
+
+  // 🔥 mandor punya banyak worker
+  workers Worker[] @relation("MandorWorkers")
+
+  // 🔥 mandor punya project
+  projects Project[] @relation("ProjectMandor")
+
   documentationsCreated Documentation[] @relation("DocumentationCreatedBy")
   documentationsUpdated Documentation[] @relation("DocumentationUpdatedBy")
 
@@ -74,12 +87,21 @@ model Worker {
 
   dailySalary Int
 
-  attendances Attendance[]
+  // 🔥 relasi ke mandor (owner)
+  mandorId String
+  mandor   User   @relation("MandorWorkers", fields: [mandorId], references: [id])
 
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  deletedAt         DateTime?
+  // 🔥 kalau worker dijadikan HEAD_WORKER → punya akun
+  userId String? @unique
+  user   User?   @relation("WorkerUserAccount", fields: [userId], references: [id])
+
+  attendances       Attendance[]
   workerAssignments WorkerAssignment[]
+  headProjects      Project[]          @relation("ProjectHeadWorker")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([deletedAt])
 }
@@ -89,10 +111,10 @@ model WorkerAssignment {
   workerId  String
   projectId String
 
-  startDate DateTime
+  startDate DateTime  @default(now())
   endDate   DateTime?
 
-  role String?
+  role AssignmentRole @default(WORKER)
 
   worker  Worker  @relation(fields: [workerId], references: [id])
   project Project @relation(fields: [projectId], references: [id])
@@ -113,16 +135,27 @@ model Project {
   endDate     DateTime?
   description String?
 
+  // 🔥 MANDOR
+  mandorId String
+  mandor   User   @relation("ProjectMandor", fields: [mandorId], references: [id])
+
+  // 🔥 HEAD WORKER
+  headWorkerId String?
+  headWorker   Worker? @relation("ProjectHeadWorker", fields: [headWorkerId], references: [id])
+
   status         ProjectStatus   @default(AKTIF)
   documentations Documentation[]
   attendances    Attendance[]
 
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  deletedAt         DateTime?
   projectHolidays   ProjectHoliday[]
   workerAssignments WorkerAssignment[]
 
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([mandorId])
+  @@index([headWorkerId])
   @@index([deletedAt])
 }
 
@@ -167,8 +200,7 @@ model Documentation {
   updatedBy User? @relation("DocumentationUpdatedBy", fields: [updatedById], references: [id])
 
   projectId String
-
-  project Project @relation(fields: [projectId], references: [id])
+  project   Project @relation(fields: [projectId], references: [id])
 
   @@index([projectId, reportDate])
   @@index([projectId, session, reportDate])
@@ -193,10 +225,9 @@ model Attendance {
   updatedAt DateTime @updatedAt
 
   createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id])
 
-  createdBy User? @relation(fields: [createdById], references: [id])
-
-  @@unique([workerId, projectId, date])
+  @@unique([workerId, date])
   @@index([projectId, date])
   @@index([workerId, date])
 }

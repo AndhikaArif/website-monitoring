@@ -1,11 +1,12 @@
 import { type JwtPayload } from "jsonwebtoken";
 import type { UserRole } from "../generated/prisma/index.js";
 
-export interface CostumJwtPayload extends JwtPayload {
+export interface CustomJwtPayload extends JwtPayload {
   id: string;
   name: string;
   email: string;
   role: UserRole;
+  workerId?: string | null;
 }
 
 export interface IExistingUser {
@@ -13,4 +14,5 @@ export interface IExistingUser {
   name: string;
   email: string;
   role: UserRole;
+  workerId?: string | null;
 }

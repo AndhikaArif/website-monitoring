@@ -1,6 +1,6 @@
 import { type Request, type Response, type NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { type CostumJwtPayload } from "../types/auth.type.d.js";
+import { type CustomJwtPayload } from "../types/auth.type.d.js";
 import type { UserRole } from "../generated/prisma/index.js";
 
 export class AuthMiddleWare {
@@ -14,8 +14,8 @@ export class AuthMiddleWare {
 
       const verifiedToken = jwt.verify(
         authToken,
-        process.env.JWT_SECRET as string
-      ) as CostumJwtPayload;
+        process.env.JWT_SECRET as string,
+      ) as CustomJwtPayload;
 
       if (typeof verifiedToken === "string") {
         return res.status(401).json({ message: "Invalid token format" });
@@ -25,7 +25,7 @@ export class AuthMiddleWare {
 
       next();
     } catch (error) {
-      res.status(401).json({ message: "Expired or invalid token" });
+      return res.status(401).json({ message: "Expired or invalid token" });
     }
   }
 
@@ -44,6 +44,8 @@ export class AuthMiddleWare {
           message: "Forbidden, you are not authorized to access this route",
         });
       }
+
+      console.warn(`Unauthorized access by role: ${role}`);
 
       next();
     };
