@@ -5,6 +5,8 @@ import { validate } from "../middlewares/validation.middleware.js";
 import {
   createAttendanceSchema,
   bulkAttendanceSchema,
+  dailyReportSchema,
+  weeklyReportSchema,
 } from "../validations/attendance.validation.js";
 
 const router = Router();
@@ -24,6 +26,22 @@ router.post(
   AuthMiddleWare.roleGuard("HEAD_WORKER", "MANDOR"),
   validate(bulkAttendanceSchema),
   attendanceController.bulkCreate,
+);
+
+router.get(
+  "/report/daily",
+  AuthMiddleWare.verifyToken,
+  AuthMiddleWare.roleGuard("MANDOR", "HEAD_WORKER"),
+  validate(dailyReportSchema, "query"),
+  attendanceController.getDailyReport,
+);
+
+router.get(
+  "/report/weekly",
+  AuthMiddleWare.verifyToken,
+  AuthMiddleWare.roleGuard("MANDOR", "HEAD_WORKER"),
+  validate(weeklyReportSchema, "query"),
+  attendanceController.getWeeklyProjectReport,
 );
 
 export default router;

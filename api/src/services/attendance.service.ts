@@ -1,104 +1,94 @@
 import { prisma } from "../config/prisma.config.js";
 import { AppError } from "../errors/app.error.js";
 import {
-  ProjectStatus,
-  type AttendanceStatus,
+  AttendanceStatus,
+  type Attendance,
 } from "../generated/prisma/index.js";
+import { resolveUserProject } from "../utils/resolve-user-project.js";
 
 export class AttendanceService {
+  private readonly DEFAULT_DAILY_SALARY = 100000;
+
+  private getWeekRange(date: Date) {
+    const start = new Date(date);
+    const day = start.getDay();
+
+    start.setDate(start.getDate() - day);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7);
+
+    return { start, end };
+  }
+
+  private async processAttendance(
+    workerId: string,
+    status: AttendanceStatus,
+    projectId: string,
+    currentUserId: string,
+    today: Date,
+  ) {
+    try {
+      // cek assignment aktif
+      const assignment = await prisma.workerAssignment.findFirst({
+        where: {
+          workerId,
+          projectId,
+          OR: [{ endDate: null }, { endDate: { gte: today } }],
+        },
+      });
+
+      if (!assignment) {
+        throw new AppError(400, "Worker tidak aktif di project ini");
+      }
+
+      // create
+      return await prisma.attendance.create({
+        data: {
+          workerId,
+          projectId,
+          date: today,
+          status,
+          createdById: currentUserId,
+        },
+      });
+    } catch (error: any) {
+      if (error.code === "P2002") {
+        throw new AppError(400, "Sudah ada attendance hari ini");
+      }
+      if (error instanceof AppError) throw error;
+
+      throw new AppError(500, error?.message || "Internal server error");
+    }
+  }
+
   async createAttendance(
     workerId: string,
     status: AttendanceStatus,
     currentUserId: string,
   ) {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const localToday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
 
-    // 1. ambil user (HEAD_WORKER / MANDOR)
-    const user = await prisma.user.findUnique({
-      where: { id: currentUserId },
-      include: {
-        worker: true,
-      },
-    });
+    const projectId = await resolveUserProject(currentUserId);
 
-    if (!user) {
-      throw new AppError(404, "User tidak ditemukan");
-    }
-
-    // 2. tentukan project user
-    let projectId: string | null = null;
-
-    // 🔥 kalau HEAD_WORKER
-    if (user.worker) {
-      const project = await prisma.project.findFirst({
-        where: {
-          headWorkerId: user.worker.id,
-          status: ProjectStatus.AKTIF,
-        },
-      });
-
-      if (!project) {
-        throw new AppError(400, "Head worker tidak punya project aktif");
-      }
-
-      projectId = project.id;
-    }
-
-    // 🔥 kalau MANDOR
-    else {
-      const project = await prisma.project.findFirst({
-        where: {
-          mandorId: user.id,
-          status: ProjectStatus.AKTIF,
-        },
-      });
-
-      if (!project) {
-        throw new AppError(400, "Mandor tidak punya project aktif");
-      }
-
-      projectId = project.id;
-    }
-
-    // 3. cek worker ada di project ini (assignment aktif)
-    const assignment = await prisma.workerAssignment.findFirst({
-      where: {
+    try {
+      return await this.processAttendance(
         workerId,
-        projectId,
-        endDate: null,
-      },
-    });
-
-    if (!assignment) {
-      throw new AppError(
-        400,
-        "Worker tidak terdaftar di project ini atau tidak aktif",
-      );
-    }
-
-    // 4. cek attendance hari ini
-    const existing = await prisma.attendance.findFirst({
-      where: {
-        workerId,
-        date: today,
-      },
-    });
-
-    if (existing) {
-      throw new AppError(400, "Attendance hari ini sudah ada");
-    }
-
-    // 5. create attendance
-    return prisma.attendance.create({
-      data: {
-        workerId,
-        projectId,
-        date: today,
         status,
-        createdById: currentUserId,
-      },
-    });
+        projectId,
+        currentUserId,
+        localToday,
+      );
+    } catch (error: any) {
+      if (error instanceof AppError) throw error;
+      throw new AppError(500, error.message || "Internal server error");
+    }
   }
 
   async bulkCreateAttendance(
@@ -106,101 +96,230 @@ export class AttendanceService {
     currentUserId: string,
   ) {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const localToday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
 
-    const results = {
-      success: [] as any[],
-      failed: [] as any[],
+    const projectId = await resolveUserProject(currentUserId);
+
+    // deduplicate workerId (biar ga double input)
+    const uniqueAttendances = Array.from(
+      new Map(attendances.map((item) => [item.workerId, item])).values(),
+    );
+
+    const results: {
+      success: Attendance[];
+      failed: { workerId: string; message: string }[];
+    } = {
+      success: [],
+      failed: [],
     };
 
-    // 🔥 ambil user & project sekali (optimasi)
-    const user = await prisma.user.findUnique({
-      where: { id: currentUserId },
-      include: { worker: true },
-    });
-
-    if (!user) throw new AppError(404, "User tidak ditemukan");
-
-    let projectId: string | null = null;
-
-    if (user.worker) {
-      const project = await prisma.project.findFirst({
-        where: {
-          headWorkerId: user.worker.id,
-          status: "AKTIF",
-        },
-      });
-
-      if (!project) {
-        throw new AppError(400, "Head worker tidak punya project aktif");
-      }
-
-      projectId = project.id;
-    } else {
-      const project = await prisma.project.findFirst({
-        where: {
-          mandorId: user.id,
-          status: "AKTIF",
-        },
-      });
-
-      if (!project) {
-        throw new AppError(400, "Mandor tidak punya project aktif");
-      }
-
-      projectId = project.id;
-    }
-
-    // 🔥 loop per worker
-    for (const item of attendances) {
+    for (const item of uniqueAttendances) {
       try {
-        const { workerId, status } = item;
-
-        // 1. cek assignment aktif
-        const assignment = await prisma.workerAssignment.findFirst({
-          where: {
-            workerId,
-            projectId,
-            endDate: null,
-          },
-        });
-
-        if (!assignment) {
-          throw new Error("Worker tidak aktif di project ini");
-        }
-
-        // 2. cek attendance existing
-        const existing = await prisma.attendance.findFirst({
-          where: {
-            workerId,
-            date: today,
-          },
-        });
-
-        if (existing) {
-          throw new Error("Sudah ada attendance hari ini");
-        }
-
-        // 3. create
-        const created = await prisma.attendance.create({
-          data: {
-            workerId,
-            projectId,
-            date: today,
-            status,
-            createdById: currentUserId,
-          },
-        });
+        const created = await this.processAttendance(
+          item.workerId,
+          item.status,
+          projectId,
+          currentUserId,
+          localToday,
+        );
 
         results.success.push(created);
       } catch (error: any) {
         results.failed.push({
           workerId: item.workerId,
-          message: error.message || "Unknown error",
+          message:
+            error instanceof AppError ? error.message : "Terjadi kesalahan",
         });
       }
     }
 
     return results;
+  }
+
+  // daily report per project
+  async getDailyReport(currentUserId: string, date?: string) {
+    const baseDate = date ? new Date(date) : new Date();
+
+    if (isNaN(baseDate.getTime())) {
+      throw new AppError(400, "Format tanggal tidak valid");
+    }
+    baseDate.setHours(0, 0, 0, 0);
+
+    const projectId = await resolveUserProject(currentUserId);
+
+    const start = new Date(baseDate);
+    const end = new Date(baseDate);
+    end.setDate(end.getDate() + 1);
+
+    // ambil summary
+    const summary = await prisma.attendance.groupBy({
+      by: ["status"],
+      where: {
+        projectId,
+        date: {
+          gte: start,
+          lt: end,
+        },
+      },
+      _count: {
+        status: true,
+      },
+    });
+
+    // format biar rapi
+    const result: Record<AttendanceStatus, number> = {
+      HADIR: 0,
+      IZIN: 0,
+      ALPHA: 0,
+    };
+
+    for (const item of summary) {
+      result[item.status] = item._count.status;
+    }
+
+    return {
+      date: baseDate,
+      projectId,
+      summary: result,
+    };
+  }
+
+  // Weekly report per Project
+  async getWeeklyProjectReport(currentUserId: string, date?: string) {
+    const baseDate = date ? new Date(date) : new Date();
+
+    if (isNaN(baseDate.getTime())) {
+      throw new AppError(400, "Format tanggal tidak valid");
+    }
+
+    const today = new Date();
+    const localToday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
+
+    const { start, end } = this.getWeekRange(baseDate);
+
+    const projectId = await resolveUserProject(currentUserId);
+
+    // 🔥 ambil semua worker aktif di project
+    const workers = await prisma.workerAssignment.findMany({
+      where: {
+        projectId,
+        OR: [{ endDate: null }, { endDate: { gte: localToday } }],
+      },
+      include: {
+        worker: true,
+      },
+    });
+
+    const workerIds = workers.map((w) => w.workerId);
+
+    if (workerIds.length === 0) {
+      return {
+        projectId,
+        week: { start, end },
+        totalWorker: 0,
+        data: [],
+      };
+    }
+
+    // 🔥 ambil semua attendance sekaligus
+    const attendances = await prisma.attendance.findMany({
+      where: {
+        projectId,
+        workerId: { in: workerIds },
+        date: {
+          gte: start,
+          lt: end,
+        },
+      },
+    });
+
+    const holidays = await prisma.projectHoliday.findMany({
+      where: {
+        projectId,
+        date: {
+          gte: start,
+          lt: end,
+        },
+      },
+    });
+
+    // 🔥 grouping per worker
+    const reportMap: Record<string, Record<AttendanceStatus, number>> = {};
+
+    for (const w of workerIds) {
+      reportMap[w] = { HADIR: 0, IZIN: 0, ALPHA: 0 };
+    }
+
+    for (const att of attendances) {
+      const workerSummary =
+        reportMap[att.workerId] ??
+        (reportMap[att.workerId] = { HADIR: 0, IZIN: 0, ALPHA: 0 });
+
+      workerSummary[att.status]++;
+    }
+
+    const uniqueHolidayDates = new Set(
+      holidays.map((h) => new Date(h.date).toDateString()),
+    );
+
+    const holidayCount = uniqueHolidayDates.size;
+
+    // 🔥 format output
+    const result = workers.map((w) => {
+      const rawSummary = reportMap[w.workerId] ?? {
+        HADIR: 0,
+        IZIN: 0,
+        ALPHA: 0,
+      };
+
+      const totalDays = Math.max(0, 7 - holidayCount);
+      const recordedDays =
+        rawSummary.HADIR + rawSummary.IZIN + rawSummary.ALPHA;
+
+      const missingDays = Math.max(0, totalDays - recordedDays);
+
+      // 🔥 final summary (alpha ditambah missing)
+      const summary = {
+        HADIR: rawSummary.HADIR,
+        IZIN: rawSummary.IZIN,
+        ALPHA: rawSummary.ALPHA + missingDays,
+      };
+
+      const dailySalary = w.worker.dailySalary ?? this.DEFAULT_DAILY_SALARY;
+
+      const totalSalary = summary.HADIR * dailySalary;
+
+      return {
+        workerId: w.workerId,
+        workerName: w.worker.name,
+        summary,
+        workingDays: totalDays,
+        holidayCount,
+        recordedDays,
+        missingDays,
+        totalSalary,
+      };
+    });
+
+    return {
+      projectId,
+      week: {
+        start,
+        end,
+        label: `${start.toDateString()} - ${end.toDateString()}`,
+      },
+      holidayCount,
+      holidays,
+      totalWorker: result.length,
+      data: result,
+    };
   }
 }

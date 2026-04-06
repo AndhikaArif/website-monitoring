@@ -20,3 +20,27 @@ export const bulkAttendanceSchema = z.object({
 });
 
 export type bulkAttendanceDTO = z.infer<typeof bulkAttendanceSchema>;
+
+export const dailyReportSchema = z.object({
+  date: z
+    .string()
+    .optional()
+    .refine((val) => {
+      if (!val) return true;
+      return !isNaN(Date.parse(val));
+    }, "Format tanggal tidak valid"),
+});
+
+export type DailyReportDTO = z.infer<typeof dailyReportSchema>;
+
+export const weeklyReportSchema = z.object({
+  date: z
+    .string()
+    .optional()
+    .refine((val) => {
+      if (!val) return true;
+      return !isNaN(Date.parse(val));
+    }, "Format tanggal tidak valid"),
+});
+
+export type WeeklyReportDTO = z.infer<typeof weeklyReportSchema>;

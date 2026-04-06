@@ -61,13 +61,13 @@ model User {
   password String
   role     UserRole
 
-  // 🔥 worker yang punya akun ini
+  // worker yang punya akun ini
   worker Worker? @relation("WorkerUserAccount")
 
-  // 🔥 mandor punya banyak worker
+  // mandor punya banyak worker
   workers Worker[] @relation("MandorWorkers")
 
-  // 🔥 mandor punya project
+  // mandor punya project
   projects Project[] @relation("ProjectMandor")
 
   documentationsCreated Documentation[] @relation("DocumentationCreatedBy")
@@ -87,11 +87,11 @@ model Worker {
 
   dailySalary Int
 
-  // 🔥 relasi ke mandor (owner)
+  // relasi ke mandor (owner)
   mandorId String
   mandor   User   @relation("MandorWorkers", fields: [mandorId], references: [id])
 
-  // 🔥 kalau worker dijadikan HEAD_WORKER → punya akun
+  // kalau worker dijadikan HEAD_WORKER → punya akun
   userId String? @unique
   user   User?   @relation("WorkerUserAccount", fields: [userId], references: [id])
 
@@ -135,11 +135,11 @@ model Project {
   endDate     DateTime?
   description String?
 
-  // 🔥 MANDOR
+  // MANDOR
   mandorId String
   mandor   User   @relation("ProjectMandor", fields: [mandorId], references: [id])
 
-  // 🔥 HEAD WORKER
+  // HEAD WORKER
   headWorkerId String?
   headWorker   Worker? @relation("ProjectHeadWorker", fields: [headWorkerId], references: [id])
 
@@ -227,7 +227,7 @@ model Attendance {
   createdById String?
   createdBy   User?   @relation(fields: [createdById], references: [id])
 
-  @@unique([workerId, date])
+  @@unique([workerId, projectId, date])
   @@index([projectId, date])
   @@index([workerId, date])
 }
