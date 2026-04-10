@@ -4,26 +4,46 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
+  const email = "admin@mail.com";
+  const username = "admin";
+
+  // 🔍 cek apakah admin sudah ada
+  const existing = await prisma.user.findFirst({
+    where: {
+      OR: [{ email }, { username }],
+    },
+  });
+
+  if (existing) {
+    console.log("⚠️ Admin sudah ada, skip seed");
+    return;
+  }
+
+  // 🔐 hash password
   const hashedPassword = await bcrypt.hash("admin123", 10);
 
-  const admin = await prisma.user.upsert({
-    where: { username: "admin" },
-    update: {},
-    create: {
-      name: "Administrator",
-      username: "admin",
-      email: "admin@pojokproperty.com",
+  // 💾 create admin
+  const admin = await prisma.user.create({
+    data: {
+      name: "Super Admin",
+      username,
+      email,
       password: hashedPassword,
       role: UserRole.ADMIN,
     },
   });
 
-  console.log("✅ Admin seeded:", admin.username);
+  console.log("✅ Admin berhasil dibuat:");
+  console.log({
+    email: admin.email,
+    username: admin.username,
+    password: "admin123",
+  });
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error("❌ Seed error:", e);
     process.exit(1);
   })
   .finally(async () => {

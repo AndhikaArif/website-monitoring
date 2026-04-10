@@ -9,8 +9,8 @@ import express, {
 } from "express";
 
 import authRoutes from "./routes/auth.route.js";
-import attendanceRoutes from "./routes/attendance.route.js";
-import workerRoutes from "./routes/worker.route.js";
+import profileRoutes from "./routes/profile.route.js";
+import headWorkerRoutes from "./routes/head-worker.route.js";
 import { ErrorMiddleware } from "./middlewares/error.middleware.js";
 
 class App {
@@ -29,11 +29,10 @@ class App {
 
   private initializeMiddlewares(): void {
     const corsOptions = {
-      // Replace 3000 with your actual frontend port if it's different
       origin: "http://localhost:3000",
       methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-      credentials: true, // Important if you use cookies/sessions
-      optionsSuccessStatus: 204, // Handle preflight (OPTIONS) requests gracefully
+      credentials: true,
+      optionsSuccessStatus: 204,
     };
 
     this.app.use(cors(corsOptions));
@@ -51,8 +50,8 @@ class App {
 
   private initializeRoutes(): void {
     this.app.use("/api/auth", authRoutes);
-    this.app.use("/api/attendance", attendanceRoutes);
-    this.app.use("/api/worker", workerRoutes);
+    this.app.use("/api", profileRoutes);
+    this.app.use("/api/head-worker", headWorkerRoutes);
   }
 
   private initializeErrorHandler(): void {

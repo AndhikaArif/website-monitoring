@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
@@ -26,22 +20,6 @@ enum FileType {
   VIDEO
 }
 
-enum AttendanceStatus {
-  HADIR
-  IZIN
-  ALPHA
-}
-
-enum WorkerPosition {
-  TUKANG
-  KENEK
-}
-
-enum AssignmentRole {
-  WORKER
-  HEAD_WORKER
-}
-
 enum DocumentationSession {
   PAGI
   SORE
@@ -61,70 +39,22 @@ model User {
   password String
   role     UserRole
 
-  // worker yang punya akun ini
-  worker Worker? @relation("WorkerUserAccount")
+  projects         Project[] @relation("MandorProjects")
+  assignedProjects Project[] @relation("ProjectHeadWorkers")
 
-  // mandor punya banyak worker
-  workers Worker[] @relation("MandorWorkers")
-
-  // mandor punya project
-  projects Project[] @relation("ProjectMandor")
+  // relasi mandor → head worker
+  mandorId    String?
+  mandor      User?   @relation("MandorHeadWorkers", fields: [mandorId], references: [id])
+  headWorkers User[]  @relation("MandorHeadWorkers")
 
   documentationsCreated Documentation[] @relation("DocumentationCreatedBy")
   documentationsUpdated Documentation[] @relation("DocumentationUpdatedBy")
-
-  attendancesCreated Attendance[]
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-}
-
-model Worker {
-  id       String          @id @default(uuid())
-  name     String
-  position WorkerPosition?
-
-  dailySalary Int
-
-  // relasi ke mandor (owner)
-  mandorId String
-  mandor   User   @relation("MandorWorkers", fields: [mandorId], references: [id])
-
-  // kalau worker dijadikan HEAD_WORKER → punya akun
-  userId String? @unique
-  user   User?   @relation("WorkerUserAccount", fields: [userId], references: [id])
-
-  attendances       Attendance[]
-  workerAssignments WorkerAssignment[]
-  headProjects      Project[]          @relation("ProjectHeadWorker")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   @@index([deletedAt])
-}
-
-model WorkerAssignment {
-  id        String @id @default(uuid())
-  workerId  String
-  projectId String
-
-  startDate DateTime  @default(now())
-  endDate   DateTime?
-
-  role AssignmentRole @default(WORKER)
-
-  worker  Worker  @relation(fields: [workerId], references: [id])
-  project Project @relation(fields: [projectId], references: [id])
-
-  createdAt DateTime @default(now())
-
-  @@unique([workerId, projectId, startDate])
-  @@index([workerId])
-  @@index([projectId])
-  @@index([workerId, endDate])
 }
 
 model Project {
@@ -135,39 +65,19 @@ model Project {
   endDate     DateTime?
   description String?
 
-  // MANDOR
-  mandorId String
-  mandor   User   @relation("ProjectMandor", fields: [mandorId], references: [id])
+  status ProjectStatus @default(AKTIF)
 
-  // HEAD WORKER
-  headWorkerId String?
-  headWorker   Worker? @relation("ProjectHeadWorker", fields: [headWorkerId], references: [id])
-
-  status         ProjectStatus   @default(AKTIF)
   documentations Documentation[]
-  attendances    Attendance[]
-
-  projectHolidays   ProjectHoliday[]
-  workerAssignments WorkerAssignment[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  @@index([mandorId])
-  @@index([headWorkerId])
+  mandorId    String
+  mandor      User   @relation("MandorProjects", fields: [mandorId], references: [id])
+  headWorkers User[] @relation("ProjectHeadWorkers")
+
   @@index([deletedAt])
-}
-
-model ProjectHoliday {
-  id        String   @id @default(uuid())
-  projectId String
-  date      DateTime
-  note      String?
-
-  project Project @relation(fields: [projectId], references: [id])
-
-  @@unique([projectId, date])
 }
 
 model Documentation {
@@ -177,21 +87,15 @@ model Documentation {
   cloudinaryId String?
   fileType     FileType
 
-  // waktu
   reportDate DateTime
-  session    DocumentationSession
-  takenAt    DateTime
   uploadedAt DateTime             @default(now())
+  session    DocumentationSession
 
-  // format laporan HEAD_WORKER
-  workArea        String
-  task            String
-  assignedWorkers String?
+  workArea String
+  task     String
 
   target   String?
   progress String?
-
-  isSynced Boolean @default(true)
 
   createdById String
   updatedById String?
@@ -202,32 +106,7 @@ model Documentation {
   projectId String
   project   Project @relation(fields: [projectId], references: [id])
 
+  @@unique([projectId, reportDate, session])
   @@index([projectId, reportDate])
   @@index([projectId, session, reportDate])
-  @@index([createdById])
-}
-
-model Attendance {
-  id     String           @id @default(uuid())
-  date   DateTime
-  status AttendanceStatus
-  note   String?
-
-  workerId  String
-  projectId String
-
-  worker  Worker  @relation(fields: [workerId], references: [id])
-  project Project @relation(fields: [projectId], references: [id])
-
-  isSynced Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  createdById String?
-  createdBy   User?   @relation(fields: [createdById], references: [id])
-
-  @@unique([workerId, projectId, date])
-  @@index([projectId, date])
-  @@index([workerId, date])
 }

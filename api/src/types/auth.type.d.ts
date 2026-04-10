@@ -5,14 +5,14 @@ export interface CustomJwtPayload extends JwtPayload {
   id: string;
   name: string;
   email: string;
+  username: string;
   role: UserRole;
-  workerId?: string | null;
 }
 
 export interface IExistingUser {
   id: string;
   name: string;
   email: string;
+  username: string;
   role: UserRole;
-  workerId?: string | null;
 }

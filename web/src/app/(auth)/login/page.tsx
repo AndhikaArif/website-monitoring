@@ -6,7 +6,7 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
-import { loginSchemaFront } from "@/app/validation/login.validation";
+import { loginSchemaFront } from "@/validation/login.validation";
 import { useAuth } from "@/context/auth-context";
 import LoadingScreen from "@/components/loading-screen";
 
@@ -18,7 +18,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace("/");
+      if (user.role === "ADMIN") {
+        router.replace("/admin/mandor");
+      } else if (user.role === "MANDOR") {
+        router.replace("/mandor/head-worker");
+      } else if (user.role === "HEAD_WORKER") {
+        router.replace("/upload");
+      }
     }
   }, [user, loading, router]);
 
@@ -55,7 +61,6 @@ export default function LoginPage() {
               );
 
               await refreshUser();
-              router.replace("/");
             } catch (err: unknown) {
               if (axios.isAxiosError(err)) {
                 if (!err.response) {

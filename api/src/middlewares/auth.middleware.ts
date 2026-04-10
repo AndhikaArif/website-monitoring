@@ -40,12 +40,12 @@ export class AuthMiddleWare {
       }
 
       if (!allowedUser.includes(role)) {
+        console.warn(`Unauthorized access by role: ${role}`);
+
         return res.status(403).json({
           message: "Forbidden, you are not authorized to access this route",
         });
       }
-
-      console.warn(`Unauthorized access by role: ${role}`);
 
       next();
     };
