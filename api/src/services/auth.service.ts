@@ -20,12 +20,16 @@ export class AuthServices {
     const existing = await prisma.user.findFirst({
       where: {
         OR: [{ email: data.email }, { username: data.username }],
-        deletedAt: null,
       },
     });
 
     if (existing) {
-      throw new AppError(400, "Email atau username sudah digunakan");
+      if (existing.email === data.email) {
+        throw new AppError(400, "Email sudah terdaftar");
+      }
+      if (existing.username === data.username) {
+        throw new AppError(400, "Username sudah digunakan");
+      }
     }
 
     // 🔐 hash password
@@ -207,6 +211,85 @@ export class AuthServices {
         totalPages: Math.max(1, Math.ceil(total / limit)),
       },
     };
+  }
+
+  async listTrashedMandor(
+    currentUser: IExistingUser,
+    query: ListMandorQueryDTO,
+  ) {
+    if (currentUser.role !== UserRole.ADMIN) {
+      throw new AppError(403, "Hanya admin yang bisa melihat sampah mandor");
+    }
+    const { page, limit } = query;
+    const skip = (page - 1) * limit;
+
+    const whereCondition = {
+      role: UserRole.MANDOR,
+      deletedAt: { not: null },
+    };
+
+    const [mandors, total] = await Promise.all([
+      prisma.user.findMany({
+        where: whereCondition,
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          email: true,
+          createdAt: true,
+          deletedAt: true,
+        },
+      }),
+      prisma.user.count({ where: whereCondition }),
+    ]);
+
+    return {
+      data: mandors,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    };
+  }
+
+  async restoreMandor(currentUser: IExistingUser, userId: string) {
+    const user = await prisma.user.findFirst({
+      where: {
+        id: userId,
+        deletedAt: { not: null },
+        ...(currentUser.role === UserRole.MANDOR && {
+          mandorId: currentUser.id,
+        }),
+      },
+    });
+
+    if (!user) throw new AppError(404, "Mandor tidak ditemukan di sampah");
+
+    return await prisma.user.update({
+      where: { id: userId },
+      data: { deletedAt: null },
+    });
+  }
+
+  async hardDeleteMandor(currentUser: IExistingUser, userId: string) {
+    const user = await prisma.user.findFirst({
+      where: {
+        id: userId,
+        deletedAt: { not: null },
+        ...(currentUser.role === UserRole.MANDOR && {
+          mandorId: currentUser.id,
+        }),
+      },
+    });
+
+    if (!user) throw new AppError(404, "Mandor tidak ditemukan di sampah");
+
+    return await prisma.user.delete({ where: { id: userId } });
   }
 
   async validateUser(

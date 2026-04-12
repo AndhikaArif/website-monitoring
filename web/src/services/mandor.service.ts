@@ -1,5 +1,3 @@
-// services/mandor.service.ts
-
 import axios from "axios";
 import { MandorResponse, UpdateMandorPayload } from "../types/mandor.type";
 
@@ -34,3 +32,22 @@ export const deleteMandor = async (id: string) => {
     withCredentials: true,
   });
 };
+
+export const getTrashedMandors = (page = 1, limit = 10) =>
+  axios
+    .get(`${API_URL}/api/auth/mandor/trashed?page=${page}&limit=${limit}`, {
+      withCredentials: true,
+    })
+    .then((res) => res.data);
+
+export const restoreMandor = (id: string) =>
+  axios.put(
+    `${API_URL}/api/auth/mandor/${id}/restore`,
+    {},
+    { withCredentials: true },
+  );
+
+export const hardDeleteMandor = (id: string) =>
+  axios.delete(`${API_URL}/api/auth/mandor/${id}/hard-delete`, {
+    withCredentials: true,
+  });

@@ -12,6 +12,7 @@ import {
   listMandorQuerySchema,
 } from "../validations/auth.validation.js";
 import { UserRole } from "../generated/prisma/index.js";
+import { paginationQuery } from "../validations/project.validation.js";
 
 const router = express.Router();
 const authController = new AuthController();
@@ -25,11 +26,11 @@ router.get(
 );
 
 router.get(
-  "/mandor/:id",
+  "/mandor/trashed",
   AuthMiddleWare.verifyToken,
   AuthMiddleWare.roleGuard(UserRole.ADMIN),
-  validate(mandorParamsSchema, "params"),
-  authController.getMandorById,
+  validate(paginationQuery, "query"),
+  authController.listTrashedMandor,
 );
 
 router.post(
@@ -38,6 +39,14 @@ router.post(
   AuthMiddleWare.roleGuard(UserRole.ADMIN),
   validate(createMandorSchema),
   authController.createMandor,
+);
+
+router.get(
+  "/mandor/:id",
+  AuthMiddleWare.verifyToken,
+  AuthMiddleWare.roleGuard(UserRole.ADMIN),
+  validate(mandorParamsSchema, "params"),
+  authController.getMandorById,
 );
 
 router.put(
@@ -55,6 +64,22 @@ router.delete(
   AuthMiddleWare.roleGuard(UserRole.ADMIN),
   validate(mandorParamsSchema, "params"),
   authController.deleteMandor,
+);
+
+router.put(
+  "/mandor/:id/restore",
+  AuthMiddleWare.verifyToken,
+  AuthMiddleWare.roleGuard(UserRole.ADMIN),
+  validate(mandorParamsSchema, "params"),
+  authController.restoreMandor,
+);
+
+router.delete(
+  "/mandor/:id/hard-delete",
+  AuthMiddleWare.verifyToken,
+  AuthMiddleWare.roleGuard(UserRole.ADMIN),
+  validate(mandorParamsSchema, "params"),
+  authController.hardDeleteMandor,
 );
 
 router.post("/login", validate(loginSchema), authController.login);

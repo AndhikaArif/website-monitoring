@@ -55,6 +55,8 @@ model User {
   deletedAt DateTime?
 
   @@index([deletedAt])
+  @@index([mandorId])
+  @@index([role])
 }
 
 model Project {
@@ -74,10 +76,15 @@ model Project {
   deletedAt DateTime?
 
   mandorId    String
-  mandor      User   @relation("MandorProjects", fields: [mandorId], references: [id])
+  mandor      User   @relation("MandorProjects", fields: [mandorId], references: [id], onDelete: Restrict)
   headWorkers User[] @relation("ProjectHeadWorkers")
 
   @@index([deletedAt])
+  @@index([mandorId, deletedAt])
+  @@index([mandorId, status])
+  @@index([mandorId, createdAt])
+  @@index([status, deletedAt])
+  @@index([createdAt])
 }
 
 model Documentation {
@@ -104,9 +111,10 @@ model Documentation {
   updatedBy User? @relation("DocumentationUpdatedBy", fields: [updatedById], references: [id])
 
   projectId String
-  project   Project @relation(fields: [projectId], references: [id])
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, reportDate, session])
-  @@index([projectId, reportDate])
+  @@index([projectId, reportDate(sort: Desc)])
   @@index([projectId, session, reportDate])
+  @@index([createdById])
 }

@@ -71,7 +71,7 @@ export default function CreateMandorPage() {
                           ? "Username sudah digunakan"
                           : undefined,
                       });
-                      toast.error("Gagal: Email/Username sudah ada");
+                      toast.error("Gagal: Email/Username sudah digunakan");
                     } else {
                       toast.error(serverMessage);
                     }

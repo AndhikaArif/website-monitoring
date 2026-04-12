@@ -52,7 +52,7 @@ export default function EditHeadWorkerPage() {
         {/* BACK BUTTON */}
         <button
           onClick={() => router.push("/mandor/head-worker")}
-          className="flex items-center text-gray-500 hover:text-blue-600 transition-colors mb-6 group cursor-pointer"
+          className="flex items-center text-gray-500 hover:text-purple-600 transition-colors mb-6 group cursor-pointer"
         >
           <FiChevronLeft className="mr-1 group-hover:-translate-x-1 transition-transform" />
           Kembali ke Daftar
@@ -60,9 +60,10 @@ export default function EditHeadWorkerPage() {
 
         {/* CARD CONTAINER */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="bg-linear-to-r from-blue-600 to-blue-700 px-8 py-10 text-white">
+          {/* HEADER DENGAN GRADIENT UNGU */}
+          <div className="bg-linear-to-r from-purple-600 to-purple-700 px-8 py-10 text-white">
             <h1 className="text-3xl font-bold">Edit Profil Head Worker</h1>
-            <p className="text-blue-100 mt-2 opacity-90">
+            <p className="text-purple-100 mt-2 opacity-90">
               Perbarui informasi akun dan kredensial akses head worker.
             </p>
           </div>
@@ -120,7 +121,7 @@ export default function EditHeadWorkerPage() {
                   {/* NAMA LENGKAP */}
                   <div>
                     <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                      <FiUser className="mr-2 text-blue-500" /> Nama Lengkap
+                      <FiUser className="mr-2 text-purple-500" /> Nama Lengkap
                     </label>
                     <Field
                       name="name"
@@ -128,7 +129,7 @@ export default function EditHeadWorkerPage() {
                       className={`w-full px-4 py-3 text-black rounded-xl border outline-none transition-all focus:ring-4 ${
                         errors.name && touched.name
                           ? "border-red-300 focus:ring-red-50"
-                          : "border-gray-200 focus:border-blue-500 focus:ring-blue-50"
+                          : "border-gray-200 focus:border-purple-500 focus:ring-purple-50"
                       }`}
                     />
                     <ErrorMessage
@@ -142,7 +143,9 @@ export default function EditHeadWorkerPage() {
                     {/* USERNAME */}
                     <div>
                       <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                        <span className="mr-2 text-blue-500 font-bold">@</span>{" "}
+                        <span className="mr-2 text-purple-500 font-bold">
+                          @
+                        </span>{" "}
                         Username
                       </label>
                       <Field
@@ -151,7 +154,7 @@ export default function EditHeadWorkerPage() {
                         className={`w-full px-4 py-3 text-black rounded-xl border outline-none transition-all focus:ring-4 ${
                           errors.username && touched.username
                             ? "border-red-300 focus:ring-red-50"
-                            : "border-gray-200 focus:border-blue-500 focus:ring-blue-50"
+                            : "border-gray-200 focus:border-purple-500 focus:ring-purple-50"
                         }`}
                       />
                       <ErrorMessage
@@ -164,7 +167,7 @@ export default function EditHeadWorkerPage() {
                     {/* EMAIL */}
                     <div>
                       <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                        <FiMail className="mr-2 text-blue-500" /> Email
+                        <FiMail className="mr-2 text-purple-500" /> Email
                       </label>
                       <Field
                         name="email"
@@ -173,7 +176,7 @@ export default function EditHeadWorkerPage() {
                         className={`w-full px-4 py-3 text-black rounded-xl border outline-none transition-all focus:ring-4 ${
                           errors.email && touched.email
                             ? "border-red-300 focus:ring-red-50"
-                            : "border-gray-200 focus:border-blue-500 focus:ring-blue-50"
+                            : "border-gray-200 focus:border-purple-500 focus:ring-purple-50"
                         }`}
                       />
                       <ErrorMessage
@@ -184,16 +187,16 @@ export default function EditHeadWorkerPage() {
                     </div>
                   </div>
 
-                  {/* PASSWORD */}
-                  <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100">
+                  {/* PASSWORD DENGAN TEMA UNGU */}
+                  <div className="bg-purple-50/50 p-5 rounded-2xl border border-purple-100">
                     <PasswordField
                       name="password"
                       label="Password Baru"
                       role="MANDOR"
                       placeholder="Password"
-                      className="py-3 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-50"
+                      className="py-3 rounded-xl border-gray-200 focus:border-purple-500 focus:ring-purple-50"
                     />
-                    <p className="text-[11px] text-blue-600 mt-2 italic flex items-start leading-tight">
+                    <p className="text-[11px] text-purple-600 mt-2 italic flex items-start leading-tight">
                       <span className="mr-1 mt-0.5">•</span> Biarkan kosong jika
                       tidak ingin mengubah password lama.
                     </p>
@@ -203,7 +206,7 @@ export default function EditHeadWorkerPage() {
                   <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-50">
                     <button
                       type="button"
-                      onClick={() => router.push("/admin/mandor")}
+                      onClick={() => router.push("/mandor/head-worker")}
                       className="flex-1 py-3 px-6 border border-gray-200 rounded-xl font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 cursor-pointer"
                     >
                       Batal
@@ -214,7 +217,7 @@ export default function EditHeadWorkerPage() {
                       className={`flex-2 py-3 px-6 rounded-xl text-white font-bold flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer ${
                         isSubmitting
                           ? "bg-gray-400 cursor-not-allowed"
-                          : "bg-blue-600 hover:bg-blue-700 active:scale-95 shadow-blue-200"
+                          : "bg-purple-600 hover:bg-purple-700 active:scale-95 shadow-purple-200"
                       }`}
                     >
                       {isSubmitting ? (

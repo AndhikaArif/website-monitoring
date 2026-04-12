@@ -3,7 +3,14 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import { FiEdit2, FiTrash2, FiPlus, FiUsers, FiMail } from "react-icons/fi";
+import {
+  FiEdit2,
+  FiTrash2,
+  FiPlus,
+  FiUsers,
+  FiMail,
+  FiTrash,
+} from "react-icons/fi";
 import toast from "react-hot-toast";
 
 import {
@@ -53,7 +60,12 @@ export default function HeadWorkerPage() {
   }, [fetchData]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Yakin mau hapus head worker?")) return;
+    if (
+      !confirm(
+        "Yakin mau hapus head worker? (Data akan dipindahkan ke tong sampah)",
+      )
+    )
+      return;
     try {
       await toast.promise(deleteHeadWorker(id), {
         loading: "Menghapus head worker...",
@@ -84,13 +96,26 @@ export default function HeadWorkerPage() {
               Kelola data seluruh kepala tukang di bawah koordinasi Anda.
             </p>
           </div>
-          <button
-            onClick={() => router.push("/mandor/head-worker/create")}
-            className="inline-flex items-center justify-center bg-purple-600 hover:bg-purple-700 text-white font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95 shadow-lg shadow-purple-200 cursor-pointer border-none"
-          >
-            <FiPlus className="mr-2 w-5 h-5" />
-            Tambah Head Worker
-          </button>
+
+          <div className="flex items-center gap-3">
+            {/* TOMBOL TONG SAMPAH HEAD WORKER */}
+            <button
+              onClick={() => router.push("/mandor/head-worker/trashed")}
+              className="inline-flex items-center justify-center bg-white hover:bg-gray-50 text-gray-600 font-semibold px-5 py-2.5 rounded-xl transition-all border border-gray-200 active:scale-95 shadow-sm cursor-pointer"
+              title="Lihat Sampah"
+            >
+              <FiTrash className="w-5 h-5 md:mr-2" />
+              <span className="hidden md:inline">Tong Sampah</span>
+            </button>
+
+            <button
+              onClick={() => router.push("/mandor/head-worker/create")}
+              className="inline-flex items-center justify-center bg-purple-600 hover:bg-purple-700 text-white font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95 shadow-lg shadow-purple-200 cursor-pointer border-none"
+            >
+              <FiPlus className="mr-2 w-5 h-5" />
+              Tambah Head Worker
+            </button>
+          </div>
         </div>
 
         {/* QUICK STATS */}
@@ -101,7 +126,7 @@ export default function HeadWorkerPage() {
             </div>
             <div>
               <p className="text-sm text-gray-500 font-medium">
-                Total Head Worker
+                Total Head Worker Aktif
               </p>
               <h3 className="text-2xl font-bold text-gray-800">
                 {headWorkers.length}{" "}
@@ -160,7 +185,7 @@ export default function HeadWorkerPage() {
                           <FiMail className="text-gray-400" /> {m.email}
                         </div>
                       </td>
-                      <td className="p-5">
+                      <td className="p-5 text-right">
                         <div className="flex justify-end gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() =>

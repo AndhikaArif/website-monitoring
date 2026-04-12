@@ -1,5 +1,3 @@
-// services/mandor.service.ts
-
 import axios from "axios";
 import {
   HeadWorkerResponse,
@@ -40,3 +38,22 @@ export const deleteHeadWorker = async (id: string) => {
     withCredentials: true,
   });
 };
+
+export const getTrashedHeadWorkers = (page = 1, limit = 10) =>
+  axios
+    .get(`${API_URL}/api/head-worker/trashed?page=${page}&limit=${limit}`, {
+      withCredentials: true,
+    })
+    .then((res) => res.data);
+
+export const restoreHeadWorker = (id: string) =>
+  axios.put(
+    `${API_URL}/api/head-worker/${id}/restore`,
+    {},
+    { withCredentials: true },
+  );
+
+export const hardDeleteHeadWorker = (id: string) =>
+  axios.delete(`${API_URL}/api/head-worker/${id}/hard-delete`, {
+    withCredentials: true,
+  });

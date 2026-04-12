@@ -23,13 +23,16 @@ export class HeadWorkerServices {
     const existing = await prisma.user.findFirst({
       where: {
         OR: [{ email: data.email }, { username: data.username }],
-        deletedAt: null,
-        mandorId: currentUser.id,
       },
     });
 
     if (existing) {
-      throw new AppError(400, "Email atau username sudah digunakan");
+      if (existing.email === data.email) {
+        throw new AppError(400, "Email sudah terdaftar");
+      }
+      if (existing.username === data.username) {
+        throw new AppError(400, "Username sudah digunakan");
+      }
     }
 
     // 🔐 hash password
@@ -227,5 +230,89 @@ export class HeadWorkerServices {
         totalPages: Math.max(1, Math.ceil(total / limit)),
       },
     };
+  }
+
+  async listTrashedHeadWorker(
+    currentUser: IExistingUser,
+    query: ListHeadWorkerQueryDTO,
+  ) {
+    if (currentUser.role !== UserRole.MANDOR) {
+      throw new AppError(
+        403,
+        "Hanya mandor yang bisa melihat sampah head worker",
+      );
+    }
+    const { page, limit } = query;
+    const skip = (page - 1) * limit;
+
+    const whereCondition = {
+      role: UserRole.HEAD_WORKER,
+      mandorId: currentUser.id, // Hanya head worker milik mandor ini
+      deletedAt: { not: null },
+    };
+
+    const [headWorkers, total] = await Promise.all([
+      prisma.user.findMany({
+        where: whereCondition,
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          email: true,
+          createdAt: true,
+          deletedAt: true,
+        },
+      }),
+      prisma.user.count({ where: whereCondition }),
+    ]);
+
+    return {
+      data: headWorkers,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    };
+  }
+
+  async restoreHeadWorker(currentUser: IExistingUser, userId: string) {
+    // Cek dulu apakah user tersebut ada dan sesuai aksesnya
+    const user = await prisma.user.findFirst({
+      where: {
+        id: userId,
+        deletedAt: { not: null },
+        ...(currentUser.role === UserRole.MANDOR && {
+          mandorId: currentUser.id,
+        }),
+      },
+    });
+
+    if (!user) throw new AppError(404, "Head worker tidak ditemukan di sampah");
+
+    return await prisma.user.update({
+      where: { id: userId },
+      data: { deletedAt: null },
+    });
+  }
+
+  async hardDeleteHeadWorker(currentUser: IExistingUser, userId: string) {
+    const user = await prisma.user.findFirst({
+      where: {
+        id: userId,
+        deletedAt: { not: null },
+        ...(currentUser.role === UserRole.MANDOR && {
+          mandorId: currentUser.id,
+        }),
+      },
+    });
+
+    if (!user) throw new AppError(404, "Head worker tidak ditemukan di sampah");
+
+    return await prisma.user.delete({ where: { id: userId } });
   }
 }

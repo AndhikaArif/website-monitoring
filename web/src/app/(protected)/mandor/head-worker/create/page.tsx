@@ -74,7 +74,7 @@ export default function CreateHeadWorkerPage() {
                           ? "Username sudah digunakan"
                           : undefined,
                       });
-                      toast.error("Gagal: Data sudah digunakan");
+                      toast.error("Gagal: Email/Username sudah digunakan");
                     } else {
                       toast.error(serverMessage);
                     }

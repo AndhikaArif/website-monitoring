@@ -11,6 +11,7 @@ import {
   listHeadWorkerQuerySchema,
 } from "../validations/head-worker.validation.js";
 import { UserRole } from "../generated/prisma/index.js";
+import { paginationQuery } from "../validations/project.validation.js";
 
 const router = express.Router();
 const headWorkerController = new HeadWorkerController();
@@ -24,11 +25,11 @@ router.get(
 );
 
 router.get(
-  "/:id",
+  "/trashed",
   AuthMiddleWare.verifyToken,
   AuthMiddleWare.roleGuard(UserRole.MANDOR),
-  validate(headWorkerParamsSchema, "params"),
-  headWorkerController.getHeadWorkerById,
+  validate(paginationQuery, "query"),
+  headWorkerController.listTrashedHeadWorker,
 );
 
 router.post(
@@ -37,6 +38,14 @@ router.post(
   AuthMiddleWare.roleGuard(UserRole.MANDOR),
   validate(createHeadWorkerSchema),
   headWorkerController.createHeadWorker,
+);
+
+router.get(
+  "/:id",
+  AuthMiddleWare.verifyToken,
+  AuthMiddleWare.roleGuard(UserRole.MANDOR),
+  validate(headWorkerParamsSchema, "params"),
+  headWorkerController.getHeadWorkerById,
 );
 
 router.put(
@@ -54,6 +63,22 @@ router.delete(
   AuthMiddleWare.roleGuard(UserRole.MANDOR),
   validate(headWorkerParamsSchema, "params"),
   headWorkerController.deleteHeadWorker,
+);
+
+router.put(
+  "/:id/restore",
+  AuthMiddleWare.verifyToken,
+  AuthMiddleWare.roleGuard(UserRole.MANDOR),
+  validate(headWorkerParamsSchema, "params"),
+  headWorkerController.restoreHeadWorker,
+);
+
+router.delete(
+  "/:id/hard-delete",
+  AuthMiddleWare.verifyToken,
+  AuthMiddleWare.roleGuard(UserRole.MANDOR),
+  validate(headWorkerParamsSchema, "params"),
+  headWorkerController.hardDeleteHeadWorker,
 );
 
 export default router;

@@ -111,4 +111,60 @@ export class HeadWorkerController {
       next(error);
     }
   }
+
+  async listTrashedHeadWorker(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.currentUser) throw new AppError(401, "Unauthorized");
+
+      const result = await headWorkerServices.listTrashedHeadWorker(
+        req.currentUser,
+        req.validatedQuery as ListHeadWorkerQueryDTO,
+      );
+
+      return res.json({
+        message: "List sampah Head Worker berhasil diambil",
+        ...result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async restoreHeadWorker(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.currentUser) throw new AppError(401, "Unauthorized");
+
+      // Mengikuti pola route kamu: ambil dari validatedParams
+      const { id } = req.validatedParams as HeadWorkerParamsDTO;
+
+      const result = await headWorkerServices.restoreHeadWorker(
+        req.currentUser,
+        id,
+      );
+
+      return res.json({
+        message: "Head Worker berhasil dipulihkan",
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async hardDeleteHeadWorker(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.currentUser) throw new AppError(401, "Unauthorized");
+
+      const { id } = req.validatedParams as HeadWorkerParamsDTO;
+
+      const result = await headWorkerServices.hardDeleteHeadWorker(
+        req.currentUser,
+        id,
+      );
+
+      return res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
 }

@@ -108,6 +108,55 @@ export class AuthController {
     }
   }
 
+  async listTrashedMandor(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.currentUser) throw new AppError(401, "Unauthorized");
+
+      const result = await authServices.listTrashedMandor(
+        req.currentUser,
+        req.validatedQuery as ListMandorQueryDTO,
+      );
+
+      return res.json({
+        message: "List sampah Mandor berhasil diambil",
+        ...result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async restoreMandor(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.currentUser) throw new AppError(401, "Unauthorized");
+
+      const { id } = req.validatedParams as MandorParamsDTO;
+
+      const result = await authServices.restoreMandor(req.currentUser, id);
+
+      return res.json({
+        message: "Mandor berhasil dipulihkan",
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async hardDeleteMandor(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.currentUser) throw new AppError(401, "Unauthorized");
+
+      const { id } = req.validatedParams as MandorParamsDTO;
+
+      const result = await authServices.hardDeleteMandor(req.currentUser, id);
+
+      return res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async login(req: Request, res: Response, next: NextFunction) {
     try {
       const { username, password } = req.validatedBody as LoginDTO;

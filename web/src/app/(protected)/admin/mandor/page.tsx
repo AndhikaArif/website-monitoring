@@ -3,7 +3,15 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { FiEdit2, FiTrash2, FiPlus, FiUsers, FiMail } from "react-icons/fi";
+// Tambahkan FiTrash2 di import icons (jika belum ada)
+import {
+  FiEdit2,
+  FiTrash2,
+  FiPlus,
+  FiUsers,
+  FiMail,
+  FiTrash,
+} from "react-icons/fi";
 import axios from "axios";
 
 import { getMandors, deleteMandor } from "@/services/mandor.service";
@@ -30,14 +38,12 @@ export default function MandorPage() {
           setTotalPages(1);
           return;
         }
-
         toast.error(
           err.response?.data?.message || "Gagal mengambil data mandor",
         );
       } else {
         console.error("Unknown Error:", err);
       }
-
       setMandors([]);
       setTotalPages(1);
     } finally {
@@ -50,7 +56,10 @@ export default function MandorPage() {
   }, [fetchData]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Yakin mau hapus mandor?")) return;
+    if (
+      !confirm("Yakin mau hapus mandor? (Data akan dipindahkan ke tong sampah)")
+    )
+      return;
     try {
       await toast.promise(deleteMandor(id), {
         loading: "Menghapus mandor...",
@@ -81,23 +90,38 @@ export default function MandorPage() {
               Kelola data seluruh pengawas lapangan Anda di sini.
             </p>
           </div>
-          <button
-            onClick={() => router.push("/admin/mandor/create")}
-            className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95 shadow-lg shadow-blue-200 cursor-pointer"
-          >
-            <FiPlus className="mr-2 w-5 h-5" />
-            Tambah Mandor
-          </button>
+
+          <div className="flex items-center gap-3">
+            {/* TOMBOL TONG SAMPAH */}
+            <button
+              onClick={() => router.push("/admin/mandor/trashed")}
+              className="inline-flex items-center justify-center bg-white hover:bg-gray-50 text-gray-600 font-semibold px-5 py-2.5 rounded-xl transition-all border border-gray-200 active:scale-95 shadow-sm cursor-pointer"
+              title="Lihat Sampah"
+            >
+              <FiTrash className="w-5 h-5 md:mr-2" />
+              <span className="hidden md:inline">Tong Sampah</span>
+            </button>
+
+            <button
+              onClick={() => router.push("/admin/mandor/create")}
+              className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95 shadow-lg shadow-blue-200 cursor-pointer"
+            >
+              <FiPlus className="mr-2 w-5 h-5" />
+              Tambah Mandor
+            </button>
+          </div>
         </div>
 
-        {/* QUICK STATS (Optional tapi bikin keren) */}
+        {/* QUICK STATS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
             <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
               <FiUsers className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm text-gray-500 font-medium">Total Mandor</p>
+              <p className="text-sm text-gray-500 font-medium">
+                Total Mandor Aktif
+              </p>
               <h3 className="text-2xl font-bold text-gray-800">
                 {mandors.length}{" "}
                 <span className="text-sm font-normal text-gray-400">org</span>
@@ -155,7 +179,7 @@ export default function MandorPage() {
                           <FiMail className="text-gray-400" /> {m.email}
                         </div>
                       </td>
-                      <td className="p-5">
+                      <td className="p-5 text-right">
                         <div className="flex justify-end gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() =>
