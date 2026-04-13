@@ -90,10 +90,6 @@ model Project {
 model Documentation {
   id String @id @default(uuid())
 
-  fileUrl      String
-  cloudinaryId String?
-  fileType     FileType
-
   reportDate DateTime
   uploadedAt DateTime             @default(now())
   session    DocumentationSession
@@ -113,8 +109,24 @@ model Documentation {
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@unique([projectId, reportDate, session])
+  files DocumentationFile[]
+
   @@index([projectId, reportDate(sort: Desc)])
   @@index([projectId, session, reportDate])
   @@index([createdById])
+}
+
+model DocumentationFile {
+  id String @id @default(uuid())
+
+  fileUrl      String
+  cloudinaryId String
+  fileType     FileType
+
+  documentationId String
+  documentation   Documentation @relation(fields: [documentationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([documentationId])
 }
