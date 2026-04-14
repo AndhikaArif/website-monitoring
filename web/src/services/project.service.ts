@@ -3,6 +3,7 @@ import {
   CreateProjectPayload,
   ProjectResponse,
   ProjectDetailResponse,
+  AssignedProjectResponse,
 } from "../types/project.type";
 
 const API_URL = process.env.NEXT_PUBLIC_API_DOMAIN;
@@ -121,5 +122,31 @@ export const unassignHeadWorker = async (
     data,
     { withCredentials: true },
   );
+  return res.data;
+};
+
+export const getAssignedProjects = async (
+  page = 1,
+  limit = 10,
+  status = "",
+  sortBy = "startDate",
+  order = "desc",
+) => {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+    ...(status && { status }),
+    sortBy,
+    order,
+  });
+
+  const res = await axios.get<AssignedProjectResponse>(
+    `${API_URL}/api/project/assigned`,
+    {
+      params, // Axios otomatis handle query string jika pakai field params
+      withCredentials: true,
+    },
+  );
+
   return res.data;
 };

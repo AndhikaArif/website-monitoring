@@ -55,10 +55,23 @@ export class ProjectService {
     };
   }
 
-  private buildAssignedProjectQuery(query: PaginationQueryDTO) {
+  private buildAssignedProjectQuery(
+    currentUser: IExistingUser,
+    query: PaginationQueryDTO,
+  ) {
     const base = this.buildQuery(query);
 
     return {
+      whereClause: {
+        ...base.where,
+        headWorkers: {
+          some: {
+            id: currentUser.id,
+          },
+        },
+        // Gunakan status dari query jika ada, kalau tidak ada (Semua Status), jangan difilter
+        ...(query.status && { status: query.status as ProjectStatus }),
+      },
       sortBy: base.sortBy,
       order: base.order,
     };
@@ -414,19 +427,14 @@ export class ProjectService {
     const safePage = Math.max(page, 1);
     const skip = (safePage - 1) * limit;
 
-    const { sortBy, order } = this.buildAssignedProjectQuery(query);
+    const { whereClause, sortBy, order } = this.buildAssignedProjectQuery(
+      currentUser,
+      query,
+    );
 
     const [projects, total] = await Promise.all([
       prisma.project.findMany({
-        where: {
-          headWorkers: {
-            some: {
-              id: currentUser.id,
-            },
-          },
-          status: ProjectStatus.AKTIF,
-          deletedAt: null,
-        },
+        where: whereClause,
         skip,
         take: limit,
         select: {

@@ -111,6 +111,7 @@ model Documentation {
 
   files DocumentationFile[]
 
+  @@unique([projectId, reportDate, session])
   @@index([projectId, reportDate(sort: Desc)])
   @@index([projectId, session, reportDate])
   @@index([createdById])

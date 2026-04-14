@@ -42,9 +42,7 @@ export default function LoginPage() {
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
             Sistem Monitoring
           </h1>
-          <p className="text-gray-500 font-medium">
-            Villa Kost 3 • Pojok Property
-          </p>
+          <p className="text-gray-500 font-medium">Pojok Property</p>
         </div>
 
         <div className="bg-white rounded-4xl shadow-sm border border-gray-100 p-8 md:p-10">
@@ -66,7 +64,7 @@ export default function LoginPage() {
 
                   if (status === 401) {
                     setErrors({
-                      username: "Kredensial tidak valid",
+                      username: "Username / password tidak valid",
                       password: " ",
                     });
                   } else {
@@ -132,7 +130,7 @@ export default function LoginPage() {
                     <Field
                       name="password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
+                      placeholder="Password"
                       className={`w-full bg-gray-50 rounded-2xl border px-11 py-3.5 text-sm transition-all focus:outline-none focus:ring-4 text-black ${
                         errors.password && touched.password
                           ? "border-red-200 focus:ring-red-50"
@@ -164,7 +162,7 @@ export default function LoginPage() {
                   disabled={isSubmitting}
                   className="w-full bg-purple-600 text-white py-4 rounded-2xl font-bold text-sm shadow-lg shadow-purple-100 hover:bg-purple-700 active:scale-[0.98] transition-all disabled:bg-gray-300 disabled:shadow-none mt-4 cursor-pointer border-none"
                 >
-                  {isSubmitting ? "Sedang Masuk..." : "Masuk ke Sistem"}
+                  {isSubmitting ? "Memproses..." : "Login"}
                 </button>
               </Form>
             )}

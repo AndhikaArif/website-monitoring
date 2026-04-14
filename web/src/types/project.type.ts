@@ -57,3 +57,21 @@ export interface ProjectDetailResponse {
   data: ProjectDetail;
   message?: string;
 }
+
+export interface AssignedProject {
+  id: string;
+  projectName: string;
+  location: string;
+  status: "AKTIF" | "LIBUR" | "SELESAI";
+  startDate: string;
+}
+
+export interface AssignedProjectResponse {
+  data: AssignedProject[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}

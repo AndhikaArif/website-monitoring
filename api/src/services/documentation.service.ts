@@ -1,6 +1,7 @@
 import { prisma } from "../config/prisma.config.js";
 import { AppError } from "../errors/app.error.js";
 import cloudinary from "../config/cloudinary.config.js";
+import { FileUpload } from "../utils/file-upload.util.js";
 import type {
   CreateDocDTO,
   PaginationQueryDTO,
@@ -12,6 +13,8 @@ import { UserRole } from "../generated/prisma/index.js";
 type SortField = "reportDate" | "createdAt" | "session";
 
 const ALLOWED_SORT: SortField[] = ["reportDate", "createdAt", "session"];
+
+const uploader = new FileUpload();
 
 export class DocumentationService {
   private parseReportDate(dateString: string): Date {
@@ -247,5 +250,13 @@ export class DocumentationService {
     return await prisma.documentation.delete({
       where: { id },
     });
+  }
+
+  async uploadFiles(files: Express.Multer.File[]) {
+    return await uploader.uploadArray(files);
+  }
+
+  async deleteFileFromCloudinary(cloudinaryId: string) {
+    return await cloudinary.uploader.destroy(cloudinaryId);
   }
 }

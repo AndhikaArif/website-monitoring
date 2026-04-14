@@ -16,6 +16,7 @@ export const createDocSchema = z.object({
 
   reportDate: z
     .string()
+    .min(1, "Tanggal wajib diisi")
     .regex(/^\d{2}-\d{2}-\d{4}$/, "Format tanggal harus DD-MM-YYYY"),
 
   session: z.enum(DocumentationSession),
@@ -69,3 +70,9 @@ export const paginationQuery = z.object({
 });
 
 export type PaginationQueryDTO = z.infer<typeof paginationQuery>;
+
+export const deleteFileSchema = z.object({
+  cloudinaryId: z.string({ error: "Cloudinary ID wajib diisi" }),
+});
+
+export type DeleteFileDTO = z.infer<typeof deleteFileSchema>;

@@ -12,6 +12,7 @@ import authRoutes from "./routes/auth.route.js";
 import profileRoutes from "./routes/profile.route.js";
 import headWorkerRoutes from "./routes/head-worker.route.js";
 import projectRoutes from "./routes/project.route.js";
+import documentationRoutes from "./routes/documentation.route.js";
 import { ErrorMiddleware } from "./middlewares/error.middleware.js";
 
 class App {
@@ -54,6 +55,7 @@ class App {
     this.app.use("/api", profileRoutes);
     this.app.use("/api/head-worker", headWorkerRoutes);
     this.app.use("/api/project", projectRoutes);
+    this.app.use("/api/documentation", documentationRoutes);
   }
 
   private initializeErrorHandler(): void {

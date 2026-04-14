@@ -1,13 +1,17 @@
 import type { Request, Response, NextFunction } from "express";
 import { DocumentationService } from "../services/documentation.service.js";
+import { FileUpload } from "../utils/file-upload.util.js";
+import { AppError } from "../errors/app.error.js";
 import type {
   CreateDocDTO,
   UpdateDocDTO,
   PaginationQueryDTO,
   DocumentationIdParamDTO,
+  DeleteFileDTO,
 } from "../validations/documentation.validation.js";
 
 const documentationService = new DocumentationService();
+const uploader = new FileUpload();
 
 export class DocumentationController {
   async create(req: Request, res: Response, next: NextFunction) {
@@ -95,6 +99,44 @@ export class DocumentationController {
       return res.status(200).json({
         success: true,
         message: "Dokumentasi berhasil dihapus",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Method upload gambar/video langsung di sini
+  async uploadFile(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.files || (Array.isArray(req.files) && req.files.length === 0)) {
+        throw new AppError(400, "Tidak ada file yang dipilih");
+      }
+
+      const data = await documentationService.uploadFiles(
+        req.files as Express.Multer.File[],
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "File berhasil diunggah ke cloud",
+        data,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Method delete file (untuk cleanup) di sini
+  async deleteFile(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { cloudinaryId } = req.validatedBody as DeleteFileDTO;
+
+      // Hapus dari Cloudinary
+      await documentationService.deleteFileFromCloudinary(cloudinaryId);
+
+      return res.status(200).json({
+        success: true,
+        message: "File sampah berhasil dibersihkan",
       });
     } catch (error) {
       next(error);

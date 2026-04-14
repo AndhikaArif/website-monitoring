@@ -43,7 +43,7 @@ function getHomeByRole(role?: string) {
     case "MANDOR":
       return "/mandor/project";
     case "HEAD_WORKER":
-      return "/head/worker";
+      return "/head-worker";
     default:
       return "/login";
   }
@@ -97,19 +97,6 @@ export default function Navbar() {
                 Dokumentasi
               </Link>
             </>
-          )}
-
-          {role === "HEAD_WORKER" && (
-            <Link
-              href="/upload"
-              className={
-                pathname === "/upload"
-                  ? `${theme.text} font-bold`
-                  : `text-gray-600 ${theme.hover}`
-              }
-            >
-              Upload File
-            </Link>
           )}
 
           <div className="h-6 w-px bg-gray-200 mx-2" />
@@ -188,16 +175,6 @@ export default function Navbar() {
                 Dokumentasi
               </Link>
             </>
-          )}
-
-          {role === "HEAD_WORKER" && (
-            <Link
-              href="/upload"
-              onClick={() => setIsOpen(false)}
-              className="text-gray-600 font-medium"
-            >
-              Upload File
-            </Link>
           )}
 
           <div className="mt-auto border-t pt-4">
