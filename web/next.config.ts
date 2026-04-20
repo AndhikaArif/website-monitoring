@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
       // tambahkan via.placeholder.com kalau masih pakai data dummy
       {
         protocol: "https",
-        hostname: "via.placeholder.com",
+        hostname: "www.shutterstock.com",
       },
     ],
   },

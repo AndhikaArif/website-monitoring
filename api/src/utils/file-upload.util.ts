@@ -15,8 +15,18 @@ export class FileUpload {
         resource_type: "auto",
         folder: "documentation_project",
       });
+
+      // 🔥 OPTIMASI CLOUDINARY
+      // Kita generate URL yang sudah dikompres otomatis oleh Cloudinary (f_auto, q_auto)
+      const optimizedUrl = cloudinary.url(uploadResult.public_id, {
+        resource_type: uploadResult.resource_type,
+        fetch_format: "auto", // Otomatis diubah ke WebP/AVIF sesuai browser
+        quality: "auto", // Otomatis dikompres ukurannya
+        secure: true, // Pastikan pakai HTTPS
+      });
+
       return {
-        url: uploadResult.secure_url,
+        url: optimizedUrl,
         cloudinaryId: uploadResult.public_id,
         fileType: uploadResult.resource_type === "video" ? "VIDEO" : "PHOTO",
       };

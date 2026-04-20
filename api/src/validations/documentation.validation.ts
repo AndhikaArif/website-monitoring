@@ -62,11 +62,13 @@ export const documentationIdParam = z.object({
 export type DocumentationIdParamDTO = z.infer<typeof documentationIdParam>;
 
 export const paginationQuery = z.object({
+  projectId: z.string().uuid("Project ID tidak valid").optional(),
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(500).default(10),
   status: z.enum(ProjectStatus).optional(),
   sortBy: z.enum(["reportDate", "createdAt", "session"]).optional(),
   order: z.enum(["asc", "desc"]).optional(),
+  search: z.string().optional(),
 });
 
 export type PaginationQueryDTO = z.infer<typeof paginationQuery>;

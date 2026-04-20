@@ -139,6 +139,13 @@ export class DocumentationService {
         ? { createdById: currentUser.id }
         : { project: { mandorId: currentUser.id } }),
       ...(query.status && { project: { status: query.status } }), // Filter status project jika perlu
+      ...(query.projectId && { projectId: query.projectId }),
+      ...(query.search && {
+        OR: [
+          { workArea: { contains: query.search, mode: "insensitive" } },
+          { task: { contains: query.search, mode: "insensitive" } },
+        ],
+      }),
     };
 
     const [docs, total] = await Promise.all([
@@ -196,12 +203,23 @@ export class DocumentationService {
 
     // Logika Update Files (Jika ada file baru yang diunggah)
     if (payload.files && payload.files.length > 0) {
-      const deletePromises = existingDoc.files.map((file) =>
-        cloudinary.uploader.destroy(file.cloudinaryId),
-      );
-      await Promise.all(deletePromises);
+      // 1. Kumpulkan ID file yang ingin dipertahankan oleh frontend
+      const idsToKeep = payload.files.map((f) => f.cloudinaryId);
 
-      // Hapus files lama di Database, lalu ganti dengan yang baru
+      // 2. Cari file lama yang tidak ada di daftar yang ingin dipertahankan (berarti dihapus user)
+      const filesToDelete = existingDoc.files.filter(
+        (f) => !idsToKeep.includes(f.cloudinaryId),
+      );
+
+      // 3. Hapus HANYA file yang benar-benar dibuang dari Cloudinary
+      if (filesToDelete.length > 0) {
+        const deletePromises = filesToDelete.map((file) =>
+          cloudinary.uploader.destroy(file.cloudinaryId),
+        );
+        await Promise.all(deletePromises);
+      }
+
+      // 4. Reset DB dan masukkan kombinasi file lama & baru
       await prisma.documentationFile.deleteMany({
         where: { documentationId: id },
       });
