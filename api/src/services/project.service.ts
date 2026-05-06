@@ -1,6 +1,7 @@
 import { prisma } from "../config/prisma.config.js";
 import type {
   AssignHeadWorkerDTO,
+  AssignOwnerDTO,
   CreateProjectDTO,
   PaginationQueryDTO,
   UpdateProjectDTO,
@@ -242,15 +243,24 @@ export class ProjectService {
   }
 
   async getProjectDetail(currentUser: IExistingUser, projectId: string) {
-    if (currentUser.role !== UserRole.MANDOR) {
-      throw new AppError(403, "Hanya mandor yang bisa melihat detail project");
+    if (
+      currentUser.role !== UserRole.MANDOR &&
+      currentUser.role !== UserRole.OWNER
+    ) {
+      throw new AppError(
+        403,
+        "Hanya mandor dan klien yang bisa melihat detail project",
+      );
     }
 
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        mandorId: currentUser.id,
         deletedAt: null,
+        // Jika yang akses mandor, pastikan mandorId cocok. Jika klien, pastikan ownerId cocok.
+        ...(currentUser.role === UserRole.MANDOR
+          ? { mandorId: currentUser.id }
+          : { ownerId: currentUser.id }),
       },
       select: {
         id: true,
@@ -261,6 +271,15 @@ export class ProjectService {
         endDate: true,
         description: true,
         createdAt: true,
+
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            email: true,
+          },
+        },
 
         headWorkers: {
           select: {
@@ -473,6 +492,58 @@ export class ProjectService {
     };
   }
 
+  async listOwnerProjects(
+    currentUser: IExistingUser,
+    query: PaginationQueryDTO,
+  ) {
+    if (currentUser.role !== UserRole.OWNER) {
+      throw new AppError(
+        403,
+        "Hanya klien yang bisa melihat daftar project ini",
+      );
+    }
+
+    const { page, limit } = query;
+    const safePage = Math.max(page, 1);
+    const skip = (safePage - 1) * limit;
+
+    const base = this.buildQuery(query);
+
+    const whereClause = {
+      ...base.where, // { deletedAt: null }
+      ownerId: currentUser.id, // Hanya project milik Klien ini
+      ...(query.status && { status: query.status }),
+    };
+
+    const [projects, total] = await Promise.all([
+      prisma.project.findMany({
+        where: whereClause,
+        skip,
+        take: limit,
+        orderBy: { [base.sortBy]: base.order },
+        select: {
+          id: true,
+          projectName: true,
+          location: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+        },
+      }),
+      prisma.project.count({ where: whereClause }),
+    ]);
+
+    return {
+      data: projects,
+      meta: {
+        page: safePage,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    };
+  }
+
   async assignHeadWorker(
     currentUser: IExistingUser,
     projectId: string,
@@ -619,5 +690,86 @@ export class ProjectService {
       message: "Head worker berhasil di-unassign",
       removed: toRemove,
     };
+  }
+
+  // --- FUNGSI BARU UNTUK KLIEN / OWNER ---
+
+  async assignOwner(
+    currentUser: IExistingUser,
+    projectId: string,
+    data: AssignOwnerDTO, // Hanya menerima 1 ID (karena 1 rumah = 1 klien)
+  ) {
+    if (currentUser.role !== UserRole.MANDOR) {
+      throw new AppError(403, "Hanya mandor yang bisa assign klien ke proyek");
+    }
+
+    // 1. Cek apakah proyek ini milik mandor
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, mandorId: currentUser.id, deletedAt: null },
+    });
+
+    if (!project) {
+      throw new AppError(404, "Project tidak ditemukan");
+    }
+
+    if (project.status === ProjectStatus.SELESAI) {
+      throw new AppError(
+        400,
+        "Tidak bisa ubah klien di proyek yang sudah selesai",
+      );
+    }
+
+    // 2. Cek apakah owner valid & milik mandor ini
+    const owner = await prisma.user.findFirst({
+      where: {
+        id: data.ownerId,
+        role: UserRole.OWNER,
+        mandorId: currentUser.id,
+        deletedAt: null,
+      },
+    });
+
+    if (!owner) {
+      throw new AppError(
+        404,
+        "Data klien (owner) tidak valid atau tidak ditemukan",
+      );
+    }
+
+    // 3. Update ownerId di tabel Project
+    await prisma.project.update({
+      where: { id: projectId },
+      data: { ownerId: owner.id },
+    });
+
+    return { message: "Klien berhasil di-assign ke proyek ini" };
+  }
+
+  async unassignOwner(currentUser: IExistingUser, projectId: string) {
+    if (currentUser.role !== UserRole.MANDOR) {
+      throw new AppError(403, "Hanya mandor yang bisa unassign klien");
+    }
+
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, mandorId: currentUser.id, deletedAt: null },
+    });
+
+    if (!project) {
+      throw new AppError(404, "Project tidak ditemukan");
+    }
+
+    if (project.status === ProjectStatus.SELESAI) {
+      throw new AppError(
+        400,
+        "Tidak bisa unassign klien di proyek yang sudah selesai",
+      );
+    }
+
+    await prisma.project.update({
+      where: { id: projectId },
+      data: { ownerId: null }, // Kosongkan ownerId
+    });
+
+    return { message: "Klien berhasil di-unassign dari proyek" };
   }
 }

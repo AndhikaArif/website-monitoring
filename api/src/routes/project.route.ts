@@ -7,6 +7,7 @@ import { UserRole } from "../generated/prisma/index.js";
 import {
   createProjectSchema,
   assignHeadWorkerSchema,
+  assignOwnerSchema,
   projectIdParam,
   paginationQuery,
   updateProjectSchema,
@@ -51,11 +52,20 @@ router.get(
   controller.listAssignedProjects,
 );
 
+// 🔥 LIST PROJECT MILIK OWNER (KLIEN)
+router.get(
+  "/owned",
+  AuthMiddleWare.verifyToken,
+  AuthMiddleWare.roleGuard(UserRole.OWNER),
+  validate(paginationQuery, "query"),
+  controller.listOwnerProjects,
+);
+
 // 🔥 GET DETAIL PROJECT
 router.get(
   "/:projectId",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.MANDOR),
+  AuthMiddleWare.roleGuard(UserRole.MANDOR, UserRole.OWNER),
   validate(projectIdParam, "params"),
   controller.getDetail,
 );
@@ -115,6 +125,26 @@ router.post(
   validate(projectIdParam, "params"),
   validate(assignHeadWorkerSchema),
   controller.unassignHeadWorker,
+);
+
+// 🔥 ASSIGN OWNER
+router.post(
+  "/:projectId/assign-owner",
+  AuthMiddleWare.verifyToken,
+  AuthMiddleWare.roleGuard(UserRole.MANDOR),
+  validate(projectIdParam, "params"),
+  validate(assignOwnerSchema),
+  controller.assignOwner,
+);
+
+// 🔥 UNASSIGN OWNER
+router.post(
+  "/:projectId/unassign-owner",
+  AuthMiddleWare.verifyToken,
+  AuthMiddleWare.roleGuard(UserRole.MANDOR),
+  validate(projectIdParam, "params"),
+  // Tidak pakai validate body di sini karena endpoint ini tidak mengirimkan data apa-apa (cukup memanggil ID project di params)
+  controller.unassignOwner,
 );
 
 export default router;

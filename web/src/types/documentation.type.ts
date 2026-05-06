@@ -19,6 +19,7 @@ export interface Documentation {
   files: DocumentationFile[];
   project?: { projectName: string };
   createdBy?: { name: string };
+  uploadedAt: string;
 }
 
 // ----------------------------------------------------
@@ -30,9 +31,10 @@ export interface GetDocsParams {
   projectId: string;
   page?: number;
   limit?: number;
-  sortBy?: "reportDate" | "createdAt" | "session";
+  sortBy?: "reportDate" | "uploadedAt" | "session";
   order?: "asc" | "desc";
   status?: string;
+  search?: string;
 }
 
 // Tipe parameter untuk axios.post (Create)

@@ -8,20 +8,23 @@ import {
   FiChevronLeft,
   FiCheck,
   FiLoader,
+  FiUser,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
-import { getProjectDetail, assignHeadWorker } from "@/services/project.service";
-import { getHeadWorkers } from "@/services/head-worker.service";
-import { ProjectDetailResponse } from "@/types/project.type";
-import { HeadWorker, HeadWorkerResponse } from "@/types/head-worker.type";
 import axios from "axios";
 
-export default function AssignWorkerPage() {
+import { getProjectDetail, assignOwner } from "@/services/project.service";
+import { getOwners } from "@/services/owner.service";
+import { ProjectDetailResponse } from "@/types/project.type";
+import { Owner, OwnerResponse } from "@/types/owner.type";
+
+export default function AssignOwnerPage() {
   const { projectId } = useParams() as { projectId: string };
   const router = useRouter();
 
-  const [availableWorkers, setAvailableWorkers] = useState<HeadWorker[]>([]);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [availableOwners, setAvailableOwners] = useState<Owner[]>([]);
+  // Menggunakan string tunggal, bukan array, karena 1 proyek = 1 klien
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,24 +32,22 @@ export default function AssignWorkerPage() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [projectRes, workersRes] = await Promise.all([
+      const [projectRes, ownersRes] = await Promise.all([
         getProjectDetail(projectId) as Promise<ProjectDetailResponse>,
-        getHeadWorkers(1, 50) as Promise<HeadWorkerResponse>,
+        getOwners(1, 50) as Promise<OwnerResponse>, // Mengambil hingga 50 klien
       ]);
 
-      // Ambil ID yang sudah terdaftar di project
-      const assignedIds = projectRes.data.headWorkers.map(
-        (w: HeadWorker) => w.id,
+      // Ambil ID Klien yang SAAT INI sudah terdaftar di project (jika ada)
+      const currentOwnerId = projectRes.data.owner?.id;
+
+      // Filter: Jangan tampilkan klien yang memang sudah ter-assign di proyek ini
+      const available = ownersRes.data.filter(
+        (owner: Owner) => owner.id !== currentOwnerId,
       );
 
-      // Filter: Hanya yang BELUM ada di project ini
-      const available = workersRes.data.filter(
-        (worker: HeadWorker) => !assignedIds.includes(worker.id),
-      );
-
-      setAvailableWorkers(available);
+      setAvailableOwners(available);
     } catch {
-      toast.error("Gagal memuat data pekerja");
+      toast.error("Gagal memuat data klien");
     } finally {
       setLoading(false);
     }
@@ -56,24 +57,22 @@ export default function AssignWorkerPage() {
     fetchData();
   }, [fetchData]);
 
-  const toggleWorker = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
-    );
+  // Fungsi pilih hanya 1 (menimpa pilihan sebelumnya)
+  const selectOwner = (id: string) => {
+    setSelectedId(id);
   };
 
   const handleAssign = async () => {
-    if (selectedIds.length === 0)
-      return toast.error("Pilih minimal satu pekerja");
+    if (!selectedId) return toast.error("Pilih satu klien terlebih dahulu");
 
     try {
       setSubmitting(true);
-      await assignHeadWorker(projectId, { headWorkerIds: selectedIds });
-      toast.success(`${selectedIds.length} Pekerja berhasil ditambahkan`);
+      await assignOwner(projectId, { ownerId: selectedId });
+      toast.success("Klien berhasil ditugaskan ke proyek");
       router.push(`/mandor/project/${projectId}`);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
-        toast.error(err.response?.data?.message || "Gagal menambahkan pekerja");
+        toast.error(err.response?.data?.message || "Gagal menambahkan klien");
       } else {
         toast.error("Terjadi kesalahan sistem");
       }
@@ -82,8 +81,8 @@ export default function AssignWorkerPage() {
     }
   };
 
-  const filteredWorkers = availableWorkers.filter((w) =>
-    w.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  const filteredOwners = availableOwners.filter((o) =>
+    o.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   if (loading) {
@@ -108,13 +107,21 @@ export default function AssignWorkerPage() {
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold flex items-center gap-2">
-              <FiUserPlus className="text-purple-600" /> Tambah Head Worker
+              <FiUserPlus className="text-purple-600" /> Pilih Klien (Owner)
             </h1>
-            {selectedIds.length > 0 && (
-              <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold">
-                {selectedIds.length} Terpilih
+            {selectedId && (
+              <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold">
+                1 Terpilih
               </span>
             )}
+          </div>
+
+          <div className="mb-6 p-4 bg-orange-50/50 border border-orange-100 rounded-2xl">
+            <p className="text-sm text-orange-800 flex items-start gap-2 leading-relaxed">
+              <span className="mt-0.5 font-bold">💡</span> Satu proyek hanya
+              dapat dimiliki oleh satu klien. Memilih klien baru akan menimpa
+              klien yang sudah ada (jika ada).
+            </p>
           </div>
 
           {/* Search Bar */}
@@ -122,55 +129,57 @@ export default function AssignWorkerPage() {
             <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Cari nama atau username..."
+              placeholder="Cari nama klien atau username..."
               className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
-          {/* Worker List */}
+          {/* Owner List */}
           <div className="space-y-3 max-h-100 overflow-y-auto mb-8 pr-2 custom-scrollbar">
-            {filteredWorkers.length > 0 ? (
-              filteredWorkers.map((worker) => (
+            {filteredOwners.length > 0 ? (
+              filteredOwners.map((owner) => (
                 <div
-                  key={worker.id}
-                  onClick={() => toggleWorker(worker.id)}
+                  key={owner.id}
+                  onClick={() => selectOwner(owner.id)}
                   className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all border-2 ${
-                    selectedIds.includes(worker.id)
-                      ? "border-purple-600 bg-purple-50 shadow-sm"
+                    selectedId === owner.id
+                      ? "border-orange-500 bg-orange-50 shadow-sm"
                       : "border-transparent bg-gray-50 hover:bg-gray-100"
                   }`}
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold shadow-inner">
-                      {worker.name.charAt(0)}
+                    <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold shadow-inner">
+                      {owner.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-bold text-gray-800">{worker.name}</p>
+                      <p className="font-bold text-gray-800">{owner.name}</p>
                       <p className="text-xs text-gray-500">
-                        @{worker.username}
+                        @{owner.username} • {owner.email}
                       </p>
                     </div>
                   </div>
 
+                  {/* Indicator Lingkaran Single Select */}
                   <div
                     className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                      selectedIds.includes(worker.id)
-                        ? "bg-purple-600 border-purple-600 text-white"
-                        : "border-gray-200"
+                      selectedId === owner.id
+                        ? "bg-orange-500 border-orange-500 text-white"
+                        : "border-gray-200 bg-white"
                     }`}
                   >
-                    {selectedIds.includes(worker.id) && <FiCheck size={14} />}
+                    {selectedId === owner.id && <FiCheck size={14} />}
                   </div>
                 </div>
               ))
             ) : (
-              <div className="text-center py-10">
+              <div className="text-center py-10 flex flex-col items-center">
+                <FiUser className="text-4xl text-gray-200 mb-3" />
                 <p className="text-gray-400 text-sm">
-                  {availableWorkers.length === 0
-                    ? "Semua pekerja sudah ditugaskan ke proyek ini."
-                    : "Pekerja tidak ditemukan."}
+                  {availableOwners.length === 0
+                    ? "Belum ada data klien yang bisa dipilih."
+                    : "Klien tidak ditemukan."}
                 </p>
               </div>
             )}
@@ -178,7 +187,7 @@ export default function AssignWorkerPage() {
 
           <button
             onClick={handleAssign}
-            disabled={selectedIds.length === 0 || submitting}
+            disabled={!selectedId || submitting}
             className="w-full py-4 bg-purple-600 text-white rounded-2xl font-bold disabled:bg-gray-200 disabled:text-gray-400 hover:bg-purple-700 active:scale-[0.98] transition-all border-none cursor-pointer flex items-center justify-center gap-2"
           >
             {submitting ? (
@@ -186,7 +195,7 @@ export default function AssignWorkerPage() {
                 <FiLoader className="animate-spin" /> Memproses...
               </>
             ) : (
-              `Assign ${selectedIds.length} Pekerja`
+              "Assign Klien ke Proyek"
             )}
           </button>
         </div>

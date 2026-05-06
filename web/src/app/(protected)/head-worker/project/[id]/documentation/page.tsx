@@ -49,6 +49,7 @@ interface ApiError {
 
 interface UploadResponseItem {
   resource_type?: string;
+  fileType?: string;
   fileUrl?: string;
   secure_url?: string;
   url?: string;
@@ -130,10 +131,23 @@ export default function HeadWorkerDocumentationPage() {
         console.log("ISI RESPONSE UPLOAD:", response.data);
 
         const rawData = response.data as UploadResponseItem[];
-        const uploadedData: DocumentationFile[] = rawData.map((item) => {
-          const isVideo = item.resource_type === "video";
+
+        const uploadedData: DocumentationFile[] = rawData.map((item, index) => {
+          const finalUrl = item.url || item.fileUrl || item.secure_url || "";
+          const isVideo =
+            item.fileType === "VIDEO" ||
+            item.resource_type === "video" ||
+            finalUrl.toLowerCase().includes(".mp4");
+
+          console.log(
+            `File ke-${index + 1} dideteksi sebagai:`,
+            isVideo ? "VIDEO" : "PHOTO",
+            "| URL:",
+            finalUrl,
+          );
+
           return {
-            fileUrl: item.fileUrl || item.secure_url || item.url || "",
+            fileUrl: finalUrl,
             cloudinaryId: item.cloudinaryId || item.public_id || item.id || "",
             fileType: isVideo ? "VIDEO" : "PHOTO",
           };
@@ -367,7 +381,7 @@ export default function HeadWorkerDocumentationPage() {
 
           <button
             onClick={openCreateModal}
-            className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-6 py-2.5 rounded-xl hover:bg-indigo-700 transition-all font-semibold shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 w-full sm:w-fit whitespace-nowrap"
+            className="flex items-center justify-center gap-2 bg-emerald-600 text-white px-6 py-2.5 rounded-xl hover:bg-emerald-700 transition-all font-semibold shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 w-full sm:w-fit whitespace-nowrap cursor-pointer"
           >
             <FiPlus size={20} />
             <span>Buat Laporan</span>
@@ -398,6 +412,9 @@ export default function HeadWorkerDocumentationPage() {
                         <video
                           src={doc.files[0].fileUrl}
                           className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+                          controls
+                          preload="metadata"
+                          playsInline
                         />
                       ) : (
                         <Image
@@ -433,14 +450,14 @@ export default function HeadWorkerDocumentationPage() {
                   <div className="absolute top-3 right-3 flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200">
                     <button
                       onClick={() => openEditModal(doc)}
-                      className="p-2 bg-white/90 backdrop-blur text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg shadow-sm transition-colors"
+                      className="p-2 bg-white/90 backdrop-blur text-emerald-600 hover:bg-indigo-50 hover:text-emerald-700 rounded-lg shadow-sm transition-colors cursor-pointer"
                       title="Edit Laporan"
                     >
                       <FiEdit2 size={16} />
                     </button>
                     <button
                       onClick={() => handleDelete(doc.id)}
-                      className="p-2 bg-white/90 backdrop-blur text-red-500 hover:bg-red-50 hover:text-red-700 rounded-lg shadow-sm transition-colors"
+                      className="p-2 bg-white/90 backdrop-blur text-red-500 hover:bg-red-50 hover:text-red-700 rounded-lg shadow-sm transition-colors cursor-pointer"
                       title="Hapus Laporan"
                     >
                       <FiTrash2 size={16} />
@@ -456,7 +473,7 @@ export default function HeadWorkerDocumentationPage() {
                         className={`text-[10px] font-extrabold px-2.5 py-1 rounded-md tracking-wider ${
                           doc.session === "PAGI"
                             ? "bg-amber-100 text-amber-700 border border-amber-200/50"
-                            : "bg-indigo-100 text-indigo-700 border border-indigo-200/50"
+                            : "bg-indigo-100 text-emerald-700 border border-indigo-200/50"
                         }`}
                       >
                         {doc.session}
@@ -537,12 +554,12 @@ export default function HeadWorkerDocumentationPage() {
           <p className="text-slate-500 text-center max-w-sm mb-6">
             {searchQuery
               ? `Tidak ada laporan yang cocok dengan kata kunci "${searchQuery}".`
-              : "Pekerjaan hari ini belum didokumentasikan. Klik tombol di bawah untuk membuat laporan perdana."}
+              : "Pekerjaan ini belum didokumentasikan. Klik tombol di bawah untuk membuat laporan pertama."}
           </p>
           {!searchQuery && (
             <button
               onClick={openCreateModal}
-              className="text-indigo-600 bg-indigo-50 hover:bg-indigo-100 font-semibold px-5 py-2.5 rounded-xl transition-colors"
+              className="text-emerald-600 bg-indigo-50 hover:bg-indigo-100 font-semibold px-5 py-2.5 rounded-xl transition-colors cursor-pointer"
             >
               Buat Laporan Pertama
             </button>
@@ -561,7 +578,7 @@ export default function HeadWorkerDocumentationPage() {
               <button
                 type="button"
                 onClick={handleCancel}
-                className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 rounded-full transition-colors"
+                className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 rounded-full transition-colors cursor-pointer"
               >
                 <FiX size={22} />
               </button>
@@ -590,7 +607,7 @@ export default function HeadWorkerDocumentationPage() {
                   </label>
                   <select
                     {...register("session")}
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all appearance-none"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all appearance-none cursor-pointer"
                   >
                     <option value="PAGI">Shift Pagi</option>
                     <option value="SORE">Shift Sore</option>
@@ -678,12 +695,12 @@ export default function HeadWorkerDocumentationPage() {
                     accept="image/*, video/*"
                     onChange={handleFileUpload}
                     disabled={isUploading}
-                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer disabled:opacity-50"
+                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-indigo-50 file:text-emerald-700 hover:file:bg-indigo-100 cursor-pointer disabled:opacity-50"
                   />
                 </div>
 
                 {isUploading && (
-                  <div className="flex items-center gap-2 mt-4 text-indigo-600">
+                  <div className="flex items-center gap-2 mt-4 text-emerald-600">
                     <svg
                       className="animate-spin h-5 w-5"
                       xmlns="http://www.w3.org/2000/svg"
@@ -735,6 +752,8 @@ export default function HeadWorkerDocumentationPage() {
                                 src={file.fileUrl}
                                 className="object-cover w-full h-full"
                                 controls
+                                preload="metadata"
+                                playsInline
                               />
                             ) : (
                               <Image
@@ -781,7 +800,7 @@ export default function HeadWorkerDocumentationPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 active:bg-indigo-800 disabled:bg-indigo-300 disabled:cursor-not-allowed transition-colors shadow-sm cursor-pointer"
+                  className="flex-1 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 active:bg-emerald-800 disabled:bg-emerald-300 disabled:cursor-not-allowed transition-colors shadow-sm cursor-pointer"
                 >
                   {isSubmitting ? "Menyimpan..." : "Simpan Laporan"}
                 </button>

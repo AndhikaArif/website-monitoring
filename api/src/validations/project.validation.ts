@@ -53,6 +53,12 @@ export const assignHeadWorkerSchema = z.object({
 
 export type AssignHeadWorkerDTO = z.infer<typeof assignHeadWorkerSchema>;
 
+export const assignOwnerSchema = z.object({
+  ownerId: z.string().uuid("Format ID Klien tidak valid"),
+});
+
+export type AssignOwnerDTO = z.infer<typeof assignOwnerSchema>;
+
 export const paginationQuery = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(50).default(10),

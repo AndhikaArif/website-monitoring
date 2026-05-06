@@ -125,6 +125,27 @@ export const unassignHeadWorker = async (
   return res.data;
 };
 
+export const assignOwner = async (
+  projectId: string,
+  data: { ownerId: string },
+) => {
+  const res = await axios.post(
+    `${API_URL}/api/project/${projectId}/assign-owner`,
+    data,
+    { withCredentials: true },
+  );
+  return res.data;
+};
+
+export const unassignOwner = async (projectId: string) => {
+  const res = await axios.post(
+    `${API_URL}/api/project/${projectId}/unassign-owner`,
+    {}, // Body kosong
+    { withCredentials: true },
+  );
+  return res.data;
+};
+
 export const getAssignedProjects = async (
   page = 1,
   limit = 10,

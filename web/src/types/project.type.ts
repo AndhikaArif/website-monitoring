@@ -30,6 +30,13 @@ export interface HeadWorker {
   createdAt: string;
 }
 
+export interface ProjectOwner {
+  id: string;
+  name: string;
+  username: string;
+  email: string;
+}
+
 export interface LatestDocumentation {
   id: string;
   reportDate: string;
@@ -46,6 +53,7 @@ export interface ProjectDetail {
   description?: string | null;
   createdAt: string;
   headWorkers: HeadWorker[];
+  owner?: ProjectOwner | null;
   latestDocumentation?: LatestDocumentation | null;
   _count: {
     documentations: number;

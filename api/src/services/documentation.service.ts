@@ -10,9 +10,9 @@ import type {
 import type { IExistingUser } from "../types/auth.type.js";
 import { UserRole } from "../generated/prisma/index.js";
 
-type SortField = "reportDate" | "createdAt" | "session";
+type SortField = "reportDate" | "uploadedAt" | "session";
 
-const ALLOWED_SORT: SortField[] = ["reportDate", "createdAt", "session"];
+const ALLOWED_SORT: SortField[] = ["reportDate", "uploadedAt", "session"];
 
 const uploader = new FileUpload();
 
@@ -40,8 +40,16 @@ export class DocumentationService {
     const doc = await prisma.documentation.findUnique({
       where: { id },
       include: {
-        project: { select: { projectName: true, location: true } },
+        project: {
+          select: {
+            projectName: true,
+            location: true,
+            mandorId: true,
+            ownerId: true,
+          },
+        },
         files: true,
+        createdBy: { select: { name: true } },
       },
     });
 
@@ -52,7 +60,27 @@ export class DocumentationService {
       currentUser.role === "HEAD_WORKER" &&
       doc.createdById !== currentUser.id
     ) {
-      throw new AppError(403, "Akses ditolak. Anda bukan pemilik laporan ini.");
+      throw new AppError(403, "Akses ditolak. Anda bukan pembuat laporan ini.");
+    }
+
+    if (
+      currentUser.role === UserRole.OWNER &&
+      doc.project.ownerId !== currentUser.id
+    ) {
+      throw new AppError(
+        403,
+        "Akses ditolak. Ini bukan laporan dari proyek Anda.",
+      );
+    }
+
+    if (
+      currentUser.role === UserRole.MANDOR &&
+      doc.project.mandorId !== currentUser.id
+    ) {
+      throw new AppError(
+        403,
+        "Akses ditolak. Proyek ini bukan di bawah pengawasan Anda.",
+      );
     }
 
     return doc;
@@ -123,21 +151,29 @@ export class DocumentationService {
     currentUser: IExistingUser,
     query: PaginationQueryDTO,
   ) {
-    const allowedRoles: UserRole[] = [UserRole.MANDOR, UserRole.HEAD_WORKER];
+    const allowedRoles: UserRole[] = [
+      UserRole.MANDOR,
+      UserRole.HEAD_WORKER,
+      UserRole.OWNER,
+    ];
     if (!allowedRoles.includes(currentUser.role)) {
-      throw new AppError(
-        403,
-        "Hanya mandor dan head worker yang bisa melihat list...",
-      );
+      throw new AppError(403, "Akses ditolak untuk role Anda.");
     }
 
     const { page, limit, skip, sortBy, order } = this.buildQueryOptions(query);
 
-    // FIX VISIBILITY: Mandor melihat semua laporan di projectnya, HW melihat miliknya saja
+    // Tentukan filter dasar (Visibility/Penglihatan) berdasarkan Role
+    let roleFilter = {};
+    if (currentUser.role === UserRole.HEAD_WORKER) {
+      roleFilter = { createdById: currentUser.id }; // HW cuma lihat laporannya sendiri
+    } else if (currentUser.role === UserRole.MANDOR) {
+      roleFilter = { project: { mandorId: currentUser.id } }; // Mandor lihat semua di bawah dia
+    } else if (currentUser.role === UserRole.OWNER) {
+      roleFilter = { project: { ownerId: currentUser.id } }; // Klien cuma lihat laporan dari rumahnya
+    }
+
     const whereClause: any = {
-      ...(currentUser.role === UserRole.HEAD_WORKER
-        ? { createdById: currentUser.id }
-        : { project: { mandorId: currentUser.id } }),
+      ...roleFilter,
       ...(query.status && { project: { status: query.status } }), // Filter status project jika perlu
       ...(query.projectId && { projectId: query.projectId }),
       ...(query.search && {
@@ -156,7 +192,7 @@ export class DocumentationService {
         orderBy: { [sortBy]: order },
         include: {
           project: { select: { projectName: true } },
-          files: { take: 1 },
+          files: true,
           createdBy: { select: { name: true } }, // Mandor perlu tahu siapa yang lapor
         },
       }),

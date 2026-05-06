@@ -16,19 +16,31 @@ export class FileUpload {
         folder: "documentation_project",
       });
 
-      // 🔥 OPTIMASI CLOUDINARY
-      // Kita generate URL yang sudah dikompres otomatis oleh Cloudinary (f_auto, q_auto)
-      const optimizedUrl = cloudinary.url(uploadResult.public_id, {
-        resource_type: uploadResult.resource_type,
-        fetch_format: "auto", // Otomatis diubah ke WebP/AVIF sesuai browser
-        quality: "auto", // Otomatis dikompres ukurannya
-        secure: true, // Pastikan pakai HTTPS
-      });
+      const isVideo = uploadResult.resource_type === "video";
+      let finalUrl = "";
+
+      if (isVideo) {
+        // 🔥 OPTIMASI UNTUK VIDEO:
+        // Tambahkan ".mp4" di belakang public_id agar browser mengenali formatnya
+        finalUrl = cloudinary.url(`${uploadResult.public_id}.mp4`, {
+          resource_type: "video",
+          secure: true, // Pastikan pakai HTTPS
+        });
+      } else {
+        // 🔥 OPTIMASI UNTUK GAMBAR:
+        // Tetap pertahankan kompresi otomatis Cloudinary
+        finalUrl = cloudinary.url(uploadResult.public_id, {
+          resource_type: "image",
+          fetch_format: "auto", // Otomatis diubah ke WebP/AVIF sesuai browser
+          quality: "auto", // Otomatis dikompres ukurannya
+          secure: true,
+        });
+      }
 
       return {
-        url: optimizedUrl,
+        url: finalUrl,
         cloudinaryId: uploadResult.public_id,
-        fileType: uploadResult.resource_type === "video" ? "VIDEO" : "PHOTO",
+        fileType: isVideo ? "VIDEO" : "PHOTO",
       };
     } catch (error) {
       throw error;

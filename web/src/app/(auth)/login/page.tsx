@@ -23,6 +23,7 @@ export default function LoginPage() {
         ADMIN: "/admin/mandor",
         MANDOR: "/mandor/head-worker",
         HEAD_WORKER: "/head-worker",
+        OWNER: "/owner", // Antisipasi untuk role baru
       };
       router.replace(paths[user.role as keyof typeof paths] || "/login");
     }
@@ -32,20 +33,21 @@ export default function LoginPage() {
   if (user) return null;
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-50 p-4 font-sans">
-      <div className="w-full max-w-105">
-        {/* LOGO AREA */}
+    <main className="min-h-screen flex items-center justify-center bg-slate-50 p-4 font-sans">
+      <div className="w-full max-w-md">
+        {" "}
+        {/* max-w-105 diganti max-w-md agar standar */}
+        {/* LOGO AREA - NETRAL PREMIUM */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-purple-600 rounded-2xl shadow-lg shadow-purple-200 mb-4 text-white">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-900 rounded-2xl shadow-lg shadow-slate-300 mb-4 text-white">
             <span className="text-3xl font-bold tracking-tighter">PP</span>
           </div>
-          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
             Sistem Monitoring
           </h1>
-          <p className="text-gray-500 font-medium">Pojok Property</p>
+          <p className="text-slate-500 font-medium">PT. Pojok Property</p>
         </div>
-
-        <div className="bg-white rounded-4xl shadow-sm border border-gray-100 p-8 md:p-10">
+        <div className="bg-white rounded-4xl shadow-sm border border-slate-100 p-8 md:p-10">
           <Formik
             initialValues={{ username: "", password: "" }}
             validationSchema={toFormikValidationSchema(loginSchemaFront)}
@@ -67,8 +69,12 @@ export default function LoginPage() {
                       username: "Username / password tidak valid",
                       password: " ",
                     });
+                  } else if (status === 500) {
+                    // 🔥 Penanganan Error Database Down / Timeout
+                    setGlobalError(
+                      "Server atau database sedang mengalami gangguan. Silakan coba beberapa saat lagi.",
+                    );
                   } else {
-                    // Ambil pesan dari server jika ada, atau gunakan default
                     const errorMessage =
                       err.response?.data?.message || "Koneksi ke server gagal.";
                     setGlobalError(errorMessage);
@@ -94,20 +100,21 @@ export default function LoginPage() {
 
                 {/* USERNAME */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">
                     Username
                   </label>
                   <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-purple-600 transition-colors">
+                    {/* Focus diubah ke warna Slate-900 */}
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-slate-900 transition-colors">
                       <FiUser />
                     </div>
                     <Field
                       name="username"
                       placeholder="Masukkan username anda"
-                      className={`w-full bg-gray-50 rounded-2xl border px-11 py-3.5 text-sm transition-all focus:outline-none focus:ring-4 text-black ${
+                      className={`w-full bg-slate-50 rounded-2xl border px-11 py-3.5 text-sm transition-all focus:outline-none focus:ring-4 text-black ${
                         errors.username && touched.username
                           ? "border-red-200 focus:ring-red-50"
-                          : "border-gray-100 focus:border-purple-500 focus:ring-purple-50"
+                          : "border-slate-200 focus:border-slate-900 focus:ring-slate-100"
                       }`}
                     />
                   </div>
@@ -120,27 +127,28 @@ export default function LoginPage() {
 
                 {/* PASSWORD */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">
                     Password
                   </label>
                   <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-purple-600 transition-colors">
+                    {/* Focus diubah ke warna Slate-900 */}
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-slate-900 transition-colors">
                       <FiLock />
                     </div>
                     <Field
                       name="password"
                       type={showPassword ? "text" : "password"}
                       placeholder="Password"
-                      className={`w-full bg-gray-50 rounded-2xl border px-11 py-3.5 text-sm transition-all focus:outline-none focus:ring-4 text-black ${
+                      className={`w-full bg-slate-50 rounded-2xl border px-11 py-3.5 text-sm transition-all focus:outline-none focus:ring-4 text-black ${
                         errors.password && touched.password
                           ? "border-red-200 focus:ring-red-50"
-                          : "border-gray-100 focus:border-purple-500 focus:ring-purple-50"
+                          : "border-slate-200 focus:border-slate-900 focus:ring-slate-100"
                       }`}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-purple-600 transition-colors cursor-pointer"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 transition-colors cursor-pointer"
                     >
                       {showPassword ? (
                         <FiEyeOff size={18} />
@@ -156,11 +164,11 @@ export default function LoginPage() {
                   />
                 </div>
 
-                {/* SUBMIT */}
+                {/* SUBMIT BUTTON - NETRAL ELEGANT */}
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-purple-600 text-white py-4 rounded-2xl font-bold text-sm shadow-lg shadow-purple-100 hover:bg-purple-700 active:scale-[0.98] transition-all disabled:bg-gray-300 disabled:shadow-none mt-4 cursor-pointer border-none"
+                  className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold text-sm shadow-lg shadow-slate-200 hover:bg-slate-800 active:scale-[0.98] transition-all disabled:bg-slate-300 disabled:shadow-none mt-4 cursor-pointer border-none"
                 >
                   {isSubmitting ? "Memproses..." : "Login"}
                 </button>
@@ -168,9 +176,8 @@ export default function LoginPage() {
             )}
           </Formik>
         </div>
-
         {/* FOOTER */}
-        <p className="mt-8 text-center text-sm text-gray-400 font-medium">
+        <p className="mt-8 text-center text-sm text-slate-400 font-medium">
           &copy; {new Date().getFullYear()} PT. Pojok Property <br />
           <span className="text-[10px] uppercase tracking-tighter opacity-50">
             Monitoring App v1.0

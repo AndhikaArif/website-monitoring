@@ -25,11 +25,15 @@ router.post(
   controller.create,
 );
 
-// 🔥 LIST DOCUMENTATION(LAPORAN HEAD WORKER) (Bisa diakses Mandor & Head Worker)
+// 🔥 LIST DOCUMENTATION(LAPORAN HEAD WORKER) (Bisa diakses Mandor, Head Worker, & Owner)
 router.get(
   "/",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.MANDOR, UserRole.HEAD_WORKER),
+  AuthMiddleWare.roleGuard(
+    UserRole.MANDOR,
+    UserRole.HEAD_WORKER,
+    UserRole.OWNER,
+  ),
   validate(paginationQuery, "query"),
   controller.list,
 );
@@ -56,6 +60,11 @@ router.delete(
 router.get(
   "/:id",
   AuthMiddleWare.verifyToken,
+  AuthMiddleWare.roleGuard(
+    UserRole.MANDOR,
+    UserRole.HEAD_WORKER,
+    UserRole.OWNER,
+  ),
   validate(documentationIdParam, "params"),
   controller.getById,
 );

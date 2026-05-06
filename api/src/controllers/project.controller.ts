@@ -3,6 +3,7 @@ import { ProjectService } from "../services/project.service.js";
 import { AppError } from "../errors/app.error.js";
 import type {
   AssignHeadWorkerDTO,
+  AssignOwnerDTO,
   CreateProjectDTO,
   PaginationQueryDTO,
   ProjectIdParamDTO,
@@ -166,6 +167,21 @@ export class ProjectController {
     }
   }
 
+  async listOwnerProjects(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.currentUser) throw new AppError(401, "Unauthenticated");
+
+      const projects = await projectService.listOwnerProjects(
+        req.currentUser,
+        req.validatedQuery as PaginationQueryDTO,
+      );
+
+      res.json(projects);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async assignHeadWorker(req: Request, res: Response, next: NextFunction) {
     try {
       if (!req.currentUser) throw new AppError(401, "Unauthenticated");
@@ -194,6 +210,42 @@ export class ProjectController {
         req.currentUser,
         projectId,
         req.validatedBody as AssignHeadWorkerDTO,
+      );
+
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async assignOwner(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.currentUser) throw new AppError(401, "Unauthenticated");
+
+      const { projectId } = req.validatedParams as ProjectIdParamDTO;
+
+      const result = await projectService.assignOwner(
+        req.currentUser,
+        projectId,
+        req.validatedBody as AssignOwnerDTO,
+      );
+
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async unassignOwner(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.currentUser) throw new AppError(401, "Unauthenticated");
+
+      const { projectId } = req.validatedParams as ProjectIdParamDTO;
+
+      // Tidak butuh validatedBody karena hanya ada 1 owner yang dihapus
+      const result = await projectService.unassignOwner(
+        req.currentUser,
+        projectId,
       );
 
       res.json(result);

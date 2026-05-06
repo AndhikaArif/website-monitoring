@@ -66,7 +66,7 @@ export const paginationQuery = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(500).default(10),
   status: z.enum(ProjectStatus).optional(),
-  sortBy: z.enum(["reportDate", "createdAt", "session"]).optional(),
+  sortBy: z.enum(["reportDate", "uploadedAt", "session"]).optional(),
   order: z.enum(["asc", "desc"]).optional(),
   search: z.string().optional(),
 });

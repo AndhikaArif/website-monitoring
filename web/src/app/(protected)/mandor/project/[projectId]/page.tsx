@@ -14,11 +14,13 @@ import {
   FiUserPlus,
   FiClock,
   FiTrash2,
+  FiUser,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import {
   getProjectDetail,
   unassignHeadWorker,
+  unassignOwner,
 } from "@/services/project.service";
 import { ProjectDetail } from "@/types/project.type";
 
@@ -68,6 +70,25 @@ export default function ProjectDetailPage() {
         toast.error(err.response?.data?.message || "Gagal menghapus pekerja");
       } else if (err instanceof Error) {
         toast.error(err.message);
+      }
+    }
+  };
+
+  const handleUnassignOwner = async () => {
+    if (!data?.owner) return;
+    const isConfirmed = window.confirm(
+      `Apakah Anda yakin ingin melepas klien "${data.owner.name}" dari proyek ini?`,
+    );
+
+    if (!isConfirmed) return;
+
+    try {
+      await unassignOwner(projectId);
+      toast.success(`Klien berhasil dilepas dari proyek`);
+      await fetchDetail();
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        toast.error(err.response?.data?.message || "Gagal melepas klien");
       }
     }
   };
@@ -230,6 +251,60 @@ export default function ProjectDetailPage() {
                       Proyek sedang berjalan
                     </p>
                   </div>
+                )}
+              </div>
+            </div>
+
+            {/* 👉 OWNER CARD (KLIEN) */}
+            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                  <FiUser className="text-purple-600" /> Klien (Owner)
+                </h3>
+                {/* Tampilkan tombol tambah hanya jika owner belum di-assign */}
+                {!data.owner && (
+                  <button
+                    onClick={() =>
+                      router.push(`/mandor/project/${data.id}/assign-owner`)
+                    }
+                    className="p-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-all border-none cursor-pointer"
+                    title="Tambah Klien"
+                  >
+                    <FiUserPlus size={16} />
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                {data.owner ? (
+                  <div className="group flex items-center justify-between gap-3 p-2 hover:bg-gray-50 rounded-xl transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold">
+                        {data.owner.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-800 leading-tight">
+                          {data.owner.name}
+                        </p>
+                        <p className="text-[10px] text-gray-400">
+                          @{data.owner.username}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* TOMBOL DELETE (UNASSIGN OWNER) */}
+                    <button
+                      onClick={handleUnassignOwner}
+                      className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all border-none cursor-pointer"
+                      title="Lepas klien dari proyek"
+                    >
+                      <FiTrash2 size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 italic text-center py-4">
+                    Belum ada klien yang ditugaskan.
+                  </p>
                 )}
               </div>
             </div>

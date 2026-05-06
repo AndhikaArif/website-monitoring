@@ -13,6 +13,7 @@ enum UserRole {
   ADMIN
   MANDOR
   HEAD_WORKER
+  OWNER
 }
 
 enum FileType {
@@ -41,6 +42,7 @@ model User {
 
   projects         Project[] @relation("MandorProjects")
   assignedProjects Project[] @relation("ProjectHeadWorkers")
+  ownedProjects    Project[] @relation("ProjectOwner")
 
   // relasi mandor → head worker
   mandorId    String?
@@ -76,8 +78,10 @@ model Project {
   deletedAt DateTime?
 
   mandorId    String
-  mandor      User   @relation("MandorProjects", fields: [mandorId], references: [id], onDelete: Restrict)
-  headWorkers User[] @relation("ProjectHeadWorkers")
+  mandor      User    @relation("MandorProjects", fields: [mandorId], references: [id], onDelete: Restrict)
+  headWorkers User[]  @relation("ProjectHeadWorkers")
+  ownerId     String? // Bisa dibuat opsional (String?) kalau project baru belum ada owner-nya, atau wajib (String)
+  owner       User?   @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Restrict)
 
   @@index([deletedAt])
   @@index([mandorId, deletedAt])
@@ -85,6 +89,7 @@ model Project {
   @@index([mandorId, createdAt])
   @@index([status, deletedAt])
   @@index([createdAt])
+  @@index([ownerId])
 }
 
 model Documentation {

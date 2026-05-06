@@ -11,7 +11,6 @@ import type {
 } from "../validations/documentation.validation.js";
 
 const documentationService = new DocumentationService();
-const uploader = new FileUpload();
 
 export class DocumentationController {
   async create(req: Request, res: Response, next: NextFunction) {

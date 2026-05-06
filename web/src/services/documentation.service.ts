@@ -22,6 +22,18 @@ export const getProjectDocumentations = async (
   return res.data;
 };
 
+export const getDocumentationById = async (
+  id: string,
+): Promise<ApiResponse<Documentation>> => {
+  const res = await axios.get<ApiResponse<Documentation>>(
+    `${API_URL}/api/documentation/${id}`,
+    {
+      withCredentials: true,
+    },
+  );
+  return res.data;
+};
+
 // Membuat dokumentasi baru
 export const createDocumentation = async (
   data: CreateDocPayload,
