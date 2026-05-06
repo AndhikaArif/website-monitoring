@@ -110,7 +110,7 @@ export default function AssignOwnerPage() {
               <FiUserPlus className="text-purple-600" /> Pilih Klien (Owner)
             </h1>
             {selectedId && (
-              <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold">
+              <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold">
                 1 Terpilih
               </span>
             )}
@@ -145,12 +145,12 @@ export default function AssignOwnerPage() {
                   onClick={() => selectOwner(owner.id)}
                   className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all border-2 ${
                     selectedId === owner.id
-                      ? "border-orange-500 bg-orange-50 shadow-sm"
+                      ? "border-purple-500 bg-purple-50 shadow-sm"
                       : "border-transparent bg-gray-50 hover:bg-gray-100"
                   }`}
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold shadow-inner">
+                    <div className="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold shadow-inner">
                       {owner.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -165,7 +165,7 @@ export default function AssignOwnerPage() {
                   <div
                     className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                       selectedId === owner.id
-                        ? "bg-orange-500 border-orange-500 text-white"
+                        ? "bg-purple-500 border-purple-500 text-white"
                         : "border-gray-200 bg-white"
                     }`}
                   >

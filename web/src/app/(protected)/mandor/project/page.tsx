@@ -10,6 +10,7 @@ import {
   FiMapPin,
   FiFilter,
   FiTrash2,
+  FiUser,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 
@@ -171,6 +172,7 @@ export default function MyProjectsPage() {
               <thead className="bg-gray-50/50 text-gray-600 font-semibold uppercase text-[11px] tracking-wider">
                 <tr>
                   <th className="p-5">Proyek & Lokasi</th>
+                  <th className="p-5">Klien / Owner</th>
                   <th className="p-5">Status</th>
                   <th className="p-5 text-right">Aksi</th>
                 </tr>
@@ -204,6 +206,30 @@ export default function MyProjectsPage() {
                           </div>
                         </div>
                       </td>
+
+                      {/* DATA KLIEN / OWNER */}
+                      <td className="p-5">
+                        {p.owner ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 shrink-0">
+                              <FiUser size={12} />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-700 text-xs">
+                                @{p.owner.username}
+                              </p>
+                              <p className="text-[10px] text-gray-400">
+                                {p.owner.email}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="inline-block px-2 py-1 bg-gray-50 text-gray-400 text-[10px] font-medium rounded-md border border-gray-100">
+                            Belum di-assign
+                          </span>
+                        )}
+                      </td>
+
                       <td className="p-5">
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${

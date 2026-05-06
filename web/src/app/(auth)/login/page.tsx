@@ -45,7 +45,7 @@ export default function LoginPage() {
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
             Sistem Monitoring
           </h1>
-          <p className="text-slate-500 font-medium">PT. Pojok Property</p>
+          <p className="text-slate-500 font-medium">Pojok Property</p>
         </div>
         <div className="bg-white rounded-4xl shadow-sm border border-slate-100 p-8 md:p-10">
           <Formik
@@ -178,7 +178,7 @@ export default function LoginPage() {
         </div>
         {/* FOOTER */}
         <p className="mt-8 text-center text-sm text-slate-400 font-medium">
-          &copy; {new Date().getFullYear()} PT. Pojok Property <br />
+          &copy; {new Date().getFullYear()} Pojok Property <br />
           <span className="text-[10px] uppercase tracking-tighter opacity-50">
             Monitoring App v1.0
           </span>

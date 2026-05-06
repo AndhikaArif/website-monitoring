@@ -4,6 +4,10 @@ export interface Project {
   location: string;
   status: "AKTIF" | "LIBUR" | "SELESAI";
   createdAt: string;
+  owner?: {
+    username: string;
+    email: string;
+  } | null;
 }
 
 export interface CreateProjectPayload {

@@ -352,6 +352,12 @@ export class ProjectService {
           startDate: true,
           endDate: true,
           createdAt: true,
+          owner: {
+            select: {
+              username: true,
+              email: true,
+            },
+          },
         },
       }),
 

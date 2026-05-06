@@ -279,7 +279,7 @@ export default function ProjectDetailPage() {
                 {data.owner ? (
                   <div className="group flex items-center justify-between gap-3 p-2 hover:bg-gray-50 rounded-xl transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold">
+                      <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-white text-xs font-bold">
                         {data.owner.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
