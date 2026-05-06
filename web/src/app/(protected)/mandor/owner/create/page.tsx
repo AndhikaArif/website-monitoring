@@ -50,7 +50,7 @@ export default function CreateOwnerPage() {
               onSubmit={async (values, { setSubmitting, setErrors }) => {
                 try {
                   await axios.post(
-                    `${process.env.NEXT_PUBLIC_API_DOMAIN}/api/owners/`,
+                    `${process.env.NEXT_PUBLIC_API_DOMAIN}/api/owner/`,
                     values,
                     { withCredentials: true },
                   );
@@ -117,7 +117,7 @@ export default function CreateOwnerPage() {
                       </label>
                       <Field
                         name="username"
-                        placeholder="usernameklien"
+                        placeholder="username"
                         className={`w-full px-4 py-3 text-black rounded-xl border outline-none transition-all focus:ring-4 ${
                           errors.username && touched.username
                             ? "border-red-300 focus:ring-red-50"
@@ -139,7 +139,7 @@ export default function CreateOwnerPage() {
                       <Field
                         name="email"
                         type="email"
-                        placeholder="email@klien.com"
+                        placeholder="nama@email.com"
                         className={`w-full px-4 py-3 text-black rounded-xl border outline-none transition-all focus:ring-4 ${
                           errors.email && touched.email
                             ? "border-red-300 focus:ring-red-50"

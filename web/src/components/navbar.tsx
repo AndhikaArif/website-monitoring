@@ -27,6 +27,12 @@ function getRoleTheme(role?: string) {
         text: "text-emerald-600",
         hover: "hover:text-emerald-500",
       };
+    case "OWNER":
+      return {
+        primary: "bg-amber-600",
+        text: "text-amber-600",
+        hover: "hover:text-amber-500",
+      };
     default:
       return {
         primary: "bg-gray-600",
@@ -44,6 +50,8 @@ function getHomeByRole(role?: string) {
       return "/mandor/project";
     case "HEAD_WORKER":
       return "/head-worker";
+    case "OWNER":
+      return "/owner";
     default:
       return "/login";
   }
@@ -86,6 +94,18 @@ export default function Navbar() {
               >
                 Head Worker
               </Link>
+
+              <Link
+                href="/mandor/owner"
+                className={
+                  pathname.includes("/owner")
+                    ? `${theme.text} font-bold`
+                    : `text-gray-600 ${theme.hover}`
+                }
+              >
+                Owner
+              </Link>
+
               <Link
                 href="/mandor/project"
                 className={
@@ -167,6 +187,15 @@ export default function Navbar() {
               >
                 Head Worker
               </Link>
+
+              <Link
+                href="/mandor/owner"
+                onClick={() => setIsOpen(false)}
+                className="text-gray-600 font-medium"
+              >
+                Owner
+              </Link>
+
               <Link
                 href="/mandor/project"
                 onClick={() => setIsOpen(false)}

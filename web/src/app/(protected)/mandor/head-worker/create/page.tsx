@@ -140,7 +140,7 @@ export default function CreateHeadWorkerPage() {
                       <Field
                         name="email"
                         type="email"
-                        placeholder="email@perusahaan.com"
+                        placeholder="nama@email.com"
                         className={`w-full px-4 py-3 text-black rounded-xl border outline-none transition-all focus:ring-4 ${
                           errors.email && touched.email
                             ? "border-red-300 focus:ring-red-50"

@@ -55,7 +55,6 @@ export class DocumentationService {
 
     if (!doc) throw new AppError(404, "Dokumentasi tidak ditemukan");
 
-    // Validasi: Apakah yang akses adalah pembuat aslinya?
     if (
       currentUser.role === "HEAD_WORKER" &&
       doc.createdById !== currentUser.id

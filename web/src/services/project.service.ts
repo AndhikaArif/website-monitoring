@@ -171,3 +171,29 @@ export const getAssignedProjects = async (
 
   return res.data;
 };
+
+export const getOwnedProjects = async (
+  page = 1,
+  limit = 10,
+  status = "",
+  sortBy = "startDate",
+  order = "desc",
+) => {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+    ...(status && { status }),
+    sortBy,
+    order,
+  });
+
+  const res = await axios.get<AssignedProjectResponse>(
+    `${API_URL}/api/project/owned`, // Asumsi endpoint BE kita waktu itu /owned
+    {
+      params,
+      withCredentials: true,
+    },
+  );
+
+  return res.data;
+};
