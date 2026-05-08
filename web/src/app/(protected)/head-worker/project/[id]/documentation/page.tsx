@@ -342,7 +342,7 @@ export default function HeadWorkerDocumentationPage() {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end mb-8 gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">
-            Dokumentasi Harian
+            Laporan Harian
           </h1>
           <p className="text-slate-500 text-sm mt-1 mb-4 sm:mb-0">
             Catat dan pantau progres kerja lapangan proyek ini secara

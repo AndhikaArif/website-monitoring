@@ -59,7 +59,7 @@ export default function AssignedProjectsPage() {
               Tugas Proyek Saya
             </h1>
             <p className="text-gray-500 mt-1">
-              Pilih proyek di bawah ini untuk mengelola dokumentasi harian.
+              Pilih proyek di bawah ini untuk mengelola laporan harian.
             </p>
           </div>
         </div>
