@@ -10,6 +10,8 @@ import {
   FiUsers,
   FiMail,
   FiTrash,
+  FiAlertCircle,
+  FiRefreshCw,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 
@@ -21,6 +23,7 @@ export default function OwnerPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -31,22 +34,32 @@ export default function OwnerPage() {
       setOwners(res.data || []);
       setTotalPages(res.meta.totalPages || 1);
     } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        if (err.response?.status === 404) {
-          setOwners([]);
-          setTotalPages(1);
-          return;
-        }
-
-        toast.error(
-          err.response?.data?.message || "Gagal mengambil data klien",
-        );
-      } else {
-        console.error("Unknown Error:", err);
-      }
-
       setOwners([]);
       setTotalPages(1);
+
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+
+        if (status === 404) {
+          // 404 berarti belum ada data klien, bukan error sistem
+          setErrorMsg(null);
+        } else if (status === 500) {
+          // 🔥 Penanganan Error Database Down / Timeout
+          const msg =
+            "Server atau database sedang mengalami gangguan. Silakan coba beberapa saat lagi.";
+          setErrorMsg(msg);
+          toast.error("Error 500: Server bermasalah");
+        } else {
+          // Error lain (400, 401, 403, Koneksi Mati)
+          const errorMessage =
+            err.response?.data?.message || "Koneksi ke server gagal.";
+          setErrorMsg(errorMessage);
+          toast.error(errorMessage);
+        }
+      } else {
+        setErrorMsg("Terjadi kesalahan sistem yang tidak terduga.");
+        console.error("Non-Axios Error:", err);
+      }
     } finally {
       setLoading(false);
     }
@@ -153,6 +166,28 @@ export default function OwnerPage() {
                       <td colSpan={4} className="p-8 bg-gray-50/20" />
                     </tr>
                   ))
+                ) : errorMsg ? (
+                  <tr>
+                    <td colSpan={4} className="text-center p-16">
+                      <div className="flex flex-col items-center">
+                        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
+                          <FiAlertCircle className="w-8 h-8 text-red-500" />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-800 mb-2">
+                          Gagal Memuat Data
+                        </h3>
+                        <p className="text-gray-500 font-medium max-w-sm mb-6">
+                          {errorMsg}
+                        </p>
+                        <button
+                          onClick={fetchData}
+                          className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-5 py-2.5 rounded-xl hover:bg-gray-50 transition-colors font-semibold shadow-sm cursor-pointer"
+                        >
+                          <FiRefreshCw /> Coba Lagi
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
                 ) : owners.length > 0 ? (
                   owners.map((o) => (
                     <tr

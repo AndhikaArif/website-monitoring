@@ -36,7 +36,6 @@ export default function LoginPage() {
     <main className="min-h-screen flex items-center justify-center bg-slate-50 p-4 font-sans">
       <div className="w-full max-w-md">
         {" "}
-        {/* max-w-105 diganti max-w-md agar standar */}
         {/* LOGO AREA - NETRAL PREMIUM */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-900 rounded-2xl shadow-lg shadow-slate-300 mb-4 text-white">
