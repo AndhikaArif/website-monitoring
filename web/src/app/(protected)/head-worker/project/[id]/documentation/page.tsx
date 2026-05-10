@@ -345,8 +345,7 @@ export default function HeadWorkerDocumentationPage() {
             Laporan Harian
           </h1>
           <p className="text-slate-500 text-sm mt-1 mb-4 sm:mb-0">
-            Catat dan pantau progres kerja lapangan proyek ini secara
-            *real-time*.
+            Catat dan pantau progres kerja lapangan proyek ini
           </p>
         </div>
 
