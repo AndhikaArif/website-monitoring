@@ -20,7 +20,7 @@ const controller = new DocumentationController();
 router.post(
   "/",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.HEAD_WORKER),
+  AuthMiddleWare.roleGuard(UserRole.KEPALA_TUKANG),
   validate(createDocSchema),
   controller.create,
 );
@@ -31,7 +31,7 @@ router.get(
   AuthMiddleWare.verifyToken,
   AuthMiddleWare.roleGuard(
     UserRole.MANDOR,
-    UserRole.HEAD_WORKER,
+    UserRole.KEPALA_TUKANG,
     UserRole.OWNER,
   ),
   validate(paginationQuery, "query"),
@@ -42,7 +42,7 @@ router.get(
 router.post(
   "/upload",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.HEAD_WORKER),
+  AuthMiddleWare.roleGuard(UserRole.KEPALA_TUKANG),
   fileUpload().array("files"),
   controller.uploadFile,
 );
@@ -51,7 +51,7 @@ router.post(
 router.delete(
   "/upload",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.HEAD_WORKER),
+  AuthMiddleWare.roleGuard(UserRole.KEPALA_TUKANG),
   validate(deleteFileSchema),
   controller.deleteFile,
 );
@@ -62,7 +62,7 @@ router.get(
   AuthMiddleWare.verifyToken,
   AuthMiddleWare.roleGuard(
     UserRole.MANDOR,
-    UserRole.HEAD_WORKER,
+    UserRole.KEPALA_TUKANG,
     UserRole.OWNER,
   ),
   validate(documentationIdParam, "params"),
@@ -73,7 +73,7 @@ router.get(
 router.put(
   "/:id",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.HEAD_WORKER),
+  AuthMiddleWare.roleGuard(UserRole.KEPALA_TUKANG),
   validate(documentationIdParam, "params"),
   validate(updateDocSchema),
   controller.update,
@@ -83,7 +83,7 @@ router.put(
 router.delete(
   "/:id",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.HEAD_WORKER),
+  AuthMiddleWare.roleGuard(UserRole.KEPALA_TUKANG),
   validate(documentationIdParam, "params"),
   controller.delete,
 );

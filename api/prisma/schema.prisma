@@ -12,7 +12,7 @@ datasource db {
 enum UserRole {
   ADMIN
   MANDOR
-  HEAD_WORKER
+  KEPALA_TUKANG
   OWNER
 }
 
@@ -40,14 +40,18 @@ model User {
   password String
   role     UserRole
 
+  phoneNumber String?
+  address     String?
+  avatarUrl   String?
+
   projects         Project[] @relation("MandorProjects")
-  assignedProjects Project[] @relation("ProjectHeadWorkers")
+  assignedProjects Project[] @relation("ProjectKepalaTukang") // Nama relasi diperbarui
   ownedProjects    Project[] @relation("ProjectOwner")
 
-  // relasi mandor → head worker
-  mandorId    String?
-  mandor      User?   @relation("MandorHeadWorkers", fields: [mandorId], references: [id])
-  headWorkers User[]  @relation("MandorHeadWorkers")
+  // relasi mandor → kepala tukang
+  mandorId     String?
+  mandor       User?   @relation("MandorKepalaTukang", fields: [mandorId], references: [id])
+  kepalaTukang User[]  @relation("MandorKepalaTukang") // Nama field diperbarui
 
   documentationsCreated Documentation[] @relation("DocumentationCreatedBy")
   documentationsUpdated Documentation[] @relation("DocumentationUpdatedBy")
@@ -77,11 +81,13 @@ model Project {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  mandorId    String
-  mandor      User    @relation("MandorProjects", fields: [mandorId], references: [id], onDelete: Restrict)
-  headWorkers User[]  @relation("ProjectHeadWorkers")
-  ownerId     String? // Bisa dibuat opsional (String?) kalau project baru belum ada owner-nya, atau wajib (String)
-  owner       User?   @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  mandorId String
+  mandor   User   @relation("MandorProjects", fields: [mandorId], references: [id], onDelete: Restrict)
+
+  kepalaTukang User[] @relation("ProjectKepalaTukang")
+
+  ownerId String?
+  owner   User?   @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Restrict)
 
   @@index([deletedAt])
   @@index([mandorId, deletedAt])

@@ -103,7 +103,7 @@ export const hardDeleteProject = async (id: string) => {
 
 export const assignHeadWorker = async (
   projectId: string,
-  data: { headWorkerIds: string[] },
+  data: { kepalaTukangIds: string[] },
 ) => {
   const res = await axios.post(
     `${API_URL}/api/project/${projectId}/assign`,
@@ -115,7 +115,7 @@ export const assignHeadWorker = async (
 
 export const unassignHeadWorker = async (
   projectId: string,
-  data: { headWorkerIds: string[] },
+  data: { kepalaTukangIds: string[] },
 ) => {
   const res = await axios.post(
     `${API_URL}/api/project/${projectId}/unassign`,

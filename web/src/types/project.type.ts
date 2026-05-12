@@ -56,7 +56,7 @@ export interface ProjectDetail {
   endDate?: string | null;
   description?: string | null;
   createdAt: string;
-  headWorkers: HeadWorker[];
+  kepalaTukang: HeadWorker[];
   owner?: ProjectOwner | null;
   latestDocumentation?: LatestDocumentation | null;
   _count: {

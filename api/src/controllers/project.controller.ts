@@ -8,6 +8,7 @@ import type {
   PaginationQueryDTO,
   ProjectIdParamDTO,
   UpdateProjectDTO,
+  AdminTransferMandorDTO,
 } from "../validations/project.validation.js";
 
 const projectService = new ProjectService();
@@ -249,6 +250,25 @@ export class ProjectController {
       );
 
       res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async adminTransferMandor(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.currentUser) throw new AppError(401, "Unauthenticated");
+
+      const { projectId } = req.validatedParams as ProjectIdParamDTO;
+
+      const transferPayload = req.validatedBody as AdminTransferMandorDTO;
+
+      const result = await projectService.adminTransferProjectMandor(
+        req.currentUser,
+        projectId,
+        transferPayload,
+      );
+      res.status(200).json(result);
     } catch (error) {
       next(error);
     }

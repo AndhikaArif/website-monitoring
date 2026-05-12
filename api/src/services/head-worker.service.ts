@@ -39,24 +39,24 @@ export class HeadWorkerServices {
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
     // 💾 create user
-    const headWorker = await prisma.user.create({
+    const kepalaTukang = await prisma.user.create({
       data: {
         name: data.name,
         username: data.username,
         email: data.email,
         password: hashedPassword,
-        role: UserRole.HEAD_WORKER,
+        role: UserRole.KEPALA_TUKANG,
         mandorId: currentUser.id,
       },
     });
 
-    const { password, ...safeHeadWorker } = headWorker;
+    const { password, ...safeHeadWorker } = kepalaTukang;
     return safeHeadWorker;
   }
 
   async updateHeadWorker(
     currentUser: IExistingUser,
-    headWorkerId: string,
+    kepalaTukangId: string,
     data: UpdateHeadWorkerDTO,
   ) {
     if (currentUser.role !== UserRole.MANDOR) {
@@ -65,8 +65,8 @@ export class HeadWorkerServices {
 
     const existingHeadWorker = await prisma.user.findFirst({
       where: {
-        id: headWorkerId,
-        role: UserRole.HEAD_WORKER,
+        id: kepalaTukangId,
+        role: UserRole.KEPALA_TUKANG,
         deletedAt: null,
         mandorId: currentUser.id,
       },
@@ -83,7 +83,7 @@ export class HeadWorkerServices {
             ...(data.email ? [{ email: data.email }] : []),
             ...(data.username ? [{ username: data.username }] : []),
           ],
-          NOT: { id: headWorkerId },
+          NOT: { id: kepalaTukangId },
           deletedAt: null,
           mandorId: currentUser.id,
         },
@@ -109,7 +109,7 @@ export class HeadWorkerServices {
     if (hashedPassword !== undefined) updateData.password = hashedPassword;
 
     const updated = await prisma.user.update({
-      where: { id: headWorkerId },
+      where: { id: kepalaTukangId },
       data: updateData,
     });
 
@@ -117,15 +117,15 @@ export class HeadWorkerServices {
     return safeHeadWorker;
   }
 
-  async deleteHeadWorker(currentUser: IExistingUser, headWorkerId: string) {
+  async deleteHeadWorker(currentUser: IExistingUser, kepalaTukangId: string) {
     if (currentUser.role !== UserRole.MANDOR) {
       throw new AppError(403, "Hanya mandor yang bisa menghapus head worker");
     }
 
     const existingHeadWorker = await prisma.user.findFirst({
       where: {
-        id: headWorkerId,
-        role: UserRole.HEAD_WORKER,
+        id: kepalaTukangId,
+        role: UserRole.KEPALA_TUKANG,
         deletedAt: null,
         mandorId: currentUser.id,
       },
@@ -136,7 +136,7 @@ export class HeadWorkerServices {
     }
 
     await prisma.user.update({
-      where: { id: headWorkerId },
+      where: { id: kepalaTukangId },
       data: {
         deletedAt: new Date(),
       },
@@ -145,7 +145,7 @@ export class HeadWorkerServices {
     return { message: "Head Worker berhasil dihapus" };
   }
 
-  async getHeadWorkerById(currentUser: IExistingUser, headWorkerId: string) {
+  async getHeadWorkerById(currentUser: IExistingUser, kepalaTukangId: string) {
     if (currentUser.role !== UserRole.MANDOR) {
       throw new AppError(
         403,
@@ -153,10 +153,10 @@ export class HeadWorkerServices {
       );
     }
 
-    const headWorker = await prisma.user.findFirst({
+    const kepalaTukang = await prisma.user.findFirst({
       where: {
-        id: headWorkerId,
-        role: UserRole.HEAD_WORKER,
+        id: kepalaTukangId,
+        role: UserRole.KEPALA_TUKANG,
         deletedAt: null,
         mandorId: currentUser.id,
       },
@@ -170,11 +170,11 @@ export class HeadWorkerServices {
       },
     });
 
-    if (!headWorker) {
+    if (!kepalaTukang) {
       throw new AppError(404, "Head Worker tidak ditemukan");
     }
 
-    return headWorker;
+    return kepalaTukang;
   }
 
   async listHeadWorker(
@@ -191,10 +191,10 @@ export class HeadWorkerServices {
 
     const skip = (page - 1) * limit;
 
-    const [headWorkers, total] = await Promise.all([
+    const [kepalaTukang, total] = await Promise.all([
       prisma.user.findMany({
         where: {
-          role: UserRole.HEAD_WORKER,
+          role: UserRole.KEPALA_TUKANG,
           deletedAt: null,
           mandorId: currentUser.id,
         },
@@ -214,7 +214,7 @@ export class HeadWorkerServices {
 
       prisma.user.count({
         where: {
-          role: UserRole.HEAD_WORKER,
+          role: UserRole.KEPALA_TUKANG,
           deletedAt: null,
           mandorId: currentUser.id,
         },
@@ -222,7 +222,7 @@ export class HeadWorkerServices {
     ]);
 
     return {
-      data: headWorkers,
+      data: kepalaTukang,
       meta: {
         page,
         limit,
@@ -246,12 +246,12 @@ export class HeadWorkerServices {
     const skip = (page - 1) * limit;
 
     const whereCondition = {
-      role: UserRole.HEAD_WORKER,
+      role: UserRole.KEPALA_TUKANG,
       mandorId: currentUser.id, // Hanya head worker milik mandor ini
       deletedAt: { not: null },
     };
 
-    const [headWorkers, total] = await Promise.all([
+    const [kepalaTukang, total] = await Promise.all([
       prisma.user.findMany({
         where: whereCondition,
         skip,
@@ -270,7 +270,7 @@ export class HeadWorkerServices {
     ]);
 
     return {
-      data: headWorkers,
+      data: kepalaTukang,
       meta: {
         page,
         limit,

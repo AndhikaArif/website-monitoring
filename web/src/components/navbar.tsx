@@ -21,7 +21,7 @@ function getRoleTheme(role?: string) {
         text: "text-purple-600",
         hover: "hover:text-purple-500",
       };
-    case "HEAD_WORKER":
+    case "KEPALA_TUKANG":
       return {
         primary: "bg-emerald-600",
         text: "text-emerald-600",
@@ -48,7 +48,7 @@ function getHomeByRole(role?: string) {
       return "/admin/mandor";
     case "MANDOR":
       return "/mandor/project";
-    case "HEAD_WORKER":
+    case "KEPALA_TUKANG":
       return "/head-worker";
     case "OWNER":
       return "/owner";

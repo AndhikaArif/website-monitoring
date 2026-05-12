@@ -46,7 +46,7 @@ export const projectIdParam = z.object({
 export type ProjectIdParamDTO = z.infer<typeof projectIdParam>;
 
 export const assignHeadWorkerSchema = z.object({
-  headWorkerIds: z
+  kepalaTukangIds: z
     .array(z.string().uuid("Format ID tidak valid"))
     .min(1, "Minimal pilih 1 head worker"),
 });
@@ -70,3 +70,20 @@ export const paginationQuery = z.object({
 });
 
 export type PaginationQueryDTO = z.infer<typeof paginationQuery>;
+
+export const adminTransferMandorSchema = z.object({
+  newMandorId: z
+    .string({
+      message: "ID Mandor baru wajib diisi dan harus berupa teks",
+    })
+    .uuid("Format ID Mandor baru tidak valid (harus UUID)"),
+
+  keepKepalaTukang: z
+    .boolean({
+      message:
+        "Opsi mempertahankan Kepala Tukang harus berupa nilai true atau false",
+    })
+    .default(true),
+});
+
+export type AdminTransferMandorDTO = z.infer<typeof adminTransferMandorSchema>;

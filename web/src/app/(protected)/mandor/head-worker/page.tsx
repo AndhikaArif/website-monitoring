@@ -20,7 +20,7 @@ import {
 import { HeadWorker } from "@/types/head-worker.type";
 
 export default function HeadWorkerPage() {
-  const [headWorkers, setHeadWorkers] = useState<HeadWorker[]>([]);
+  const [kepalaTukang, setHeadWorkers] = useState<HeadWorker[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -73,7 +73,7 @@ export default function HeadWorkerPage() {
         error: "Gagal menghapus head worker",
       });
 
-      if (headWorkers.length === 1 && page > 1) {
+      if (kepalaTukang.length === 1 && page > 1) {
         setPage(page - 1);
       } else {
         fetchData();
@@ -129,7 +129,7 @@ export default function HeadWorkerPage() {
                 Total Head Worker Aktif
               </p>
               <h3 className="text-2xl font-bold text-gray-800">
-                {headWorkers.length}{" "}
+                {kepalaTukang.length}{" "}
                 <span className="text-sm font-normal text-gray-400">org</span>
               </h3>
             </div>
@@ -156,8 +156,8 @@ export default function HeadWorkerPage() {
                       <td colSpan={4} className="p-8 bg-gray-50/20" />
                     </tr>
                   ))
-                ) : headWorkers.length > 0 ? (
-                  headWorkers.map((m) => (
+                ) : kepalaTukang.length > 0 ? (
+                  kepalaTukang.map((m) => (
                     <tr
                       key={m.id}
                       className="hover:bg-purple-50/30 transition-colors group"

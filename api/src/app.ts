@@ -10,7 +10,7 @@ import express, {
 
 import authRoutes from "./routes/auth.route.js";
 import profileRoutes from "./routes/profile.route.js";
-import headWorkerRoutes from "./routes/head-worker.route.js";
+import kepalaTukangRoutes from "./routes/head-worker.route.js";
 import projectRoutes from "./routes/project.route.js";
 import documentationRoutes from "./routes/documentation.route.js";
 import ownerRoutes from "./routes/owner.route.js";
@@ -54,7 +54,7 @@ class App {
   private initializeRoutes(): void {
     this.app.use("/api/auth", authRoutes);
     this.app.use("/api", profileRoutes);
-    this.app.use("/api/head-worker", headWorkerRoutes);
+    this.app.use("/api/head-worker", kepalaTukangRoutes);
     this.app.use("/api/project", projectRoutes);
     this.app.use("/api/documentation", documentationRoutes);
     this.app.use("/api/owner", ownerRoutes);

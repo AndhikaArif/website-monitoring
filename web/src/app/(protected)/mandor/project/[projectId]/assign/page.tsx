@@ -35,7 +35,7 @@ export default function AssignWorkerPage() {
       ]);
 
       // Ambil ID yang sudah terdaftar di project
-      const assignedIds = projectRes.data.headWorkers.map(
+      const assignedIds = projectRes.data.kepalaTukang.map(
         (w: HeadWorker) => w.id,
       );
 
@@ -68,7 +68,7 @@ export default function AssignWorkerPage() {
 
     try {
       setSubmitting(true);
-      await assignHeadWorker(projectId, { headWorkerIds: selectedIds });
+      await assignHeadWorker(projectId, { kepalaTukangIds: selectedIds });
       toast.success(`${selectedIds.length} Pekerja berhasil ditambahkan`);
       router.push(`/mandor/project/${projectId}`);
     } catch (err: unknown) {

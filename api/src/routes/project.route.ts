@@ -11,6 +11,7 @@ import {
   projectIdParam,
   paginationQuery,
   updateProjectSchema,
+  adminTransferMandorSchema,
 } from "../validations/project.validation.js";
 
 const router = Router();
@@ -47,7 +48,7 @@ router.get(
 router.get(
   "/assigned",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.HEAD_WORKER),
+  AuthMiddleWare.roleGuard(UserRole.KEPALA_TUKANG),
   validate(paginationQuery, "query"),
   controller.listAssignedProjects,
 );
@@ -60,6 +61,17 @@ router.get(
   validate(paginationQuery, "query"),
   controller.listOwnerProjects,
 );
+
+// 🔥 ADMIN TRANSFER MANDOR
+router.post(
+  "/transfer-mandor/:projectId",
+  AuthMiddleWare.verifyToken,
+  AuthMiddleWare.roleGuard(UserRole.ADMIN),
+  validate(projectIdParam, "params"),
+  validate(adminTransferMandorSchema),
+  controller.adminTransferMandor,
+);
+// --------------------------------------------------------
 
 // 🔥 GET DETAIL PROJECT
 router.get(

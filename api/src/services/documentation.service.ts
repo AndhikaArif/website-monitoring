@@ -56,7 +56,7 @@ export class DocumentationService {
     if (!doc) throw new AppError(404, "Dokumentasi tidak ditemukan");
 
     if (
-      currentUser.role === "HEAD_WORKER" &&
+      currentUser.role === "KEPALA_TUKANG" &&
       doc.createdById !== currentUser.id
     ) {
       throw new AppError(403, "Akses ditolak. Anda bukan pembuat laporan ini.");
@@ -86,7 +86,7 @@ export class DocumentationService {
   }
 
   async create(currentUser: IExistingUser, payload: CreateDocDTO) {
-    if (currentUser.role !== UserRole.HEAD_WORKER) {
+    if (currentUser.role !== UserRole.KEPALA_TUKANG) {
       throw new AppError(
         403,
         "Hanya head worker yang bisa update documentation",
@@ -97,7 +97,7 @@ export class DocumentationService {
     const projectAssignment = await prisma.project.findFirst({
       where: {
         id: payload.projectId,
-        headWorkers: { some: { id: currentUser.id } },
+        kepalaTukang: { some: { id: currentUser.id } },
       },
     });
 
@@ -152,7 +152,7 @@ export class DocumentationService {
   ) {
     const allowedRoles: UserRole[] = [
       UserRole.MANDOR,
-      UserRole.HEAD_WORKER,
+      UserRole.KEPALA_TUKANG,
       UserRole.OWNER,
     ];
     if (!allowedRoles.includes(currentUser.role)) {
@@ -163,7 +163,7 @@ export class DocumentationService {
 
     // Tentukan filter dasar (Visibility/Penglihatan) berdasarkan Role
     let roleFilter = {};
-    if (currentUser.role === UserRole.HEAD_WORKER) {
+    if (currentUser.role === UserRole.KEPALA_TUKANG) {
       roleFilter = { createdById: currentUser.id }; // HW cuma lihat laporannya sendiri
     } else if (currentUser.role === UserRole.MANDOR) {
       roleFilter = { project: { mandorId: currentUser.id } }; // Mandor lihat semua di bawah dia
@@ -205,7 +205,7 @@ export class DocumentationService {
   }
 
   async update(id: string, currentUser: IExistingUser, payload: UpdateDocDTO) {
-    if (currentUser.role !== UserRole.HEAD_WORKER) {
+    if (currentUser.role !== UserRole.KEPALA_TUKANG) {
       throw new AppError(403, "Hanya head worker yang bisa update dokumentasi");
     }
 
@@ -288,7 +288,7 @@ export class DocumentationService {
   }
 
   async delete(id: string, currentUser: IExistingUser) {
-    if (currentUser.role !== UserRole.HEAD_WORKER) {
+    if (currentUser.role !== UserRole.KEPALA_TUKANG) {
       throw new AppError(403, "Hanya head worker yang bisa delete dokumentasi");
     }
 

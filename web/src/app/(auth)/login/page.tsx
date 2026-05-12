@@ -22,7 +22,7 @@ export default function LoginPage() {
       const paths = {
         ADMIN: "/admin/mandor",
         MANDOR: "/mandor/head-worker",
-        HEAD_WORKER: "/head-worker",
+        KEPALA_TUKANG: "/head-worker",
         OWNER: "/owner", // Antisipasi untuk role baru
       };
       router.replace(paths[user.role as keyof typeof paths] || "/login");

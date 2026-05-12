@@ -7,7 +7,7 @@ interface IUser {
   id: string;
   name: string;
   email: string;
-  role: "ADMIN" | "MANDOR" | "HEAD_WORKER";
+  role: "ADMIN" | "MANDOR" | "KEPALA_TUKANG";
   workerId?: string | null;
 }
 

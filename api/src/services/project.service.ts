@@ -65,7 +65,7 @@ export class ProjectService {
     return {
       whereClause: {
         ...base.where,
-        headWorkers: {
+        kepalaTukang: {
           some: {
             id: currentUser.id,
           },
@@ -281,7 +281,7 @@ export class ProjectService {
           },
         },
 
-        headWorkers: {
+        kepalaTukang: {
           select: {
             id: true,
             name: true,
@@ -444,7 +444,7 @@ export class ProjectService {
     currentUser: IExistingUser,
     query: PaginationQueryDTO,
   ) {
-    if (currentUser.role !== UserRole.HEAD_WORKER) {
+    if (currentUser.role !== UserRole.KEPALA_TUKANG) {
       throw new AppError(403, "Hanya head worker yang bisa melihat project");
     }
 
@@ -476,7 +476,7 @@ export class ProjectService {
 
       prisma.project.count({
         where: {
-          headWorkers: {
+          kepalaTukang: {
             some: {
               id: currentUser.id,
             },
@@ -568,7 +568,7 @@ export class ProjectService {
       },
       select: {
         status: true,
-        headWorkers: {
+        kepalaTukang: {
           select: { id: true },
         },
       },
@@ -585,13 +585,13 @@ export class ProjectService {
       );
     }
 
-    const uniqueIds = [...new Set(data.headWorkerIds)];
+    const uniqueIds = [...new Set(data.kepalaTukangIds)];
 
-    // cek semua user valid & role HEAD_WORKER
+    // cek semua user valid & role KEPALA_TUKANG
     const workers = await prisma.user.findMany({
       where: {
         id: { in: uniqueIds },
-        role: UserRole.HEAD_WORKER,
+        role: UserRole.KEPALA_TUKANG,
         mandorId: currentUser.id,
         deletedAt: null,
       },
@@ -608,7 +608,7 @@ export class ProjectService {
       );
     }
 
-    const existingIds = project.headWorkers.map((w) => w.id);
+    const existingIds = project.kepalaTukang.map((w) => w.id);
 
     const alreadyAssigned = uniqueIds.filter((id) => existingIds.includes(id));
     const newIds = uniqueIds.filter((id) => !existingIds.includes(id));
@@ -623,7 +623,7 @@ export class ProjectService {
     await prisma.project.update({
       where: { id: projectId },
       data: {
-        headWorkers: {
+        kepalaTukang: {
           connect: newIds.map((id) => ({ id })),
         },
       },
@@ -656,7 +656,7 @@ export class ProjectService {
       },
       select: {
         status: true,
-        headWorkers: { select: { id: true } },
+        kepalaTukang: { select: { id: true } },
       },
     });
 
@@ -671,9 +671,9 @@ export class ProjectService {
       );
     }
 
-    const existingIds = project.headWorkers.map((w) => w.id);
+    const existingIds = project.kepalaTukang.map((w) => w.id);
 
-    const uniqueIds = [...new Set(data.headWorkerIds)];
+    const uniqueIds = [...new Set(data.kepalaTukangIds)];
 
     const toRemove = uniqueIds.filter((id) => existingIds.includes(id));
 
@@ -686,7 +686,7 @@ export class ProjectService {
     await prisma.project.update({
       where: { id: projectId },
       data: {
-        headWorkers: {
+        kepalaTukang: {
           disconnect: toRemove.map((id) => ({ id })),
         },
       },
@@ -777,5 +777,96 @@ export class ProjectService {
     });
 
     return { message: "Klien berhasil di-unassign dari proyek" };
+  }
+
+  async adminTransferProjectMandor(
+    currentUser: IExistingUser,
+    projectId: string,
+    data: {
+      newMandorId: string;
+      keepKepalaTukang: boolean; // Opsi dari admin apakah Kepala Tukang lama dipertahankan
+    },
+  ) {
+    // 1. Validasi Akses: Hanya Admin
+    if (currentUser.role !== UserRole.ADMIN) {
+      throw new AppError(403, "Hanya admin yang bisa mengganti mandor proyek");
+    }
+
+    // 2. Cari Proyek beserta relasi Kepala Tukang di dalamnya
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: {
+        kepalaTukang: { select: { id: true } },
+      },
+    });
+
+    if (!project) {
+      throw new AppError(404, "Proyek tidak ditemukan");
+    }
+
+    if (project.mandorId === data.newMandorId) {
+      throw new AppError(
+        400,
+        "Mandor baru yang dipilih sama dengan mandor saat ini",
+      );
+    }
+
+    // 3. Pastikan Mandor pengganti adalah valid dan role-nya benar MANDOR
+    const targetMandor = await prisma.user.findFirst({
+      where: {
+        id: data.newMandorId,
+        role: UserRole.MANDOR,
+        deletedAt: null,
+      },
+    });
+
+    if (!targetMandor) {
+      throw new AppError(
+        404,
+        "Mandor pengganti tidak valid atau tidak ditemukan",
+      );
+    }
+
+    // 4. EKSEKUSI TRANSAKSI
+    await prisma.$transaction(async (tx) => {
+      // Poin 3: Ganti mandorId di tabel Project (Dokumentasi & Owner otomatis aman karena tidak disentuh)
+      await tx.project.update({
+        where: { id: projectId },
+        data: { mandorId: data.newMandorId },
+      });
+
+      // Poin 4: Jika Mandor baru ingin menggunakan Kepala Tukang sebelumnya,
+      // ubah atasan (mandorId) para Kepala Tukang tersebut menjadi Mandor yang baru.
+      if (data.keepKepalaTukang && project.kepalaTukang.length > 0) {
+        const kepalaTukangIds = project.kepalaTukang.map((kt) => kt.id);
+
+        await tx.user.updateMany({
+          where: {
+            id: { in: kepalaTukangIds },
+            role: UserRole.KEPALA_TUKANG, // Pastikan ekstra aman
+          },
+          data: { mandorId: data.newMandorId },
+        });
+      } else if (!data.keepKepalaTukang && project.kepalaTukang.length > 0) {
+        // (Opsional) Jika Admin memilih TIDAK mempertahankan Kepala Tukang,
+        // putuskan relasi Kepala Tukang lama dari Proyek ini agar Mandor baru bisa pilih timnya sendiri.
+        const targetDisconnects = project.kepalaTukang.map((kt) => ({
+          id: kt.id,
+        }));
+
+        await tx.project.update({
+          where: { id: projectId },
+          data: {
+            kepalaTukang: { disconnect: targetDisconnects },
+          },
+        });
+      }
+    });
+
+    return {
+      message: data.keepKepalaTukang
+        ? "Mandor proyek berhasil diganti dan tim Kepala Tukang lama resmi dipindahtugaskan ke Mandor baru."
+        : "Mandor proyek berhasil diganti. Tim Kepala Tukang lama telah dilepas dari proyek.",
+    };
   }
 }

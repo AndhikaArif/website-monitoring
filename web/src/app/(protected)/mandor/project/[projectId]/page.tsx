@@ -49,19 +49,21 @@ export default function ProjectDetailPage() {
   }, [fetchDetail]);
 
   const handleUnassign = async (
-    headWorkerId: string,
-    headWorkerName: string,
+    kepalaTukangId: string,
+    kepalaTukangName: string,
   ) => {
     const isConfirmed = window.confirm(
-      `Apakah Anda yakin ingin menghapus ${headWorkerName} sebagai penanggung jawab proyek ini?`,
+      `Apakah Anda yakin ingin menghapus ${kepalaTukangName} sebagai penanggung jawab proyek ini?`,
     );
 
     if (!isConfirmed) return;
 
     try {
-      await unassignHeadWorker(projectId, { headWorkerIds: [headWorkerId] });
+      await unassignHeadWorker(projectId, {
+        kepalaTukangIds: [kepalaTukangId],
+      });
 
-      toast.success(`${headWorkerName} berhasil dihapus dari proyek`);
+      toast.success(`${kepalaTukangName} berhasil dihapus dari proyek`);
 
       // Refresh data project agar list head worker langsung terupdate di UI
       await fetchDetail();
@@ -326,8 +328,8 @@ export default function ProjectDetailPage() {
               </div>
 
               <div className="space-y-3">
-                {data.headWorkers.length > 0 ? (
-                  data.headWorkers.map((hw) => (
+                {data.kepalaTukang.length > 0 ? (
+                  data.kepalaTukang.map((hw) => (
                     <div
                       key={hw.id}
                       className="group flex items-center justify-between gap-3 p-2 hover:bg-gray-50 rounded-xl transition-colors"

@@ -9,7 +9,7 @@ import {
   type ListHeadWorkerQueryDTO,
 } from "../validations/head-worker.validation.js";
 
-const headWorkerServices = new HeadWorkerServices();
+const kepalaTukangServices = new HeadWorkerServices();
 
 export class HeadWorkerController {
   async createHeadWorker(req: Request, res: Response, next: NextFunction) {
@@ -17,7 +17,7 @@ export class HeadWorkerController {
       if (!req.currentUser) {
         throw new AppError(401, "Unauthorized");
       }
-      const result = await headWorkerServices.createHeadWorker(
+      const result = await kepalaTukangServices.createHeadWorker(
         req.currentUser,
         req.validatedBody as CreateHeadWorkerDTO,
       );
@@ -39,7 +39,7 @@ export class HeadWorkerController {
 
       const { id } = req.validatedParams as HeadWorkerParamsDTO;
 
-      const result = await headWorkerServices.updateHeadWorker(
+      const result = await kepalaTukangServices.updateHeadWorker(
         req.currentUser,
         id,
         req.validatedBody as UpdateHeadWorkerDTO,
@@ -62,7 +62,7 @@ export class HeadWorkerController {
 
       const { id } = req.validatedParams as HeadWorkerParamsDTO;
 
-      const result = await headWorkerServices.deleteHeadWorker(
+      const result = await kepalaTukangServices.deleteHeadWorker(
         req.currentUser,
         id,
       );
@@ -78,7 +78,7 @@ export class HeadWorkerController {
       if (!req.currentUser) throw new AppError(401, "Unauthorized");
 
       const { id } = req.validatedParams as HeadWorkerParamsDTO;
-      const result = await headWorkerServices.getHeadWorkerById(
+      const result = await kepalaTukangServices.getHeadWorkerById(
         req.currentUser,
         id,
       );
@@ -98,7 +98,7 @@ export class HeadWorkerController {
         throw new AppError(401, "Unauthorized");
       }
 
-      const result = await headWorkerServices.listHeadWorker(
+      const result = await kepalaTukangServices.listHeadWorker(
         req.currentUser,
         req.validatedQuery as ListHeadWorkerQueryDTO,
       );
@@ -116,7 +116,7 @@ export class HeadWorkerController {
     try {
       if (!req.currentUser) throw new AppError(401, "Unauthorized");
 
-      const result = await headWorkerServices.listTrashedHeadWorker(
+      const result = await kepalaTukangServices.listTrashedHeadWorker(
         req.currentUser,
         req.validatedQuery as ListHeadWorkerQueryDTO,
       );
@@ -137,7 +137,7 @@ export class HeadWorkerController {
       // Mengikuti pola route kamu: ambil dari validatedParams
       const { id } = req.validatedParams as HeadWorkerParamsDTO;
 
-      const result = await headWorkerServices.restoreHeadWorker(
+      const result = await kepalaTukangServices.restoreHeadWorker(
         req.currentUser,
         id,
       );
@@ -157,7 +157,7 @@ export class HeadWorkerController {
 
       const { id } = req.validatedParams as HeadWorkerParamsDTO;
 
-      const result = await headWorkerServices.hardDeleteHeadWorker(
+      const result = await kepalaTukangServices.hardDeleteHeadWorker(
         req.currentUser,
         id,
       );

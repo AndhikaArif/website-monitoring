@@ -7,21 +7,21 @@ import { validate } from "../middlewares/validation.middleware.js";
 import {
   createHeadWorkerSchema,
   updateHeadWorkerSchema,
-  headWorkerParamsSchema,
+  kepalaTukangParamsSchema,
   listHeadWorkerQuerySchema,
 } from "../validations/head-worker.validation.js";
 import { UserRole } from "../generated/prisma/index.js";
 import { paginationQuery } from "../validations/project.validation.js";
 
 const router = express.Router();
-const headWorkerController = new HeadWorkerController();
+const kepalaTukangController = new HeadWorkerController();
 
 router.get(
   "/",
   AuthMiddleWare.verifyToken,
   AuthMiddleWare.roleGuard(UserRole.MANDOR),
   validate(listHeadWorkerQuerySchema, "query"),
-  headWorkerController.listHeadWorker,
+  kepalaTukangController.listHeadWorker,
 );
 
 router.get(
@@ -29,7 +29,7 @@ router.get(
   AuthMiddleWare.verifyToken,
   AuthMiddleWare.roleGuard(UserRole.MANDOR),
   validate(paginationQuery, "query"),
-  headWorkerController.listTrashedHeadWorker,
+  kepalaTukangController.listTrashedHeadWorker,
 );
 
 router.post(
@@ -37,48 +37,48 @@ router.post(
   AuthMiddleWare.verifyToken,
   AuthMiddleWare.roleGuard(UserRole.MANDOR),
   validate(createHeadWorkerSchema),
-  headWorkerController.createHeadWorker,
+  kepalaTukangController.createHeadWorker,
 );
 
 router.get(
   "/:id",
   AuthMiddleWare.verifyToken,
   AuthMiddleWare.roleGuard(UserRole.MANDOR),
-  validate(headWorkerParamsSchema, "params"),
-  headWorkerController.getHeadWorkerById,
+  validate(kepalaTukangParamsSchema, "params"),
+  kepalaTukangController.getHeadWorkerById,
 );
 
 router.put(
   "/:id",
   AuthMiddleWare.verifyToken,
   AuthMiddleWare.roleGuard(UserRole.MANDOR),
-  validate(headWorkerParamsSchema, "params"),
+  validate(kepalaTukangParamsSchema, "params"),
   validate(updateHeadWorkerSchema),
-  headWorkerController.updateHeadWorker,
+  kepalaTukangController.updateHeadWorker,
 );
 
 router.delete(
   "/:id",
   AuthMiddleWare.verifyToken,
   AuthMiddleWare.roleGuard(UserRole.MANDOR),
-  validate(headWorkerParamsSchema, "params"),
-  headWorkerController.deleteHeadWorker,
+  validate(kepalaTukangParamsSchema, "params"),
+  kepalaTukangController.deleteHeadWorker,
 );
 
 router.put(
   "/:id/restore",
   AuthMiddleWare.verifyToken,
   AuthMiddleWare.roleGuard(UserRole.MANDOR),
-  validate(headWorkerParamsSchema, "params"),
-  headWorkerController.restoreHeadWorker,
+  validate(kepalaTukangParamsSchema, "params"),
+  kepalaTukangController.restoreHeadWorker,
 );
 
 router.delete(
   "/:id/hard-delete",
   AuthMiddleWare.verifyToken,
   AuthMiddleWare.roleGuard(UserRole.MANDOR),
-  validate(headWorkerParamsSchema, "params"),
-  headWorkerController.hardDeleteHeadWorker,
+  validate(kepalaTukangParamsSchema, "params"),
+  kepalaTukangController.hardDeleteHeadWorker,
 );
 
 export default router;

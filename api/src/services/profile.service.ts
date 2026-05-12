@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "../config/prisma.config.js";
 import { AppError } from "../errors/app.error.js";
+import type { UpdateProfileDTO } from "../validations/profile.validation.js";
 
 export class ProfileService {
   async getMyProfile(userId: string) {
@@ -12,6 +13,10 @@ export class ProfileService {
         username: true,
         email: true,
         role: true,
+        phoneNumber: true,
+        address: true,
+        avatarUrl: true,
+        createdAt: true,
       },
     });
 
@@ -22,7 +27,7 @@ export class ProfileService {
     return user;
   }
 
-  async updateProfile(userId: string, data: { name?: string }) {
+  async updateProfile(userId: string, data: UpdateProfileDTO) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -31,53 +36,59 @@ export class ProfileService {
       throw new AppError(404, "User tidak ditemukan");
     }
 
+    // Pangkas undefined agar tidak menimpa data lama dengan null
+    const cleanData = Object.fromEntries(
+      Object.entries(data).filter(([_, value]) => value !== undefined),
+    );
+
     const updated = await prisma.user.update({
       where: { id: userId },
-      data: {
-        ...(data.name && { name: data.name }),
-      },
+      data: cleanData,
       select: {
         id: true,
         name: true,
         username: true,
         email: true,
         role: true,
+        phoneNumber: true,
+        address: true,
+        avatarUrl: true,
       },
     });
 
     return updated;
   }
 
-  async changePassword(
-    userId: string,
-    oldPassword: string,
-    newPassword: string,
-  ) {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
+  // async changePassword(
+  //   userId: string,
+  //   oldPassword: string,
+  //   newPassword: string,
+  // ) {
+  //   const user = await prisma.user.findUnique({
+  //     where: { id: userId },
+  //   });
 
-    if (!user) {
-      throw new AppError(404, "User tidak ditemukan");
-    }
+  //   if (!user) {
+  //     throw new AppError(404, "User tidak ditemukan");
+  //   }
 
-    const isMatch = await bcrypt.compare(oldPassword, user.password);
+  //   const isMatch = await bcrypt.compare(oldPassword, user.password);
 
-    if (!isMatch) {
-      throw new AppError(400, "Password lama salah");
-    }
+  //   if (!isMatch) {
+  //     throw new AppError(400, "Password lama salah");
+  //   }
 
-    if (oldPassword === newPassword) {
-      throw new AppError(400, "Password baru harus berbeda");
-    }
+  //   if (oldPassword === newPassword) {
+  //     throw new AppError(400, "Password baru harus berbeda");
+  //   }
 
-    const hashed = await bcrypt.hash(newPassword, 10);
+  //   const hashed = await bcrypt.hash(newPassword, 10);
 
-    await prisma.user.update({
-      where: { id: userId },
-      data: { password: hashed },
-    });
+  //   await prisma.user.update({
+  //     where: { id: userId },
+  //     data: { password: hashed },
+  //   });
 
-    return { message: "Password berhasil diubah" };
-  }
+  //   return { message: "Password berhasil diubah" };
+  // }
 }

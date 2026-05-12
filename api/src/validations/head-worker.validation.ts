@@ -18,11 +18,11 @@ export const updateHeadWorkerSchema = z.object({
 
 export type UpdateHeadWorkerDTO = z.infer<typeof updateHeadWorkerSchema>;
 
-export const headWorkerParamsSchema = z.object({
+export const kepalaTukangParamsSchema = z.object({
   id: z.string().uuid("Invalid ID"),
 });
 
-export type HeadWorkerParamsDTO = z.infer<typeof headWorkerParamsSchema>;
+export type HeadWorkerParamsDTO = z.infer<typeof kepalaTukangParamsSchema>;
 
 export const listHeadWorkerQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
