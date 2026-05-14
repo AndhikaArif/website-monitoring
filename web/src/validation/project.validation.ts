@@ -30,3 +30,15 @@ export const updateProjectSchema = z.object({
   // Tambahkan validasi status untuk FE
   status: z.enum(ProjectStatusEnum).optional(),
 });
+
+export const adminTransferMandorSchema = z.object({
+  newMandorId: z
+    .string({ error: "Silakan pilih Mandor pengganti terlebih dahulu" })
+    .min(1, "Silakan pilih Mandor pengganti terlebih dahulu"),
+
+  keepKepalaTukang: z.boolean(),
+});
+
+export type AdminTransferMandorFormValues = z.infer<
+  typeof adminTransferMandorSchema
+>;

@@ -255,6 +255,29 @@ export class ProjectController {
     }
   }
 
+  async listAllProjectsForAdmin(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      if (!req.currentUser) {
+        throw new AppError(401, "Unauthenticated");
+      }
+
+      const query = req.validatedQuery as PaginationQueryDTO;
+
+      const result = await projectService.listAllProjectsForAdmin(
+        req.currentUser,
+        query,
+      );
+
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async adminTransferMandor(req: Request, res: Response, next: NextFunction) {
     try {
       if (!req.currentUser) throw new AppError(401, "Unauthenticated");

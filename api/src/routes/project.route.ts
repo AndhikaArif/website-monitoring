@@ -62,6 +62,15 @@ router.get(
   controller.listOwnerProjects,
 );
 
+// 🔥 LIST PROJECT UNTUK ADMIN
+router.get(
+  "/admin/all",
+  AuthMiddleWare.verifyToken,
+  AuthMiddleWare.roleGuard(UserRole.ADMIN),
+  validate(paginationQuery, "query"),
+  controller.listAllProjectsForAdmin,
+);
+
 // 🔥 ADMIN TRANSFER MANDOR
 router.post(
   "/transfer-mandor/:projectId",
@@ -77,7 +86,7 @@ router.post(
 router.get(
   "/:projectId",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.MANDOR, UserRole.OWNER),
+  AuthMiddleWare.roleGuard(UserRole.MANDOR, UserRole.OWNER, UserRole.ADMIN),
   validate(projectIdParam, "params"),
   controller.getDetail,
 );

@@ -16,9 +16,14 @@ export interface Documentation {
   target?: string;
   progress?: string;
   projectId: string;
+  createdById?: string;
   files: DocumentationFile[];
   project?: { projectName: string };
-  createdBy?: { name: string };
+  createdBy?: {
+    id?: string;
+    name: string;
+    username: string;
+  };
   uploadedAt: string;
 }
 

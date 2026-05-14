@@ -208,6 +208,8 @@ export class HeadWorkerServices {
           name: true,
           username: true,
           email: true,
+          phoneNumber: true,
+          address: true,
           createdAt: true,
         },
       }),
@@ -313,6 +315,28 @@ export class HeadWorkerServices {
 
     if (!user) throw new AppError(404, "Head worker tidak ditemukan di sampah");
 
-    return await prisma.user.delete({ where: { id: userId } });
+    const timestamp = Date.now();
+    // Menghasilkan string acak 4 karakter (contoh: 'a1b2') untuk menjamin keunikan mutlak
+    const randomSuffix = Math.random().toString(36).substring(2, 6);
+
+    // Kita jalankan update (scramble) alih-alih delete fisik
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        // 1. Rusak email & username aslinya agar string murni bebas dipakai user baru
+        email: `deleted_${timestamp}_${randomSuffix}@mail.com`,
+        username: `deleted_${timestamp}_${randomSuffix}`,
+
+        // 2. Kunci password dengan string acak/statis yang tidak bisa di-hash ulang
+        password: "DELETED_ACCOUNT_LOCKED",
+
+        // 3. Putuskan relasi dari mandor agar hilang sepenuhnya dari daftar sistem mandor
+        mandorId: null,
+      },
+    });
+
+    return {
+      message: "Head worker berhasil dihapus permanen dari sistem monitoring",
+    };
   }
 }

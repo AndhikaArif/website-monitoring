@@ -21,7 +21,7 @@ export default function LoginPage() {
     if (!loading && user) {
       const paths = {
         ADMIN: "/admin/mandor",
-        MANDOR: "/mandor/head-worker",
+        MANDOR: "/mandor/project",
         KEPALA_TUKANG: "/head-worker",
         OWNER: "/owner", // Antisipasi untuk role baru
       };
@@ -42,9 +42,9 @@ export default function LoginPage() {
             <span className="text-3xl font-bold tracking-tighter">PP</span>
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Sistem Monitoring
+            Pojok Property
           </h1>
-          <p className="text-slate-500 font-medium">Pojok Property</p>
+          <p className="text-slate-500 font-medium">SIMPP</p>
         </div>
         <div className="bg-white rounded-4xl shadow-sm border border-slate-100 p-8 md:p-10">
           <Formik

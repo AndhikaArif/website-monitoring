@@ -70,8 +70,9 @@ export class ProjectService {
             id: currentUser.id,
           },
         },
-        // Gunakan status dari query jika ada, kalau tidak ada (Semua Status), jangan difilter
-        ...(query.status && { status: query.status as ProjectStatus }),
+        status: query.status
+          ? (query.status as ProjectStatus)
+          : { in: [ProjectStatus.AKTIF, ProjectStatus.LIBUR] },
       },
       sortBy: base.sortBy,
       order: base.order,
@@ -164,24 +165,12 @@ export class ProjectService {
       throw new AppError(404, "Project tidak ditemukan");
     }
 
-    await prisma.$transaction(async (tx) => {
-      const docCount = await tx.documentation.count({ where: { projectId } });
-
-      if (docCount > 0) {
-        throw new AppError(
-          400,
-          "Project tidak bisa dihapus karena sudah memiliki dokumentasi",
-        );
-      }
-
-      await tx.project.update({
-        where: { id: projectId },
-        data: {
-          deletedAt: new Date(),
-        },
-      });
+    await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        deletedAt: new Date(),
+      },
     });
-
     return { message: "Project berhasil dihapus" };
   }
 
@@ -235,8 +224,19 @@ export class ProjectService {
       throw new AppError(404, "Project tidak ditemukan di tempat sampah");
     }
 
-    await prisma.project.delete({
-      where: { id: projectId },
+    await prisma.$transaction(async (tx) => {
+      const docCount = await tx.documentation.count({ where: { projectId } });
+
+      if (docCount > 0) {
+        throw new AppError(
+          400,
+          "Project tidak bisa dihapus karena sudah memiliki dokumentasi",
+        );
+      }
+
+      await prisma.project.delete({
+        where: { id: projectId },
+      });
     });
 
     return { message: "Project dihapus permanen" };
@@ -245,11 +245,12 @@ export class ProjectService {
   async getProjectDetail(currentUser: IExistingUser, projectId: string) {
     if (
       currentUser.role !== UserRole.MANDOR &&
-      currentUser.role !== UserRole.OWNER
+      currentUser.role !== UserRole.OWNER &&
+      currentUser.role !== UserRole.ADMIN
     ) {
       throw new AppError(
         403,
-        "Hanya mandor dan klien yang bisa melihat detail project",
+        "Hanya mandor, klien, dan admin yang bisa melihat detail project",
       );
     }
 
@@ -445,7 +446,7 @@ export class ProjectService {
     query: PaginationQueryDTO,
   ) {
     if (currentUser.role !== UserRole.KEPALA_TUKANG) {
-      throw new AppError(403, "Hanya head worker yang bisa melihat project");
+      throw new AppError(403, "Hanya kepala tukang yang bisa melihat project");
     }
 
     const { page, limit } = query;
@@ -556,7 +557,7 @@ export class ProjectService {
     data: AssignHeadWorkerDTO,
   ) {
     if (currentUser.role !== UserRole.MANDOR) {
-      throw new AppError(403, "Hanya mandor yang bisa assign head worker");
+      throw new AppError(403, "Hanya mandor yang bisa assign kepala tukang");
     }
 
     // cek project milik mandor
@@ -581,7 +582,7 @@ export class ProjectService {
     if (project.status === ProjectStatus.SELESAI) {
       throw new AppError(
         400,
-        "Tidak bisa assign head worker ke project yang sudah selesai",
+        "Tidak bisa assign kepala tukang ke project yang sudah selesai",
       );
     }
 
@@ -604,7 +605,7 @@ export class ProjectService {
     if (invalidIds.length > 0) {
       throw new AppError(
         400,
-        `Head worker tidak valid: ${invalidIds.join(", ")}`,
+        `kepala tukang tidak valid: ${invalidIds.join(", ")}`,
       );
     }
 
@@ -615,7 +616,7 @@ export class ProjectService {
 
     if (newIds.length === 0) {
       return {
-        message: "Semua head worker sudah terdaftar",
+        message: "Semua kepala tukang sudah terdaftar",
         alreadyAssigned,
       };
     }
@@ -632,8 +633,8 @@ export class ProjectService {
     return {
       message:
         alreadyAssigned.length > 0
-          ? "Sebagian head worker berhasil ditambahkan"
-          : "Head worker berhasil di-assign",
+          ? "Sebagian kepala tukang berhasil ditambahkan"
+          : "Kepala tukang berhasil di-assign",
       addedCount: newIds.length,
       alreadyAssigned,
     };
@@ -645,7 +646,7 @@ export class ProjectService {
     data: AssignHeadWorkerDTO,
   ) {
     if (currentUser.role !== UserRole.MANDOR) {
-      throw new AppError(403, "Hanya mandor yang bisa unassign head worker");
+      throw new AppError(403, "Hanya mandor yang bisa unassign kepala tukang");
     }
 
     const project = await prisma.project.findFirst({
@@ -667,7 +668,7 @@ export class ProjectService {
     if (project.status === ProjectStatus.SELESAI) {
       throw new AppError(
         400,
-        "Tidak bisa unassign head worker di project yang sudah selesai",
+        "Tidak bisa unassign kepala tukang di project yang sudah selesai",
       );
     }
 
@@ -679,7 +680,7 @@ export class ProjectService {
 
     if (toRemove.length === 0) {
       return {
-        message: "Head worker tidak ditemukan di project",
+        message: "Kepala tukang tidak ditemukan di project",
       };
     }
 
@@ -693,7 +694,7 @@ export class ProjectService {
     });
 
     return {
-      message: "Head worker berhasil di-unassign",
+      message: "Kepala tukang berhasil di-unassign",
       removed: toRemove,
     };
   }
@@ -777,6 +778,93 @@ export class ProjectService {
     });
 
     return { message: "Klien berhasil di-unassign dari proyek" };
+  }
+
+  async listAllProjectsForAdmin(
+    currentUser: IExistingUser,
+    query: PaginationQueryDTO,
+  ) {
+    // 1. Lapisan Keamanan Mutlak: Hanya untuk Admin
+    if (currentUser.role !== UserRole.ADMIN) {
+      throw new AppError(
+        403,
+        "Akses ditolak. Hanya Admin pusat yang dapat melihat seluruh daftar proyek di sistem.",
+      );
+    }
+
+    const { page, limit } = query;
+    const safePage = Math.max(page, 1);
+    const skip = (safePage - 1) * limit;
+
+    // 2. Susun aturan pencarian dan pengurutan standar
+    const base = this.buildQuery(query);
+
+    // 3. Murni menggunakan properti bawaan antarmuka DTO
+    const whereClause: any = {
+      ...base.where,
+      ...(query.status && { status: query.status }),
+    };
+
+    // 4. Ambil data secara paralel untuk efisiensi performa server
+    const [projects, total] = await Promise.all([
+      prisma.project.findMany({
+        where: whereClause,
+        skip,
+        take: limit,
+        orderBy: {
+          [base.sortBy]: base.order,
+        },
+        // Ambil relasi yang penting untuk tabel dasbor Admin
+        select: {
+          id: true,
+          projectName: true,
+          location: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+          createdAt: true,
+
+          // Info Mandor Penanggung Jawab saat ini (Penting untuk fitur Transfer Mandor)
+          mandor: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+            },
+          },
+
+          // Info Klien Pemilik Rumah
+          owner: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+            },
+          },
+
+          // Menghitung berapa Kepala Tukang yang sedang ditugaskan di proyek ini
+          _count: {
+            select: {
+              kepalaTukang: true,
+            },
+          },
+        },
+      }),
+
+      prisma.project.count({
+        where: whereClause,
+      }),
+    ]);
+
+    return {
+      data: projects,
+      meta: {
+        page: safePage,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    };
   }
 
   async adminTransferProjectMandor(

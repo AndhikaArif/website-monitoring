@@ -1,0 +1,348 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
+import {
+  FiTrash2,
+  FiFileText,
+  FiCalendar,
+  FiX,
+  FiSearch,
+  FiChevronLeft,
+  FiChevronRight,
+  FiUser,
+} from "react-icons/fi";
+import toast from "react-hot-toast";
+import Image from "next/image";
+
+// Service & Types
+import {
+  getProjectDocumentations,
+  adminDeleteDocumentation,
+} from "@/services/documentation.service";
+import type { Documentation } from "@/types/documentation.type";
+
+interface ApiError {
+  response?: {
+    status?: number;
+    data?: {
+      message?: string;
+    };
+  };
+}
+
+export default function AdminProjectDocumentationPage() {
+  const params = useParams();
+  const projectId = params.projectId as string; // Menyesuaikan dengan penamaan folder dinamis [projectId]
+  const router = useRouter();
+
+  const [docs, setDocs] = useState<Documentation[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // --- STATE PENCARIAN & PAGINASI ---
+  const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const limit = 8; // Menampilkan 8 card per halaman (grid 4x2 di desktop)
+
+  // --- GET DATA DOKUMENTASI PROYEK SPESIFIK ---
+  const fetchDocs = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await getProjectDocumentations({
+        projectId,
+        limit,
+        page,
+        ...(searchQuery && { search: searchQuery }),
+      });
+      setDocs(res.data);
+      setTotalPages(res.meta?.totalPages || 1);
+    } catch (error) {
+      console.error("Gagal fetch data dokumentasi admin:", error);
+      toast.error("Gagal mengambil riwayat laporan proyek target");
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId, searchQuery, page]);
+
+  useEffect(() => {
+    fetchDocs();
+  }, [fetchDocs]);
+
+  // --- EKSEKUSI HAPUS LAPORAN (ADMIN ONLY) ---
+  const handleDelete = async (docId: string) => {
+    const isConfirmed = window.confirm(
+      "PENGHAPUSAN MUTLAK: Apakah Anda yakin ingin menghapus laporan ini beserta lampiran fisiknya dari server? Tindakan ini mengabaikan batas waktu dan tidak dapat dibatalkan.",
+    );
+
+    if (!isConfirmed) return;
+
+    try {
+      await adminDeleteDocumentation(docId);
+      toast.success("Laporan berhasil dihapus dari sistem");
+
+      // Jika card yang dihapus adalah yang terakhir di halaman tersebut, mundur 1 halaman
+      if (docs.length === 1 && page > 1) {
+        setPage(page - 1);
+      } else {
+        fetchDocs();
+      }
+    } catch (error) {
+      const err = error as ApiError;
+      if (err?.response?.status === 500) {
+        toast.error(
+          "Gagal terhubung ke server atau database. Pembersihan arsip dibatalkan.",
+        );
+      } else {
+        toast.error(
+          err?.response?.data?.message ||
+            "Gagal mengeksekusi pembersihan laporan target",
+        );
+      }
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 text-black">
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+        {/* TOMBOL KEMBALI */}
+        <button
+          onClick={() => router.push("/admin/project")}
+          className="flex items-center text-gray-500 hover:text-indigo-600 transition-colors mb-6 group bg-transparent border-none cursor-pointer font-medium text-sm"
+        >
+          <FiChevronLeft className="mr-1 group-hover:-translate-x-1 transition-transform" />
+          Kembali ke Pusat Kendali Proyek
+        </button>
+
+        {/* HEADER SECTION */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end mb-8 gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+          <div>
+            {/* Lencana penanda mode Mata Elang */}
+            <span className="bg-indigo-50 text-indigo-700 text-[10px] font-extrabold px-2.5 py-1 rounded-md tracking-wider uppercase border border-indigo-100/80 mb-2 inline-block">
+              Mata Elang Eksekutif
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">
+              Audit Dokumentasi Proyek
+            </h1>
+            <p className="text-slate-500 text-sm mt-1 mb-4 sm:mb-0">
+              Periksa keabsahan bukti lapangan atau bersihkan anomali arsip
+              sistem.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            {/* SEARCH BAR */}
+            <div className="relative w-full sm:w-72">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FiSearch className="text-slate-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Cari area atau deskripsi..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1); // Reset ke halaman 1 saat mengetik
+                }}
+                className="block w-full text-black pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 sm:text-sm transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setPage(1);
+                  }}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 bg-transparent border-none cursor-pointer"
+                >
+                  <FiX size={16} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* LIST DOKUMENTASI (GRID) */}
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-pulse">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-80 bg-slate-200 rounded-2xl" />
+            ))}
+          </div>
+        ) : docs.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {docs.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg transition-shadow overflow-hidden flex flex-col group relative"
+                >
+                  {/* IMAGE HEADER */}
+                  <div className="relative h-48 w-full bg-slate-100 border-b border-slate-100 overflow-hidden">
+                    {doc.files && doc.files.length > 0 ? (
+                      <>
+                        {doc.files[0].fileType === "VIDEO" ? (
+                          <video
+                            src={doc.files[0].fileUrl}
+                            className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+                            controls
+                            preload="metadata"
+                            playsInline
+                          />
+                        ) : (
+                          <Image
+                            src={doc.files[0].fileUrl}
+                            alt="preview"
+                            fill
+                            sizes="(max-width: 768px) 100vw, 33vw"
+                            className="object-cover group-hover:scale-105 transition-transform duration-500"
+                            unoptimized
+                            onError={(e) => {
+                              e.currentTarget.src =
+                                "https://via.placeholder.com/400x300.png?text=Gambar+Hilang";
+                              e.currentTarget.srcset = "";
+                            }}
+                          />
+                        )}
+                        {doc.files.length > 1 && (
+                          <div className="absolute bottom-3 right-3 bg-slate-900/70 backdrop-blur-md text-white text-[11px] font-bold px-3 py-1.5 rounded-full shadow-sm">
+                            +{doc.files.length - 1} File
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="h-full w-full flex flex-col items-center justify-center text-slate-400">
+                        <FiFileText size={32} className="mb-2 opacity-50" />
+                        <span className="text-xs font-medium">
+                          Tidak ada media
+                        </span>
+                      </div>
+                    )}
+
+                    {/* TOMBOL HAPUS ADMIN (Mata Elang): MUNCUL SAAT HOVER */}
+                    <div className="absolute top-3 right-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 z-10">
+                      <button
+                        onClick={() => handleDelete(doc.id)}
+                        className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-all cursor-pointer border-none flex items-center gap-1.5 text-xs font-bold"
+                        title="Hapus Laporan Sepihak"
+                      >
+                        <FiTrash2 size={15} />
+                        <span className="hidden sm:inline">Hapus Paksa</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* CARD CONTENT */}
+                  <div className="p-5 flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-[10px] font-extrabold px-2.5 py-1 rounded-md tracking-wider ${
+                              doc.session === "PAGI"
+                                ? "bg-amber-100 text-amber-700 border border-amber-200/50"
+                                : "bg-indigo-100 text-indigo-700 border border-indigo-200/50"
+                            }`}
+                          >
+                            {doc.session}
+                          </span>
+                          <span className="text-xs font-semibold text-slate-500 flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                            <FiCalendar size={12} className="text-slate-400" />
+                            {new Date(doc.reportDate)
+                              .toLocaleDateString("id-ID", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                              })
+                              .replace(/\//g, "-")}
+                          </span>
+                        </div>
+                      </div>
+
+                      <h3
+                        className="font-bold text-slate-800 text-lg leading-tight mb-2 line-clamp-1"
+                        title={doc.workArea}
+                      >
+                        {doc.workArea}
+                      </h3>
+                      <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
+                        {doc.task}
+                      </p>
+
+                      {doc.progress && (
+                        <div className="mt-4 pt-3 border-t border-slate-100">
+                          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">
+                            Progress Lapangan
+                          </p>
+                          <p className="text-xs text-slate-800 font-medium truncate">
+                            {doc.progress}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* FOOTER CARD: INFO PELAPOR ASLI */}
+                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 bg-slate-50/50 -mx-5 -mb-5 p-3 rounded-b-2xl">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <FiUser
+                          className="text-indigo-600 shrink-0"
+                          size={13}
+                        />
+                        <span className="font-medium truncate text-slate-700">
+                          {doc.createdBy?.name || "Tanpa Nama"}
+                        </span>
+                      </div>
+                      <span className="text-[9px] text-slate-400 font-bold tracking-wider uppercase">
+                        @{doc.createdBy?.username}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* PAGINATION CONTROLS */}
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-4 mt-10 mb-4">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="flex items-center gap-1 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer"
+                >
+                  <FiChevronLeft /> Sebelumnya
+                </button>
+                <span className="text-sm font-semibold text-slate-600 bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm">
+                  Hal {page} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="flex items-center gap-1 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer"
+                >
+                  Selanjutnya <FiChevronRight />
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-20 px-4 bg-white rounded-3xl border-2 border-dashed border-slate-200">
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+              {searchQuery ? (
+                <FiSearch className="w-10 h-10 text-slate-400" />
+              ) : (
+                <FiFileText className="w-10 h-10 text-slate-400" />
+              )}
+            </div>
+            <h3 className="text-xl font-bold text-slate-700 mb-2">
+              {searchQuery ? "Arsip Tidak Ditemukan" : "Ruang Audit Kosong"}
+            </h3>
+            <p className="text-slate-500 text-center max-w-sm mb-0">
+              {searchQuery
+                ? `Tidak ada catatan audit yang cocok dengan kata kunci "${searchQuery}".`
+                : "Belum ada satupun bukti laporan yang diunggah oleh tim lapangan untuk proyek ini."}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

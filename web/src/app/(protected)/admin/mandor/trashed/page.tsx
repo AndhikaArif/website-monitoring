@@ -122,7 +122,7 @@ export default function TrashMandorPage() {
                     >
                       <td className="p-5">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
+                          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
                             <FiUser />
                           </div>
                           <div>
@@ -170,7 +170,7 @@ export default function TrashMandorPage() {
           {totalPages > 1 && (
             <div className="p-5 bg-gray-50/50 border-t border-gray-100 flex justify-between items-center">
               <p className="text-xs text-gray-500 font-medium uppercase">
-                Halaman <span className="text-purple-600">{page}</span> dari{" "}
+                Halaman <span className="text-blue-600">{page}</span> dari{" "}
                 {totalPages}
               </p>
               <div className="flex gap-2">

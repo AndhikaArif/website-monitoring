@@ -33,6 +33,7 @@ router.get(
     UserRole.MANDOR,
     UserRole.KEPALA_TUKANG,
     UserRole.OWNER,
+    UserRole.ADMIN,
   ),
   validate(paginationQuery, "query"),
   controller.list,
@@ -64,6 +65,7 @@ router.get(
     UserRole.MANDOR,
     UserRole.KEPALA_TUKANG,
     UserRole.OWNER,
+    UserRole.ADMIN,
   ),
   validate(documentationIdParam, "params"),
   controller.getById,
@@ -86,6 +88,15 @@ router.delete(
   AuthMiddleWare.roleGuard(UserRole.KEPALA_TUKANG),
   validate(documentationIdParam, "params"),
   controller.delete,
+);
+
+// 🔥 ADMIN DELETE DOCUMENTATION (Jalur Hapus Darurat/Pembersihan Aset)
+router.delete(
+  "/admin/:id",
+  AuthMiddleWare.verifyToken,
+  AuthMiddleWare.roleGuard(UserRole.ADMIN),
+  validate(documentationIdParam, "params"),
+  controller.adminDelete,
 );
 
 export default router;

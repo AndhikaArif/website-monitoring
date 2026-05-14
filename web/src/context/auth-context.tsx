@@ -6,9 +6,12 @@ import axios from "axios";
 interface IUser {
   id: string;
   name: string;
+  username: string;
   email: string;
-  role: "ADMIN" | "MANDOR" | "KEPALA_TUKANG";
+  role: "ADMIN" | "MANDOR" | "KEPALA_TUKANG" | "OWNER";
   workerId?: string | null;
+  phoneNumber?: string | null;
+  address?: string | null;
 }
 
 interface IAuthContext {

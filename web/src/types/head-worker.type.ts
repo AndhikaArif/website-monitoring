@@ -3,6 +3,8 @@ export interface HeadWorker {
   name: string;
   username: string;
   email: string;
+  phoneNumber?: string | null;
+  address?: string | null;
   createdAt: string;
 }
 

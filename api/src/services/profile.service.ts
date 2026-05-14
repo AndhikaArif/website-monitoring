@@ -15,7 +15,6 @@ export class ProfileService {
         role: true,
         phoneNumber: true,
         address: true,
-        avatarUrl: true,
         createdAt: true,
       },
     });
@@ -52,7 +51,6 @@ export class ProfileService {
         role: true,
         phoneNumber: true,
         address: true,
-        avatarUrl: true,
       },
     });
 

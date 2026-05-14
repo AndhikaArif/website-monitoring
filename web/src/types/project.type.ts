@@ -87,3 +87,42 @@ export interface AssignedProjectResponse {
     totalPages: number;
   };
 }
+
+export interface AdminProject {
+  id: string;
+  projectName: string;
+  location: string;
+  status: "AKTIF" | "LIBUR" | "SELESAI";
+  startDate: string;
+  endDate?: string | null;
+  createdAt: string;
+  mandor: {
+    id: string;
+    name: string;
+    username: string;
+  };
+  owner?: {
+    id: string;
+    name: string;
+    username: string;
+  } | null;
+  _count: {
+    kepalaTukang: number;
+  };
+}
+
+export interface AdminProjectResponse {
+  data: AdminProject[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+// Payload untuk endpoint pemindahan Mandor
+export interface TransferMandorPayload {
+  newMandorId: string;
+  keepKepalaTukang: boolean;
+}

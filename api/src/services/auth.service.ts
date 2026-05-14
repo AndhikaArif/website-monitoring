@@ -190,6 +190,8 @@ export class AuthServices {
           name: true,
           username: true,
           email: true,
+          phoneNumber: true,
+          address: true,
           createdAt: true,
         },
       }),

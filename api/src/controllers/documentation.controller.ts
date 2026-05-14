@@ -141,4 +141,24 @@ export class DocumentationController {
       next(error);
     }
   }
+
+  // --- FUNGSI PEMBERSIHAN DARURAT KHUSUS ADMIN ---
+  async adminDelete(req: Request, res: Response, next: NextFunction) {
+    try {
+      const currentUser = req.currentUser!;
+      const { id } = req.validatedParams as DocumentationIdParamDTO;
+
+      const result = await documentationService.adminDeleteDocumentation(
+        id,
+        currentUser,
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

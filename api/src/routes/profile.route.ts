@@ -13,7 +13,7 @@ router.use(AuthMiddleWare.verifyToken);
 // 🔥 GET PROFIL SENDIRI
 router.get("/me", profileController.getMe);
 
-// 🔥 UPDATE PROFIL (Nama, No HP, Alamat, Avatar)
+// 🔥 UPDATE PROFIL
 router.put(
   "/update",
   validate(updateProfileSchema),

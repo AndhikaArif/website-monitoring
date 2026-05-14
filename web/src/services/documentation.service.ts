@@ -71,7 +71,7 @@ export const deleteDocumentation = async (id: string): Promise<void> => {
   return res.data;
 };
 
-// Tambahkan fungsi uploadFiles ini
+// Fungsi uploadFiles
 export const uploadDocumentationFiles = async (
   files: File[],
 ): Promise<ApiResponse<DocumentationFile[]>> => {
@@ -94,7 +94,6 @@ export const uploadDocumentationFiles = async (
   return res.data;
 };
 
-// Tambahkan di src/services/documentation.service.ts
 export const deleteCloudinaryFile = async (
   cloudinaryId: string,
 ): Promise<void> => {
@@ -102,5 +101,18 @@ export const deleteCloudinaryFile = async (
     data: { cloudinaryId },
     withCredentials: true,
   });
+  return res.data;
+};
+
+// SERVICE PEMBERSIHAN DARURAT KHUSUS ADMIN
+export const adminDeleteDocumentation = async (
+  id: string,
+): Promise<ApiResponse<{ message: string }>> => {
+  const res = await axios.delete<ApiResponse<{ message: string }>>(
+    `${API_URL}/api/documentation/admin/${id}`,
+    {
+      withCredentials: true,
+    },
+  );
   return res.data;
 };

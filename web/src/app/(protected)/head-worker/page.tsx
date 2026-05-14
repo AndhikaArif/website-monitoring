@@ -95,7 +95,6 @@ export default function AssignedProjectsPage() {
               <option value="">Semua Status</option>
               <option value="AKTIF">AKTIF</option>
               <option value="LIBUR">LIBUR</option>
-              <option value="SELESAI">SELESAI</option>
             </select>
 
             {/* Sort By */}

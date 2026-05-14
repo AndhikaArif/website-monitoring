@@ -42,7 +42,6 @@ model User {
 
   phoneNumber String?
   address     String?
-  avatarUrl   String?
 
   projects         Project[] @relation("MandorProjects")
   assignedProjects Project[] @relation("ProjectKepalaTukang") // Nama relasi diperbarui
@@ -122,7 +121,7 @@ model Documentation {
 
   files DocumentationFile[]
 
-  @@unique([projectId, reportDate, session])
+  @@unique([projectId, reportDate, session, createdById])
   @@index([projectId, reportDate(sort: Desc)])
   @@index([projectId, session, reportDate])
   @@index([createdById])

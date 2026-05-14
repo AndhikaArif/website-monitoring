@@ -131,8 +131,13 @@ export default function OwnerDocumentationDetailPage() {
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
                   Dilaporkan Oleh
                 </p>
-                <p className="text-lg font-bold text-gray-800">
+                {/* Nama Lengkap (Utama) */}
+                <p className="text-lg font-bold text-gray-800 leading-tight">
                   {data.createdBy?.name || "Tidak diketahui"}
+                </p>
+                {/* Username (Sekunder) */}
+                <p className="text-xs font-medium text-amber-600 mt-0.5">
+                  @{data.createdBy?.username || "tidak-tersedia"}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
                   Waktu Upload:{" "}

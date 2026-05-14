@@ -128,14 +128,19 @@ export default function DocumentationDetailPage() {
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-inner shrink-0">
-                {data.createdBy?.name?.charAt(0).toUpperCase() || "U"}
+                {data.createdBy?.username?.charAt(0).toUpperCase() || "U"}
               </div>
               <div>
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
                   Dilaporkan Oleh
                 </p>
-                <p className="text-lg font-bold text-gray-800">
+                {/* Nama Lengkap (Utama) */}
+                <p className="text-lg font-bold text-gray-800 leading-tight">
                   {data.createdBy?.name || "Tidak diketahui"}
+                </p>
+                {/* Username (Sekunder) */}
+                <p className="text-xs font-medium text-purple-600 mt-0.5">
+                  @{data.createdBy?.username || "tidak-tersedia"}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
                   Waktu Upload:{" "}

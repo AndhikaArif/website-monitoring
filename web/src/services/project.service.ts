@@ -4,6 +4,8 @@ import {
   ProjectResponse,
   ProjectDetailResponse,
   AssignedProjectResponse,
+  AdminProjectResponse,
+  TransferMandorPayload,
 } from "../types/project.type";
 
 const API_URL = process.env.NEXT_PUBLIC_API_DOMAIN;
@@ -195,5 +197,39 @@ export const getOwnedProjects = async (
     },
   );
 
+  return res.data;
+};
+
+export const getAllProjectsForAdmin = async (
+  page = 1,
+  limit = 10,
+  status = "",
+) => {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+    ...(status && { status }),
+  });
+
+  const res = await axios.get<AdminProjectResponse>(
+    `${API_URL}/api/project/admin/all`,
+    {
+      params,
+      withCredentials: true,
+    },
+  );
+
+  return res.data;
+};
+
+export const adminTransferMandor = async (
+  projectId: string,
+  data: TransferMandorPayload,
+) => {
+  const res = await axios.post(
+    `${API_URL}/api/project/transfer-mandor/${projectId}`,
+    data,
+    { withCredentials: true },
+  );
   return res.data;
 };

@@ -46,20 +46,29 @@ export class DocumentationService {
             location: true,
             mandorId: true,
             ownerId: true,
+            // pengecekan daftar kepala tukang di proyek ini
+            kepalaTukang: { select: { id: true, name: true, username: true } },
           },
         },
         files: true,
-        createdBy: { select: { name: true } },
+        createdBy: { select: { name: true, username: true } },
       },
     });
 
     if (!doc) throw new AppError(404, "Dokumentasi tidak ditemukan");
 
-    if (
-      currentUser.role === "KEPALA_TUKANG" &&
-      doc.createdById !== currentUser.id
-    ) {
-      throw new AppError(403, "Akses ditolak. Anda bukan pembuat laporan ini.");
+    if (currentUser.role === UserRole.ADMIN) return doc;
+
+    if (currentUser.role === UserRole.KEPALA_TUKANG) {
+      const isAssignedToProject = doc.project.kepalaTukang.some(
+        (worker) => worker.id === currentUser.id,
+      );
+      if (!isAssignedToProject) {
+        throw new AppError(
+          403,
+          "Akses ditolak. Anda tidak ditugaskan di proyek ini.",
+        );
+      }
     }
 
     if (
@@ -89,14 +98,15 @@ export class DocumentationService {
     if (currentUser.role !== UserRole.KEPALA_TUKANG) {
       throw new AppError(
         403,
-        "Hanya head worker yang bisa update documentation",
+        "Hanya kepala tukang yang bisa update documentation",
       );
     }
 
-    // SECURITY FIX: Pastikan Head Worker terdaftar di project ini
+    // SECURITY FIX: Pastikan Kepala Tukang terdaftar di project ini
     const projectAssignment = await prisma.project.findFirst({
       where: {
         id: payload.projectId,
+        createdById: currentUser.id,
         kepalaTukang: { some: { id: currentUser.id } },
       },
     });
@@ -151,6 +161,7 @@ export class DocumentationService {
     query: PaginationQueryDTO,
   ) {
     const allowedRoles: UserRole[] = [
+      UserRole.ADMIN,
       UserRole.MANDOR,
       UserRole.KEPALA_TUKANG,
       UserRole.OWNER,
@@ -163,8 +174,16 @@ export class DocumentationService {
 
     // Tentukan filter dasar (Visibility/Penglihatan) berdasarkan Role
     let roleFilter = {};
-    if (currentUser.role === UserRole.KEPALA_TUKANG) {
-      roleFilter = { createdById: currentUser.id }; // HW cuma lihat laporannya sendiri
+    if (currentUser.role === UserRole.ADMIN) {
+      roleFilter = {}; // Admin tidak difilter (Melihat Semua)
+    } else if (currentUser.role === UserRole.KEPALA_TUKANG) {
+      roleFilter = {
+        project: {
+          kepalaTukang: {
+            some: { id: currentUser.id },
+          },
+        },
+      }; // Kepala Tukang bisa melihat SEMUA laporan di proyek tempat dia ditugaskan saat ini
     } else if (currentUser.role === UserRole.MANDOR) {
       roleFilter = { project: { mandorId: currentUser.id } }; // Mandor lihat semua di bawah dia
     } else if (currentUser.role === UserRole.OWNER) {
@@ -192,7 +211,7 @@ export class DocumentationService {
         include: {
           project: { select: { projectName: true } },
           files: true,
-          createdBy: { select: { name: true } }, // Mandor perlu tahu siapa yang lapor
+          createdBy: { select: { id: true, name: true, username: true } }, // Mandor perlu tahu siapa yang lapor
         },
       }),
       prisma.documentation.count({ where: whereClause }),
@@ -206,11 +225,33 @@ export class DocumentationService {
 
   async update(id: string, currentUser: IExistingUser, payload: UpdateDocDTO) {
     if (currentUser.role !== UserRole.KEPALA_TUKANG) {
-      throw new AppError(403, "Hanya head worker yang bisa update dokumentasi");
+      throw new AppError(
+        403,
+        "Hanya kepala tukang yang bisa update dokumentasi",
+      );
     }
 
-    // Validasi kepemilikan (Pasti error kalau bukan miliknya)
+    // 1. Ambil dokumen (Fungsi ini sekarang meloloskan asalkan user satu proyek)
     const existingDoc = await this.getByIdAndValidateOwnership(id, currentUser);
+
+    // GEMBOK KEPEMILIKAN MUTLAK UNTUK UPDATE
+    if (existingDoc.createdById !== currentUser.id) {
+      throw new AppError(
+        403,
+        "Akses modifikasi ditolak. Anda hanya diizinkan mengedit laporan yang Anda buat sendiri.",
+      );
+    }
+
+    // TIME-BASED LOCK: Batas edit maksimal 24 jam (86.400.000 ms)
+    const timeElapsed = Date.now() - new Date(existingDoc.uploadedAt).getTime();
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+
+    if (timeElapsed > TWENTY_FOUR_HOURS) {
+      throw new AppError(
+        403,
+        "Batas waktu modifikasi habis. Laporan yang sudah melewati 1x24 jam telah dikunci permanen oleh sistem.",
+      );
+    }
 
     // Cek konflik unik jika reportDate atau session diubah
     if (payload.reportDate || payload.session) {
@@ -224,7 +265,8 @@ export class DocumentationService {
           projectId: existingDoc.projectId,
           reportDate: newDate,
           session: newSession,
-          NOT: { id }, // exclude current doc
+          createdById: currentUser.id,
+          NOT: { id }, // Abaikan baris dokumen yang sedang diedit
         },
       });
 
@@ -236,17 +278,13 @@ export class DocumentationService {
       }
     }
 
-    // Logika Update Files (Jika ada file baru yang diunggah)
+    // Hapus dari Cloudinary, wipe relasi DB, lalu recreate
     if (payload.files && payload.files.length > 0) {
-      // 1. Kumpulkan ID file yang ingin dipertahankan oleh frontend
       const idsToKeep = payload.files.map((f) => f.cloudinaryId);
-
-      // 2. Cari file lama yang tidak ada di daftar yang ingin dipertahankan (berarti dihapus user)
       const filesToDelete = existingDoc.files.filter(
         (f) => !idsToKeep.includes(f.cloudinaryId),
       );
 
-      // 3. Hapus HANYA file yang benar-benar dibuang dari Cloudinary
       if (filesToDelete.length > 0) {
         const deletePromises = filesToDelete.map((file) =>
           cloudinary.uploader.destroy(file.cloudinaryId),
@@ -254,15 +292,12 @@ export class DocumentationService {
         await Promise.all(deletePromises);
       }
 
-      // 4. Reset DB dan masukkan kombinasi file lama & baru
       await prisma.documentationFile.deleteMany({
         where: { documentationId: id },
       });
     }
 
-    // Update data teks
     const { files, reportDate, ...textContent } = payload;
-
     const cleanData = Object.fromEntries(
       Object.entries(textContent).filter(([_, value]) => value !== undefined),
     );
@@ -289,10 +324,32 @@ export class DocumentationService {
 
   async delete(id: string, currentUser: IExistingUser) {
     if (currentUser.role !== UserRole.KEPALA_TUKANG) {
-      throw new AppError(403, "Hanya head worker yang bisa delete dokumentasi");
+      throw new AppError(
+        403,
+        "Hanya kepala tukang yang bisa delete dokumentasi",
+      );
     }
 
     const existingDoc = await this.getByIdAndValidateOwnership(id, currentUser);
+
+    // GEMBOK KEPEMILIKAN MUTLAK UNTUK DELETE
+    if (existingDoc.createdById !== currentUser.id) {
+      throw new AppError(
+        403,
+        "Akses hapus ditolak. Laporan ini milik rekan kerja Anda dan tidak dapat Anda hapus.",
+      );
+    }
+
+    // TIME-BASED LOCK: Mencegah penghapusan laporan yang sudah lama
+    const timeElapsed = Date.now() - new Date(existingDoc.uploadedAt).getTime();
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+
+    if (timeElapsed > TWENTY_FOUR_HOURS) {
+      throw new AppError(
+        403,
+        "Laporan tidak dapat dihapus karena telah melewati batas waktu 1x24 jam sejak diunggah.",
+      );
+    }
 
     // Hapus semua file terkait di Cloudinary
     const deletePromises = existingDoc.files.map((file) =>
@@ -311,5 +368,46 @@ export class DocumentationService {
 
   async deleteFileFromCloudinary(cloudinaryId: string) {
     return await cloudinary.uploader.destroy(cloudinaryId);
+  }
+
+  // --- FUNGSI DARURAT KHUSUS ADMIN ---
+
+  async adminDeleteDocumentation(id: string, currentUser: IExistingUser) {
+    // 1. Lapisan Keamanan Mutlak: Hanya untuk Admin
+    if (currentUser.role !== UserRole.ADMIN) {
+      throw new AppError(
+        403,
+        "Akses ditolak. Hanya Admin yang memiliki wewenang untuk menghapus sepihak arsip dokumentasi sistem.",
+      );
+    }
+
+    // 2. Cari dokumen target beserta lampiran file di dalamnya
+    const existingDoc = await prisma.documentation.findUnique({
+      where: { id },
+      include: { files: true },
+    });
+
+    if (!existingDoc) {
+      throw new AppError(404, "Arsip dokumentasi target tidak ditemukan.");
+    }
+
+    // 3. Bersihkan aset berat (Foto/Video) dari server Cloudinary terlebih dahulu
+    if (existingDoc.files && existingDoc.files.length > 0) {
+      const deletePromises = existingDoc.files.map((file) =>
+        cloudinary.uploader.destroy(file.cloudinaryId),
+      );
+      await Promise.all(deletePromises);
+    }
+
+    // 4. Hapus baris induk dari PostgreSQL
+    // (Baris data di tabel DocumentationFile akan otomatis lenyap berkat aturan onDelete: Cascade)
+    await prisma.documentation.delete({
+      where: { id },
+    });
+
+    return {
+      message:
+        "Arsip dokumentasi beserta lampiran fisiknya berhasil dihapus oleh Admin.",
+    };
   }
 }
