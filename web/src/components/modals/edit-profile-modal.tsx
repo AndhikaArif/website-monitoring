@@ -11,11 +11,41 @@ interface EditProfileModalProps {
   onClose: () => void;
 }
 
+function getModalTheme(role?: string) {
+  switch (role) {
+    case "ADMIN":
+      return {
+        button: "bg-blue-600 hover:bg-blue-700",
+        focus: "focus:border-blue-500 focus:ring-blue-500/20",
+      };
+    case "MANDOR":
+      return {
+        button: "bg-purple-600 hover:bg-purple-700",
+        focus: "focus:border-purple-500 focus:ring-purple-500/20",
+      };
+    case "KEPALA_TUKANG":
+      return {
+        button: "bg-emerald-600 hover:bg-emerald-700",
+        focus: "focus:border-emerald-500 focus:ring-emerald-500/20",
+      };
+    case "OWNER":
+      return {
+        button: "bg-amber-500 hover:bg-amber-600",
+        focus: "focus:border-amber-500 focus:ring-amber-500/20",
+      };
+    default:
+      return {
+        button: "bg-slate-800 hover:bg-slate-900",
+        focus: "focus:border-slate-500 focus:ring-slate-500/20",
+      };
+  }
+}
+
 export default function EditProfileModal({
   isOpen,
   onClose,
 }: EditProfileModalProps) {
-  const { refreshUser } = useAuth();
+  const { user: currentUser, refreshUser } = useAuth();
   const [name, setName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [address, setAddress] = useState("");
@@ -26,6 +56,8 @@ export default function EditProfileModal({
     type: "success" | "error";
     text: string;
   } | null>(null);
+
+  const theme = getModalTheme(currentUser?.role);
 
   useEffect(() => {
     if (isOpen) {
@@ -135,7 +167,7 @@ export default function EditProfileModal({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Masukkan nama"
-                  className="w-full bg-slate-50 rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-100 transition-all"
+                  className={`w-full bg-slate-50 rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 transition-all ${theme.focus}`}
                   required
                 />
               </div>
@@ -149,7 +181,7 @@ export default function EditProfileModal({
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   placeholder="Contoh: 08123456789"
-                  className="w-full bg-slate-50 rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-100 transition-all"
+                  className={`w-full bg-slate-50 rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 transition-all ${theme.focus}`}
                 />
               </div>
 
@@ -162,7 +194,7 @@ export default function EditProfileModal({
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="Masukkan alamat domisili"
-                  className="w-full bg-slate-50 rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-100 transition-all resize-none"
+                  className={`w-full bg-slate-50 rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 transition-all resize-none ${theme.focus}`}
                 />
               </div>
             </>
@@ -180,7 +212,7 @@ export default function EditProfileModal({
             <button
               type="submit"
               disabled={loadingFetch || loadingSubmit}
-              className="flex-1 py-2.5 bg-purple-600 text-white rounded-xl font-medium text-sm hover:bg-purple-700 transition-colors disabled:opacity-50 cursor-pointer"
+              className={`flex-1 py-2.5 text-white rounded-xl font-medium text-sm transition-colors disabled:opacity-50 cursor-pointer ${theme.button}`}
             >
               {loadingSubmit ? "Menyimpan..." : "Simpan"}
             </button>

@@ -47,7 +47,7 @@ export default function HeadWorkerPage() {
         }
 
         toast.error(
-          err.response?.data?.message || "Gagal mengambil data head worker",
+          err.response?.data?.message || "Gagal mengambil data Kepala Tukang",
         );
       } else {
         console.error("Unknown Error:", err);
@@ -67,15 +67,15 @@ export default function HeadWorkerPage() {
   const handleDelete = async (id: string) => {
     if (
       !confirm(
-        "Yakin mau hapus head worker? (Data akan dipindahkan ke tong sampah)",
+        "Yakin mau hapus Kepala Tukang? (Data akan dipindahkan ke tong sampah)",
       )
     )
       return;
     try {
       await toast.promise(deleteHeadWorker(id), {
-        loading: "Menghapus head worker...",
-        success: "Head worker berhasil dihapus! 🗑️",
-        error: "Gagal menghapus head worker",
+        loading: "Menghapus Kepala Tukang...",
+        success: "Kepala Tukang berhasil dihapus! 🗑️",
+        error: "Gagal menghapus Kepala Tukang",
       });
 
       if (kepalaTukang.length === 1 && page > 1) {
@@ -101,7 +101,7 @@ export default function HeadWorkerPage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
             <div>
               <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-                Manajemen Head Worker
+                Manajemen Kepala Tukang
               </h1>
               <p className="text-gray-500 mt-1">
                 Kelola data seluruh kepala tukang di bawah koordinasi Anda.
@@ -109,7 +109,7 @@ export default function HeadWorkerPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* TOMBOL TONG SAMPAH HEAD WORKER */}
+              {/* TOMBOL TONG SAMPAH Kepala Tukang */}
               <button
                 onClick={() => router.push("/mandor/head-worker/trashed")}
                 className="inline-flex items-center justify-center bg-white hover:bg-gray-50 text-gray-600 font-semibold px-5 py-2.5 rounded-xl transition-all border border-gray-200 active:scale-95 shadow-sm cursor-pointer"
@@ -124,7 +124,7 @@ export default function HeadWorkerPage() {
                 className="inline-flex items-center justify-center bg-purple-600 hover:bg-purple-700 text-white font-semibold px-5 py-2.5 rounded-xl transition-all active:scale-95 shadow-lg shadow-purple-200 cursor-pointer border-none"
               >
                 <FiPlus className="mr-2 w-5 h-5" />
-                Tambah Head Worker
+                Tambah Kepala Tukang
               </button>
             </div>
           </div>
@@ -137,7 +137,7 @@ export default function HeadWorkerPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-500 font-medium">
-                  Total Head Worker Aktif
+                  Total Kepala Tukang Aktif
                 </p>
                 <h3 className="text-2xl font-bold text-gray-800">
                   {kepalaTukang.length}{" "}
@@ -153,7 +153,7 @@ export default function HeadWorkerPage() {
               <table className="w-full text-sm text-left">
                 <thead className="bg-gray-50/50 text-gray-600 font-semibold uppercase text-[11px] tracking-wider">
                   <tr>
-                    <th className="p-5">Profil Head Worker</th>
+                    <th className="p-5">Profil Kepala Tukang</th>
                     <th className="p-5 hidden lg:table-cell">Username</th>
                     <th className="p-5 hidden md:table-cell">Kontak</th>
                     <th className="p-5 text-right">Aksi</th>
@@ -234,7 +234,7 @@ export default function HeadWorkerPage() {
                         <div className="flex flex-col items-center">
                           <FiUsers className="w-12 h-12 text-gray-200 mb-4" />
                           <p className="text-gray-400 font-medium">
-                            Belum ada data head worker.
+                            Belum ada data Kepala Tukang.
                           </p>
                         </div>
                       </td>

@@ -101,10 +101,10 @@ export default function Navbar() {
                       : `text-gray-600 ${theme.hover}`
                   }
                 >
-                  Daftar Mandor
+                  Mandor
                 </Link>
 
-                {/* Tautan baru menuju Pusat Kendali Proyek */}
+                {/* Tautan baru menuju Proyek */}
                 <Link
                   href="/admin/project"
                   className={
@@ -113,7 +113,7 @@ export default function Navbar() {
                       : `text-gray-600 ${theme.hover}`
                   }
                 >
-                  Pusat Kendali Proyek
+                  Proyek
                 </Link>
               </>
             )}
@@ -129,7 +129,7 @@ export default function Navbar() {
                       : `text-gray-600 ${theme.hover}`
                   }
                 >
-                  Dokumentasi
+                  Proyek
                 </Link>
 
                 <Link
@@ -140,7 +140,7 @@ export default function Navbar() {
                       : `text-gray-600 ${theme.hover}`
                   }
                 >
-                  Head Worker
+                  Kepala Tukang
                 </Link>
 
                 <Link
@@ -243,7 +243,7 @@ export default function Navbar() {
                   onClick={() => setIsOpen(false)}
                   className="text-gray-600 font-medium"
                 >
-                  Pusat Kendali Proyek
+                  Proyek
                 </Link>
               </>
             )}
