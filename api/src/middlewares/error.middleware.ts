@@ -29,6 +29,18 @@ export class ErrorMiddleware {
         .json({ message: error.message, errors: error.errors ?? null });
     }
 
+    const errObj = error as any;
+    if (
+      errObj?.code === "P1001" ||
+      errObj?.message?.includes("Can't reach database server")
+    ) {
+      return res.status(500).json({
+        message:
+          "Koneksi ke pangkalan data Supabase terputus sementara. Silakan segarkan halaman dalam beberapa detik.",
+        time: new Date().toISOString(),
+      });
+    }
+
     if (error instanceof Error) {
       return res.status(500).json({
         message:

@@ -190,6 +190,20 @@ export class DocumentationService {
       roleFilter = { project: { ownerId: currentUser.id } }; // Klien cuma lihat laporan dari rumahnya
     }
 
+    let searchDate: Date | undefined;
+    if (query.search) {
+      // Memeriksa apakah pengguna mengetik format DD-MM-YYYY
+      const dateRegex = /^\d{2}-\d{2}-\d{4}$/;
+      if (dateRegex.test(query.search)) {
+        try {
+          // Konversi teks menjadi objek Date menggunakan fungsi bantuan milikmu
+          searchDate = this.parseReportDate(query.search);
+        } catch (e) {
+          // Abaikan secara diam-diam jika terjadi kegagalan parsing
+        }
+      }
+    }
+
     const whereClause: any = {
       ...roleFilter,
       ...(query.status && { project: { status: query.status } }), // Filter status project jika perlu
@@ -198,6 +212,7 @@ export class DocumentationService {
         OR: [
           { workArea: { contains: query.search, mode: "insensitive" } },
           { task: { contains: query.search, mode: "insensitive" } },
+          ...(searchDate ? [{ reportDate: searchDate }] : []),
         ],
       }),
     };

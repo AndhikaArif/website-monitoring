@@ -165,6 +165,18 @@ export class ProjectService {
       throw new AppError(404, "Project tidak ditemukan");
     }
 
+    const docCount = await prisma.documentation.count({
+      where: { projectId: projectId },
+    });
+
+    // Jika ada minimal 1 laporan, tolak proses soft delete!
+    if (docCount > 0) {
+      throw new AppError(
+        400,
+        "Proyek tidak bisa dihapus karena sudah memiliki riwayat laporan. Harap hapus laporan terlebih dahulu jika ingin menghapus proyek.",
+      );
+    }
+
     await prisma.project.update({
       where: { id: projectId },
       data: {
@@ -788,7 +800,7 @@ export class ProjectService {
     if (currentUser.role !== UserRole.ADMIN) {
       throw new AppError(
         403,
-        "Akses ditolak. Hanya Admin pusat yang dapat melihat seluruh daftar proyek di sistem.",
+        "Akses ditolak. Hanya Admin yang dapat melihat seluruh daftar proyek di sistem.",
       );
     }
 

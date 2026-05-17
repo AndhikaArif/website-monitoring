@@ -14,6 +14,7 @@ import {
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import Image from "next/image";
+import axios from "axios";
 
 // Service & Types
 import {
@@ -40,30 +41,99 @@ export default function AdminProjectDocumentationPage() {
   const [loading, setLoading] = useState(true);
 
   // --- STATE PENCARIAN & PAGINASI ---
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const limit = 8; // Menampilkan 8 card per halaman (grid 4x2 di desktop)
+
+  // --- LOGIKA DEBOUNCE (DELAY PENCARIAN 500ms) ---
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput);
+      setPage(1); // Otomatis kembali ke halaman 1 setiap ada pencarian baru
+    }, 500);
+
+    // Membersihkan timer jika user mengetik lagi sebelum 500ms
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const paramsNext = useParams();
+
+  const targetProjectId = (paramsNext.projectId || paramsNext.id) as string;
 
   // --- GET DATA DOKUMENTASI PROYEK SPESIFIK ---
   const fetchDocs = useCallback(async () => {
     try {
       setLoading(true);
+
+      if (!targetProjectId) {
+        toast.error("ID Proyek tidak valid.");
+        router.push("/admin/mandor");
+        return;
+      }
+
       const res = await getProjectDocumentations({
-        projectId,
+        projectId: targetProjectId,
         limit,
         page,
-        ...(searchQuery && { search: searchQuery }),
+        ...(debouncedSearch && { search: debouncedSearch }),
       });
       setDocs(res.data);
       setTotalPages(res.meta?.totalPages || 1);
-    } catch (error) {
-      console.error("Gagal fetch data dokumentasi admin:", error);
-      toast.error("Gagal mengambil riwayat laporan proyek target");
+    } catch (error: unknown) {
+      // 1. Cek apakah ini error dari Axios (API)
+      if (axios.isAxiosError(error)) {
+        // 2. Cek apakah Server Mati atau Internet Putus (Tidak ada response)
+        if (!error.response) {
+          toast.error(
+            "Gagal terhubung ke server. Periksa koneksi internet Anda.",
+            { id: "network-error" },
+          );
+          return;
+        }
+
+        const status = error.response.status;
+        const message =
+          error.response.data?.message || "Terjadi kesalahan sistem.";
+
+        // 3. Tangani berdasarkan Status Code spesifik
+        if (status === 401) {
+          toast.error("Sesi Anda telah berakhir. Silakan login kembali.", {
+            id: "auth-error",
+          });
+          router.replace("/login");
+          return;
+        } else if (status === 403) {
+          toast.error(`Akses Ditolak: ${message}`, { id: "forbidden-error" });
+          router.push("/admin/mandor");
+          return;
+        } else if (status === 404 || status === 400) {
+          toast.error("Proyek atau data laporan tidak ditemukan.", {
+            id: "not-found-error",
+          });
+          router.push("/admin/mandor");
+          return;
+        } else if (status === 500) {
+          toast.error("Server sedang bermasalah. Silahkan coba lagi.", {
+            id: "server-error",
+          });
+          return;
+        } else {
+          toast.error(message, { id: "general-error" });
+          return;
+        }
+      } else {
+        // 4. Jika error berasal dari React/JavaScript (bukan API)
+        toast.error("Terjadi kesalahan yang tidak terduga di browser Anda.", {
+          id: "unknown-error",
+        });
+        return;
+      }
     } finally {
       setLoading(false);
     }
-  }, [projectId, searchQuery, page]);
+  }, [targetProjectId, debouncedSearch, page, router]);
 
   useEffect(() => {
     fetchDocs();
@@ -72,7 +142,7 @@ export default function AdminProjectDocumentationPage() {
   // --- EKSEKUSI HAPUS LAPORAN (ADMIN ONLY) ---
   const handleDelete = async (docId: string) => {
     const isConfirmed = window.confirm(
-      "PENGHAPUSAN MUTLAK: Apakah Anda yakin ingin menghapus laporan ini beserta lampiran fisiknya dari server? Tindakan ini mengabaikan batas waktu dan tidak dapat dibatalkan.",
+      "PENGHAPUSAN MUTLAK: Apakah Anda yakin ingin menghapus laporan ini beserta lampiran medianya dari server? Tindakan ini mengabaikan batas waktu dan tidak dapat dibatalkan.",
     );
 
     if (!isConfirmed) return;
@@ -111,22 +181,17 @@ export default function AdminProjectDocumentationPage() {
           className="flex items-center text-gray-500 hover:text-indigo-600 transition-colors mb-6 group bg-transparent border-none cursor-pointer font-medium text-sm"
         >
           <FiChevronLeft className="mr-1 group-hover:-translate-x-1 transition-transform" />
-          Kembali ke Pusat Kendali Proyek
+          Kembali ke Daftar Proyek
         </button>
 
         {/* HEADER SECTION */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end mb-8 gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
           <div>
-            {/* Lencana penanda mode Mata Elang */}
-            <span className="bg-indigo-50 text-indigo-700 text-[10px] font-extrabold px-2.5 py-1 rounded-md tracking-wider uppercase border border-indigo-100/80 mb-2 inline-block">
-              Mata Elang Eksekutif
-            </span>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">
-              Audit Dokumentasi Proyek
+              Audit Laporan Proyek
             </h1>
             <p className="text-slate-500 text-sm mt-1 mb-4 sm:mb-0">
-              Periksa keabsahan bukti lapangan atau bersihkan anomali arsip
-              sistem.
+              Periksa bukti lapangan atau bersihkan laporan.
             </p>
           </div>
 
@@ -139,17 +204,17 @@ export default function AdminProjectDocumentationPage() {
               <input
                 type="text"
                 placeholder="Cari area atau deskripsi..."
-                value={searchQuery}
+                value={searchInput}
                 onChange={(e) => {
-                  setSearchQuery(e.target.value);
+                  setSearchInput(e.target.value);
                   setPage(1); // Reset ke halaman 1 saat mengetik
                 }}
                 className="block w-full text-black pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 sm:text-sm transition-all"
               />
-              {searchQuery && (
+              {searchInput && (
                 <button
                   onClick={() => {
-                    setSearchQuery("");
+                    setSearchInput("");
                     setPage(1);
                   }}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 bg-transparent border-none cursor-pointer"
@@ -157,6 +222,32 @@ export default function AdminProjectDocumentationPage() {
                   <FiX size={16} />
                 </button>
               )}
+            </div>
+
+            {/* FILTER TANGGAL (NATIVE HTML DATE PICKER) */}
+            <div className="relative w-full sm:w-auto">
+              <input
+                type="date"
+                title="Cari berdasarkan tanggal"
+                onKeyDown={(e) => e.preventDefault()}
+                onClick={(e) => {
+                  if ("showPicker" in HTMLInputElement.prototype) {
+                    e.currentTarget.showPicker();
+                  }
+                }}
+                // Ubah nilai YYYY-MM-DD ke DD-MM-YYYY saat diklik
+                onChange={(e) => {
+                  const rawDate = e.target.value; // Hasilnya: "2026-05-16"
+                  if (rawDate) {
+                    const [year, month, day] = rawDate.split("-");
+                    setSearchInput(`${day}-${month}-${year}`); // Kirim: "16-05-2026"
+                  } else {
+                    setSearchInput("");
+                  }
+                  setPage(1);
+                }}
+                className="block w-full text-black px-3 py-2.5 border border-slate-200 rounded-xl leading-5 bg-slate-50 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 sm:text-sm transition-all cursor-pointer"
+              />
             </div>
           </div>
         </div>
@@ -174,7 +265,12 @@ export default function AdminProjectDocumentationPage() {
               {docs.map((doc) => (
                 <div
                   key={doc.id}
-                  className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg transition-shadow overflow-hidden flex flex-col group relative"
+                  onClick={() =>
+                    router.push(
+                      `/admin/project/${projectId}/documentation/${doc.id}`,
+                    )
+                  }
+                  className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col group relative cursor-pointer"
                 >
                   {/* IMAGE HEADER */}
                   <div className="relative h-48 w-full bg-slate-100 border-b border-slate-100 overflow-hidden">
@@ -221,7 +317,10 @@ export default function AdminProjectDocumentationPage() {
                     {/* TOMBOL HAPUS ADMIN (Mata Elang): MUNCUL SAAT HOVER */}
                     <div className="absolute top-3 right-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 z-10">
                       <button
-                        onClick={() => handleDelete(doc.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(doc.id);
+                        }}
                         className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-all cursor-pointer border-none flex items-center gap-1.5 text-xs font-bold"
                         title="Hapus Laporan Sepihak"
                       >
@@ -326,19 +425,21 @@ export default function AdminProjectDocumentationPage() {
         ) : (
           <div className="flex flex-col items-center justify-center py-20 px-4 bg-white rounded-3xl border-2 border-dashed border-slate-200">
             <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-              {searchQuery ? (
+              {debouncedSearch ? (
                 <FiSearch className="w-10 h-10 text-slate-400" />
               ) : (
                 <FiFileText className="w-10 h-10 text-slate-400" />
               )}
             </div>
             <h3 className="text-xl font-bold text-slate-700 mb-2">
-              {searchQuery ? "Arsip Tidak Ditemukan" : "Ruang Audit Kosong"}
+              {debouncedSearch
+                ? "Laporan Tidak Ditemukan"
+                : "Belum Ada Laporan"}
             </h3>
             <p className="text-slate-500 text-center max-w-sm mb-0">
-              {searchQuery
-                ? `Tidak ada catatan audit yang cocok dengan kata kunci "${searchQuery}".`
-                : "Belum ada satupun bukti laporan yang diunggah oleh tim lapangan untuk proyek ini."}
+              {debouncedSearch
+                ? `Tidak ada Laporan yang cocok dengan kata kunci "${debouncedSearch}".`
+                : "Belum ada satupun laporan yang diunggah oleh Kepala Tukang untuk proyek ini."}
             </p>
           </div>
         )}

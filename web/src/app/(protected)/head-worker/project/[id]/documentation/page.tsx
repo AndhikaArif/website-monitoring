@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -18,6 +18,7 @@ import {
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import Image from "next/image";
+import axios from "axios";
 
 import { useAuth } from "@/context/auth-context";
 
@@ -64,6 +65,7 @@ interface UploadResponseItem {
 export default function HeadWorkerDocumentationPage() {
   const params = useParams();
   const projectId = params.id as string;
+  const router = useRouter();
 
   const { user: currentUser } = useAuth();
 
@@ -74,7 +76,8 @@ export default function HeadWorkerDocumentationPage() {
   const [isUploading, setIsUploading] = useState(false);
 
   // --- STATE PENCARIAN & PAGINASI ---
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const limit = 8; // Menampilkan 8 card per halaman (pas untuk grid 4x2 di desktop)
@@ -97,26 +100,93 @@ export default function HeadWorkerDocumentationPage() {
 
   const currentFormFiles = watch("files") || [];
 
+  const paramsNext = useParams();
+
+  const targetProjectId = (paramsNext.projectId || paramsNext.id) as string;
+
+  // --- LOGIKA DEBOUNCE (DELAY PENCARIAN 500ms) ---
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput);
+      setPage(1); // Otomatis kembali ke halaman 1 setiap ada pencarian baru
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
   // --- GET DATA ---
   const fetchDocs = useCallback(async () => {
     try {
       setLoading(true);
+
+      if (!targetProjectId) {
+        toast.error("ID Proyek tidak valid.");
+        router.push("/head-worker");
+        return;
+      }
+
       const res = await getProjectDocumentations({
-        projectId,
+        projectId: targetProjectId,
         limit, // Menggunakan limit yang didefinisikan
         page, // Mengirim nomor halaman saat ini
-        ...(searchQuery && { search: searchQuery }),
+        ...(debouncedSearch && { search: debouncedSearch }),
       });
       setDocs(res.data);
       // Menangkap totalPages dari meta data backend
       setTotalPages(res.meta?.totalPages || 1);
-    } catch (error) {
-      console.error("Gagal fetch data:", error);
-      toast.error("Gagal mengambil riwayat laporan");
+    } catch (error: unknown) {
+      // 1. Cek apakah ini error dari Axios (API)
+      if (axios.isAxiosError(error)) {
+        // 2. Cek apakah Server Mati atau Internet Putus (Tidak ada response)
+        if (!error.response) {
+          toast.error(
+            "Gagal terhubung ke server. Periksa koneksi internet Anda.",
+            { id: "network-error" },
+          );
+          return;
+        }
+
+        const status = error.response.status;
+        const message =
+          error.response.data?.message || "Terjadi kesalahan sistem.";
+
+        // 3. Tangani berdasarkan Status Code spesifik
+        if (status === 401) {
+          toast.error("Sesi Anda telah berakhir. Silakan login kembali.", {
+            id: "auth-error",
+          });
+          router.replace("/login");
+          return;
+        } else if (status === 403) {
+          toast.error(`Akses Ditolak: ${message}`, { id: "forbidden-error" });
+          router.push("/head-worker");
+          return;
+        } else if (status === 404 || status === 400) {
+          toast.error("Proyek atau data laporan tidak ditemukan.", {
+            id: "not-found-error",
+          });
+          router.push("/head-worker");
+          return;
+        } else if (status === 500) {
+          toast.error("Server sedang bermasalah. Silahkan coba lagi.", {
+            id: "server-error",
+          });
+          return;
+        } else {
+          toast.error(message, { id: "general-error" });
+          return;
+        }
+      } else {
+        // 4. Jika error berasal dari React/JavaScript (bukan API)
+        toast.error("Terjadi kesalahan yang tidak terduga di browser Anda.", {
+          id: "unknown-error",
+        });
+        return;
+      }
     } finally {
       setLoading(false);
     }
-  }, [projectId, searchQuery, page]);
+  }, [targetProjectId, debouncedSearch, page, router]);
 
   useEffect(() => {
     fetchDocs();
@@ -364,17 +434,17 @@ export default function HeadWorkerDocumentationPage() {
               <input
                 type="text"
                 placeholder="Cari laporan..."
-                value={searchQuery}
+                value={searchInput || ""}
                 onChange={(e) => {
-                  setSearchQuery(e.target.value);
+                  setSearchInput(e.target.value);
                   setPage(1); // Reset ke halaman 1 saat mengetik
                 }}
                 className="block w-full text-black pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 sm:text-sm transition-all"
               />
-              {searchQuery && (
+              {debouncedSearch && (
                 <button
                   onClick={() => {
-                    setSearchQuery("");
+                    setSearchInput("");
                     setPage(1);
                   }}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
@@ -382,6 +452,36 @@ export default function HeadWorkerDocumentationPage() {
                   <FiX size={16} />
                 </button>
               )}
+            </div>
+
+            {/* FILTER TANGGAL KHUSUS PENCARIAN */}
+            <div className="relative w-full sm:w-auto">
+              <input
+                type="date"
+                title="Pilih tanggal dari kalender"
+                value={
+                  searchInput && /^\d{2}-\d{2}-\d{4}$/.test(searchInput)
+                    ? searchInput.split("-").reverse().join("-")
+                    : ""
+                }
+                onKeyDown={(e) => e.preventDefault()}
+                onClick={(e) => {
+                  if ("showPicker" in HTMLInputElement.prototype) {
+                    e.currentTarget.showPicker();
+                  }
+                }}
+                onChange={(e) => {
+                  const rawDate = e.target.value;
+                  if (rawDate) {
+                    const [year, month, day] = rawDate.split("-");
+                    setSearchInput(`${day}-${month}-${year}`);
+                  } else {
+                    setSearchInput("");
+                  }
+                  setPage(1);
+                }}
+                className="block w-full text-black px-4 py-2.5 border border-slate-200 rounded-xl leading-5 bg-slate-50 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 sm:text-sm transition-all cursor-pointer"
+              />
             </div>
 
             <button
@@ -405,7 +505,7 @@ export default function HeadWorkerDocumentationPage() {
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {docs.map((doc) => {
-                // ✅ Periksa apakah laporan ini milik user yang sedang aktif
+                // Periksa apakah laporan ini milik user yang sedang aktif
                 const isOwner =
                   currentUser?.id === (doc.createdById || doc.createdBy?.id);
 
@@ -456,7 +556,7 @@ export default function HeadWorkerDocumentationPage() {
                         </div>
                       )}
 
-                      {/* ✅ FLOATING ACTION BUTTONS: HANYA MUNCUL JIKA PEMILIK LAPORAN */}
+                      {/* FLOATING ACTION BUTTONS: HANYA MUNCUL JIKA PEMILIK LAPORAN */}
                       {isOwner && (
                         <div className="absolute top-3 right-3 flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 z-10">
                           <button
@@ -486,7 +586,7 @@ export default function HeadWorkerDocumentationPage() {
                               className={`text-[10px] font-extrabold px-2.5 py-1 rounded-md tracking-wider ${
                                 doc.session === "PAGI"
                                   ? "bg-amber-100 text-amber-700 border border-amber-200/50"
-                                  : "bg-indigo-100 text-emerald-700 border border-indigo-200/50"
+                                  : "bg-indigo-100 text-indigo-700 border border-indigo-200/50"
                               }`}
                             >
                               {doc.session}
@@ -529,7 +629,7 @@ export default function HeadWorkerDocumentationPage() {
                         )}
                       </div>
 
-                      {/* ✅ FOOTER CARD: INFO PEMBUAT LAPORAN */}
+                      {/* FOOTER CARD: INFO PEMBUAT LAPORAN */}
                       <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50/50 -mx-5 -mb-5 p-3 rounded-b-2xl">
                         <FiUser
                           className="text-emerald-600 shrink-0"
@@ -577,21 +677,23 @@ export default function HeadWorkerDocumentationPage() {
         ) : (
           <div className="flex flex-col items-center justify-center py-20 px-4 bg-white rounded-3xl border-2 border-dashed border-slate-200">
             <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-              {searchQuery ? (
+              {debouncedSearch ? (
                 <FiSearch className="w-10 h-10 text-slate-400" />
               ) : (
                 <FiFileText className="w-10 h-10 text-slate-400" />
               )}
             </div>
             <h3 className="text-xl font-bold text-slate-700 mb-2">
-              {searchQuery ? "Laporan Tidak Ditemukan" : "Belum Ada Laporan"}
+              {debouncedSearch
+                ? "Laporan Tidak Ditemukan"
+                : "Belum Ada Laporan"}
             </h3>
             <p className="text-slate-500 text-center max-w-sm mb-6">
-              {searchQuery
-                ? `Tidak ada laporan yang cocok dengan kata kunci "${searchQuery}".`
+              {debouncedSearch
+                ? `Tidak ada laporan yang cocok dengan kata kunci "${debouncedSearch}".`
                 : "Pekerjaan ini belum didokumentasikan. Klik tombol di bawah untuk membuat laporan pertama."}
             </p>
-            {!searchQuery && (
+            {!debouncedSearch && (
               <button
                 onClick={openCreateModal}
                 className="text-emerald-600 bg-indigo-50 hover:bg-indigo-100 font-semibold px-5 py-2.5 rounded-xl transition-colors cursor-pointer"
@@ -628,6 +730,12 @@ export default function HeadWorkerDocumentationPage() {
                     <input
                       type="date"
                       {...register("reportDate")}
+                      onKeyDown={(e) => e.preventDefault()}
+                      onClick={(e) => {
+                        if ("showPicker" in HTMLInputElement.prototype) {
+                          e.currentTarget.showPicker();
+                        }
+                      }}
                       className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
                     />
                     {errors.reportDate && (
@@ -644,8 +752,8 @@ export default function HeadWorkerDocumentationPage() {
                       {...register("session")}
                       className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all appearance-none cursor-pointer"
                     >
-                      <option value="PAGI">Shift Pagi</option>
-                      <option value="SORE">Shift Sore</option>
+                      <option value="PAGI">Pagi</option>
+                      <option value="SORE">Sore</option>
                     </select>
                     {errors.session && (
                       <p className="text-red-500 text-xs mt-1.5 font-medium">

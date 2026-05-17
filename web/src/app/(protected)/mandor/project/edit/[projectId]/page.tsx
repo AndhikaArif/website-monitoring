@@ -38,6 +38,17 @@ export default function EditProjectPage() {
       try {
         const res = await getProjectDetail(projectId);
         const data = res.data;
+
+        // BLOKIR AKSES JIKA STATUS SUDAH SELESAI
+        if (data.status === "SELESAI") {
+          toast.error("Proyek yang sudah SELESAI tidak dapat diedit lagi.", {
+            id: "project-completed", // Mencegah toast ganda
+          });
+          // Tendang kembali ke halaman detail proyek
+          router.replace(`/mandor/project/${projectId}`);
+          return; // Hentikan eksekusi kode di bawahnya
+        }
+
         setInitialData({
           projectName: data.projectName || "",
           location: data.location || "",
@@ -46,9 +57,43 @@ export default function EditProjectPage() {
         });
       } catch (error: unknown) {
         if (axios.isAxiosError(error)) {
-          toast.error(error.response?.data?.message || "Gagal memuat data");
+          if (!error.response) {
+            toast.error("Gagal terhubung ke server.", { id: "network-error" });
+            router.push("/mandor/project");
+            return;
+          }
+
+          const status = error.response.status;
+          const message = error.response.data?.message || "Gagal memuat data.";
+
+          if (status === 401) {
+            toast.error("Sesi telah berakhir. Silakan login kembali.", {
+              id: "auth-error",
+            });
+            router.replace("/login");
+          } else if (status === 403) {
+            toast.error(`Akses Ditolak: ${message}`, {
+              id: "unauthorized-route",
+            });
+            router.replace("/mandor/project");
+          } else if (status === 404 || status === 400) {
+            toast.error("Proyek tidak ditemukan atau URL tidak valid.", {
+              id: "not-found-error",
+            });
+            router.replace("/mandor/project");
+          } else if (status === 500) {
+            toast.error("Server sedang bermasalah. Silakan coba lagi.", {
+              id: "server-error",
+            });
+            router.replace("/mandor/project");
+          } else {
+            toast.error(message, { id: "general-error" });
+            router.replace("/mandor/project");
+          }
+        } else {
+          toast.error("Terjadi kesalahan sistem.", { id: "unknown-error" });
+          router.replace("/mandor/project");
         }
-        router.push("/mandor/project");
       } finally {
         setLoading(false);
       }
@@ -98,7 +143,7 @@ export default function EditProjectPage() {
                   };
 
                   await updateProject(projectId, payload);
-                  toast.success("Perubahan berhasil disimpan! ✨");
+                  toast.success("Perubahan berhasil disimpan!");
                   router.push(`/mandor/project/${projectId}`);
                 } catch (error: unknown) {
                   if (axios.isAxiosError(error)) {

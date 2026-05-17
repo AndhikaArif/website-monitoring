@@ -37,19 +37,51 @@ export default function MyProjectsPage() {
       setTotalPages(res.meta.totalPages || 1);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
-        if (err.response?.status === 404) {
+        if (!err.response) {
+          toast.error("Gagal terhubung ke server.", { id: "network-error" });
+          return;
+        }
+
+        const status = err.response.status;
+        const message =
+          err.response.data?.message || "Gagal mengambil data proyek sistem.";
+
+        if (status === 404) {
+          // 🎯 404 di sini berarti tabel kosong. Biarkan user di halaman ini dan kosongkan state.
           setProjects([]);
           setTotalPages(1);
           return;
+        } else if (status === 401) {
+          toast.error("Sesi telah berakhir. Silakan login kembali.", {
+            id: "auth-error",
+          });
+          router.replace("/login");
+          return;
+        } else if (status === 403) {
+          // 🎯 Satukan ID toast dengan ProtectedLayout agar tidak bertumpuk jika bocor 1 milidetik
+          toast.error(`Akses Ditolak: ${message}`, {
+            id: "unauthorized-route",
+          });
+          router.replace("/");
+          return;
+        } else if (status === 500) {
+          toast.error("Server sedang bermasalah. Silakan coba lagi.", {
+            id: "server-error",
+          });
+          return;
+        } else {
+          toast.error(message, { id: "general-error" });
+          return;
         }
-        toast.error(
-          err.response?.data?.message || "Gagal mengambil data proyek",
-        );
+      } else {
+        toast.error("Terjadi kesalahan yang tidak terduga.", {
+          id: "unknown-error",
+        });
       }
     } finally {
       setLoading(false);
     }
-  }, [page, status, sortBy, order]);
+  }, [page, status, sortBy, order, router]);
 
   useEffect(() => {
     fetchData();

@@ -40,25 +40,52 @@ export default function HeadWorkerPage() {
       setTotalPages(res.meta.totalPages || 1);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
-        if (err.response?.status === 404) {
-          setHeadWorkers([]);
-          setTotalPages(1);
+        if (!err.response) {
+          toast.error("Gagal terhubung ke server.", { id: "network-error" });
           return;
         }
 
-        toast.error(
-          err.response?.data?.message || "Gagal mengambil data Kepala Tukang",
-        );
-      } else {
-        console.error("Unknown Error:", err);
-      }
+        const status = err.response.status;
+        const message =
+          err.response.data?.message || "Gagal mengambil data Kepala Tukang";
 
+        if (status === 404) {
+          setHeadWorkers([]);
+          setTotalPages(1);
+          return;
+        } else if (status === 401) {
+          toast.error("Sesi telah berakhir. Silakan login kembali.", {
+            id: "auth-error",
+          });
+          router.replace("/login");
+          return;
+        } else if (status === 403) {
+          // 🎯 Satukan ID toast dengan ProtectedLayout agar tidak bertumpuk jika bocor 1 milidetik
+          toast.error(`Akses Ditolak: ${message}`, {
+            id: "unauthorized-route",
+          });
+          router.replace("/");
+          return;
+        } else if (status === 500) {
+          toast.error("Server sedang bermasalah. Silakan coba lagi.", {
+            id: "server-error",
+          });
+          return;
+        } else {
+          toast.error(message, { id: "general-error" });
+          return;
+        }
+      } else {
+        toast.error("Terjadi kesalahan yang tidak terduga.", {
+          id: "unknown-error",
+        });
+      }
       setHeadWorkers([]);
       setTotalPages(1);
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, router]);
 
   useEffect(() => {
     fetchData();
@@ -67,15 +94,20 @@ export default function HeadWorkerPage() {
   const handleDelete = async (id: string) => {
     if (
       !confirm(
-        "Yakin mau hapus Kepala Tukang? (Data akan dipindahkan ke tong sampah)",
+        "Yakin mau hapus Kepala Tukang? (Data akan dipindahkan ke sampah)",
       )
     )
       return;
     try {
       await toast.promise(deleteHeadWorker(id), {
         loading: "Menghapus Kepala Tukang...",
-        success: "Kepala Tukang berhasil dihapus! 🗑️",
-        error: "Gagal menghapus Kepala Tukang",
+        success: "Kepala Tukang berhasil dihapus!",
+        error: (err) => {
+          if (axios.isAxiosError(err) && err.response?.data?.message) {
+            return err.response.data.message;
+          }
+          return "Gagal menghapus Kepala Tukang";
+        },
       });
 
       if (kepalaTukang.length === 1 && page > 1) {
@@ -83,9 +115,7 @@ export default function HeadWorkerPage() {
       } else {
         fetchData();
       }
-    } catch (error) {
-      console.error(error);
-    }
+    } catch {}
   };
 
   const handleRowClick = (headworker: HeadWorker) => {
@@ -109,14 +139,14 @@ export default function HeadWorkerPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* TOMBOL TONG SAMPAH Kepala Tukang */}
+              {/* TOMBOL SAMPAH Kepala Tukang */}
               <button
                 onClick={() => router.push("/mandor/head-worker/trashed")}
                 className="inline-flex items-center justify-center bg-white hover:bg-gray-50 text-gray-600 font-semibold px-5 py-2.5 rounded-xl transition-all border border-gray-200 active:scale-95 shadow-sm cursor-pointer"
                 title="Lihat Sampah"
               >
                 <FiTrash className="w-5 h-5 md:mr-2" />
-                <span className="hidden md:inline">Tong Sampah</span>
+                <span className="hidden md:inline">Sampah</span>
               </button>
 
               <button

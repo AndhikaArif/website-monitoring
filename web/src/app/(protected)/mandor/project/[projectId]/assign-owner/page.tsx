@@ -81,8 +81,10 @@ export default function AssignOwnerPage() {
     }
   };
 
-  const filteredOwners = availableOwners.filter((o) =>
-    o.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  const filteredOwners = availableOwners.filter(
+    (o) =>
+      o.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      o.username.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   if (loading) {

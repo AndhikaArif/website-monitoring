@@ -37,37 +37,54 @@ export default function OwnerPage() {
       const res = await getOwners(page);
       setOwners(res.data || []);
       setTotalPages(res.meta.totalPages || 1);
+      setErrorMsg(null); // Bersihkan pesan error jika sukses
     } catch (err: unknown) {
       setOwners([]);
       setTotalPages(1);
 
       if (axios.isAxiosError(err)) {
-        const status = err.response?.status;
+        if (!err.response) {
+          setErrorMsg(
+            "Gagal terhubung ke server. Periksa koneksi internet Anda.",
+          );
+          toast.error("Gagal terhubung ke server.", { id: "network-error" });
+          return;
+        }
+
+        const status = err.response.status;
+        const message =
+          err.response.data?.message || "Koneksi ke server gagal.";
 
         if (status === 404) {
-          // 404 berarti belum ada data klien, bukan error sistem
+          // 404 berarti belum ada data klien (tabel kosong), bukan error sistem
           setErrorMsg(null);
+        } else if (status === 401) {
+          toast.error("Sesi telah berakhir. Silakan login kembali.", {
+            id: "auth-error",
+          });
+          router.replace("/login");
+        } else if (status === 403) {
+          toast.error(`Akses Ditolak: ${message}`, {
+            id: "unauthorized-route",
+          });
+          router.replace("/");
         } else if (status === 500) {
-          // 🔥 Penanganan Error Database Down / Timeout
-          const msg =
-            "Server atau database sedang mengalami gangguan. Silakan coba beberapa saat lagi.";
-          setErrorMsg(msg);
-          toast.error("Error 500: Server bermasalah");
+          setErrorMsg(
+            "Server atau database sedang mengalami gangguan. Silakan coba beberapa saat lagi.",
+          );
+          toast.error("Server sedang bermasalah.", { id: "server-error" });
         } else {
-          // Error lain (400, 401, 403, Koneksi Mati)
-          const errorMessage =
-            err.response?.data?.message || "Koneksi ke server gagal.";
-          setErrorMsg(errorMessage);
-          toast.error(errorMessage);
+          setErrorMsg(message);
+          toast.error(message, { id: "general-error" });
         }
       } else {
         setErrorMsg("Terjadi kesalahan sistem yang tidak terduga.");
-        console.error("Non-Axios Error:", err);
+        toast.error("Terjadi kesalahan sistem.", { id: "unknown-error" });
       }
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, router]);
 
   useEffect(() => {
     fetchData();
@@ -75,16 +92,19 @@ export default function OwnerPage() {
 
   const handleDelete = async (id: string) => {
     if (
-      !confirm(
-        "Yakin mau hapus data klien? (Data akan dipindahkan ke tong sampah)",
-      )
+      !confirm("Yakin mau hapus data klien? (Data akan dipindahkan ke sampah)")
     )
       return;
     try {
       await toast.promise(deleteOwner(id), {
         loading: "Menghapus data klien...",
-        success: "Klien berhasil dihapus! 🗑️",
-        error: "Gagal menghapus klien",
+        success: "Klien berhasil dihapus!",
+        error: (err) => {
+          if (axios.isAxiosError(err) && err.response?.data?.message) {
+            return err.response.data.message;
+          }
+          return "Gagal menghapus klien";
+        },
       });
 
       if (owners.length === 1 && page > 1) {
@@ -92,9 +112,7 @@ export default function OwnerPage() {
       } else {
         fetchData();
       }
-    } catch (error) {
-      console.error(error);
-    }
+    } catch {}
   };
 
   const handleRowClick = (owner: Owner) => {
@@ -118,14 +136,14 @@ export default function OwnerPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* TOMBOL TONG SAMPAH OWNER */}
+              {/* TOMBOL SAMPAH OWNER */}
               <button
                 onClick={() => router.push("/mandor/owner/trashed")}
                 className="inline-flex items-center justify-center bg-white hover:bg-gray-50 text-gray-600 font-semibold px-5 py-2.5 rounded-xl transition-all border border-gray-200 active:scale-95 shadow-sm cursor-pointer"
                 title="Lihat Sampah"
               >
                 <FiTrash className="w-5 h-5 md:mr-2" />
-                <span className="hidden md:inline">Tong Sampah</span>
+                <span className="hidden md:inline">Sampah</span>
               </button>
 
               <button

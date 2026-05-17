@@ -19,24 +19,63 @@ export default function EditOwnerPage() {
   const [initialData, setInitialData] = useState<UpdateOwnerPayload | null>(
     null,
   );
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadOwner = async () => {
       try {
         const res = await getOwnerById(id as string);
         setInitialData(res.data);
-      } catch {
-        toast.error("Gagal mengambil data klien");
-        router.push("/mandor/owner");
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          if (!error.response) {
+            toast.error("Gagal terhubung ke server.", { id: "network-error" });
+            router.push("/mandor/owner");
+            return;
+          }
+
+          const status = error.response.status;
+          const message = error.response.data?.message || "Gagal memuat data.";
+
+          if (status === 401) {
+            toast.error("Sesi telah berakhir. Silakan login kembali.", {
+              id: "auth-error",
+            });
+            router.replace("/login");
+          } else if (status === 403) {
+            toast.error(`Akses Ditolak: ${message}`, {
+              id: "unauthorized-route",
+            });
+            router.replace("/mandor/owner");
+          } else if (status === 404 || status === 400) {
+            toast.error("Proyek tidak ditemukan atau URL tidak valid.", {
+              id: "not-found-error",
+            });
+            router.replace("/mandor/owner");
+          } else if (status === 500) {
+            toast.error("Server sedang bermasalah. Silakan coba lagi.", {
+              id: "server-error",
+            });
+            router.replace("/mandor/owner");
+          } else {
+            toast.error(message, { id: "general-error" });
+            router.replace("/mandor/owner");
+          }
+        } else {
+          toast.error("Terjadi kesalahan sistem.", { id: "unknown-error" });
+          router.replace("/mandor/owner");
+        }
+      } finally {
+        setLoading(false);
       }
     };
     loadOwner();
   }, [id, router]);
 
-  if (!initialData) {
+  if (loading || !initialData) {
     return (
-      <div className="min-h-[60vh] flex flex-col justify-center items-center gap-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-solid border-gray-200"></div>
+      <div className="min-h-screen flex flex-col justify-center items-center gap-4 bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-solid border-purple-600 border-r-transparent"></div>
         <p className="text-gray-500 font-medium animate-pulse">
           Mengambil data klien...
         </p>
@@ -88,7 +127,7 @@ export default function EditOwnerPage() {
                   }
 
                   await updateOwner(id as string, payload);
-                  toast.success("Data klien berhasil diperbarui! ✨");
+                  toast.success("Data klien berhasil diperbarui!");
                   router.push("/mandor/owner");
                 } catch (err: unknown) {
                   if (axios.isAxiosError(err)) {

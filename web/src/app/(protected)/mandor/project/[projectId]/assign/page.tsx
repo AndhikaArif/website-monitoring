@@ -82,8 +82,10 @@ export default function AssignWorkerPage() {
     }
   };
 
-  const filteredWorkers = availableWorkers.filter((w) =>
-    w.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  const filteredWorkers = availableWorkers.filter(
+    (w) =>
+      w.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      w.username.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   if (loading) {
@@ -108,7 +110,7 @@ export default function AssignWorkerPage() {
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold flex items-center gap-2">
-              <FiUserPlus className="text-purple-600" /> Tambah Head Worker
+              <FiUserPlus className="text-purple-600" /> Tambah Kepala Tukang
             </h1>
             {selectedIds.length > 0 && (
               <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold">
