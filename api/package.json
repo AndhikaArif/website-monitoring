@@ -5,7 +5,7 @@
   "scripts": {
     "seed": "tsx prisma/seed.ts",
     "build": "tsc",
-    "dev": "tsx --watch src/server.ts",
+    "dev": "tsx watch --ignore \"public/**\" src/server.ts",
     "start": "npm run build && node dist/server.js"
   },
   "type": "module",

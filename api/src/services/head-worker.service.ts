@@ -329,6 +329,8 @@ export class HeadWorkerServices {
 
         // 2. Kunci password dengan string acak/statis yang tidak bisa di-hash ulang
         password: "DELETED_ACCOUNT_LOCKED",
+        phoneNumber: null,
+        address: null,
 
         // 3. Putuskan relasi dari mandor agar hilang sepenuhnya dari daftar sistem mandor
         mandorId: null,
@@ -336,7 +338,7 @@ export class HeadWorkerServices {
     });
 
     return {
-      message: "Head worker berhasil dihapus permanen dari sistem monitoring",
+      message: "Kepala TUkang berhasil dihapus permanen dari sistem",
     };
   }
 }

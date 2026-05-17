@@ -1,5 +1,6 @@
 import cloudinary from "../config/cloudinary.config.js";
 import fs from "fs/promises";
+import { AppError } from "../errors/app.error.js";
 
 // Buat interface untuk hasil balikan Cloudinary biar rapi
 export interface ICloudinaryResponse {
@@ -82,5 +83,30 @@ export class FileUpload {
     }
 
     return result;
+  }
+
+  async deleteFromCloudinary(
+    cloudinaryId: string,
+    fileType: "VIDEO" | "PHOTO" = "PHOTO",
+  ): Promise<void> {
+    try {
+      // Penentu maut agar Video bisa ikut terhapus!
+      const resourceType = fileType === "VIDEO" ? "video" : "image";
+
+      const result = await cloudinary.uploader.destroy(cloudinaryId, {
+        resource_type: resourceType,
+        invalidate: true, // Bersihkan CDN Cache global
+      });
+
+      if (result.result !== "ok" && result.result !== "not found") {
+        console.warn("Peringatan dari Cloudinary:", result);
+      }
+    } catch (error) {
+      console.error("Gagal menghapus file dari Cloudinary:", error);
+      throw new AppError(
+        500,
+        "Terjadi kesalahan saat menghapus file di penyimpanan awan.",
+      );
+    }
   }
 }

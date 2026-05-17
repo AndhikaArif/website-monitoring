@@ -260,13 +260,15 @@ export class AuthServices {
   }
 
   async restoreMandor(currentUser: IExistingUser, userId: string) {
+    if (currentUser.role !== UserRole.ADMIN) {
+      throw new AppError(403, "Hanya admin yang bisa memulihkan mandor");
+    }
+
     const user = await prisma.user.findFirst({
       where: {
         id: userId,
+        role: UserRole.MANDOR,
         deletedAt: { not: null },
-        ...(currentUser.role === UserRole.MANDOR && {
-          mandorId: currentUser.id,
-        }),
       },
     });
 
@@ -279,19 +281,45 @@ export class AuthServices {
   }
 
   async hardDeleteMandor(currentUser: IExistingUser, userId: string) {
+    if (currentUser.role !== UserRole.ADMIN) {
+      throw new AppError(
+        403,
+        "Hanya admin yang bisa menghapus permanen mandor",
+      );
+    }
+
     const user = await prisma.user.findFirst({
       where: {
         id: userId,
+        role: UserRole.MANDOR,
         deletedAt: { not: null },
-        ...(currentUser.role === UserRole.MANDOR && {
-          mandorId: currentUser.id,
-        }),
       },
     });
 
     if (!user) throw new AppError(404, "Mandor tidak ditemukan di sampah");
 
-    return await prisma.user.delete({ where: { id: userId } });
+    // Hitung apakah Mandor masih memiliki Proyek
+    const projectCount = await prisma.project.count({
+      where: { mandorId: userId },
+    });
+
+    // Hitung apakah Mandor masih memiliki bawahan (Kepala Tukang / Klien)
+    const subordinateCount = await prisma.user.count({
+      where: { mandorId: userId },
+    });
+
+    // Jika masih ada tanggungan, tolak dengan pesan yang informatif!
+    if (projectCount > 0 || subordinateCount > 0) {
+      throw new AppError(
+        400,
+        `Tidak dapat menghapus permanen. Mandor ini masih terikat pada ${projectCount} proyek dan ${subordinateCount} akun klien/tukang. Silakan pindahkan/transfer tanggungan tersebut ke Mandor lain terlebih dahulu.`,
+      );
+    }
+
+    // Jika sudah bersih (0 proyek dan 0 bawahan), hapus fisik secara permanen
+    await prisma.user.delete({ where: { id: userId } });
+
+    return { message: "Mandor berhasil dihapus permanen dari sistem" };
   }
 
   async validateUser(

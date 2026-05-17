@@ -309,6 +309,28 @@ export class OwnerServices {
 
     if (!user) throw new AppError(404, "Owner tidak ditemukan di sampah");
 
-    return await prisma.user.delete({ where: { id: userId } });
+    const timestamp = Date.now();
+    // Menghasilkan string acak 4 karakter (contoh: 'a1b2') untuk menjamin keunikan mutlak
+    const randomSuffix = Math.random().toString(36).substring(2, 6);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        // 1. Rusak email & username aslinya agar string murni bebas dipakai user baru (misal mendaftar lagi)
+        // Nama (name) dibiarkan utuh untuk kebutuhan rekam jejak sejarah Proyek.
+        email: `deleted_${timestamp}_${randomSuffix}@mail.com`,
+        username: `deleted_${timestamp}_${randomSuffix}`,
+
+        // 2. Kunci password dengan string acak/statis yang tidak bisa di-hash ulang
+        password: "DELETED_ACCOUNT_LOCKED",
+        phoneNumber: null,
+        address: null,
+
+        // 3. Putuskan relasi dari mandor agar akun Klien ini hilang sepenuhnya dari tong sampah Mandor tersebut
+        mandorId: null,
+      },
+    });
+
+    return { message: "Owner berhasil dihapus permanen dari sistem" };
   }
 }

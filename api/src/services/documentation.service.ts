@@ -106,7 +106,6 @@ export class DocumentationService {
     const projectAssignment = await prisma.project.findFirst({
       where: {
         id: payload.projectId,
-        createdById: currentUser.id,
         kepalaTukang: { some: { id: currentUser.id } },
       },
     });
@@ -381,8 +380,12 @@ export class DocumentationService {
     return await uploader.uploadArray(files);
   }
 
-  async deleteFileFromCloudinary(cloudinaryId: string) {
-    return await cloudinary.uploader.destroy(cloudinaryId);
+  async deleteFileFromCloudinary(
+    cloudinaryId: string,
+    fileType?: "VIDEO" | "PHOTO",
+  ) {
+    // 🎯 Langsung panggil utilitasnya, karena try-catch sudah ada di dalam uploader
+    return await uploader.deleteFromCloudinary(cloudinaryId, fileType);
   }
 
   // --- FUNGSI DARURAT KHUSUS ADMIN ---

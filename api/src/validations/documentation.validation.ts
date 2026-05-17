@@ -75,6 +75,10 @@ export type PaginationQueryDTO = z.infer<typeof paginationQuery>;
 
 export const deleteFileSchema = z.object({
   cloudinaryId: z.string({ error: "Cloudinary ID wajib diisi" }),
+
+  fileType: z.enum(["PHOTO", "VIDEO"], {
+    error: "Tipe file wajib dicantumkan (PHOTO / VIDEO)",
+  }),
 });
 
 export type DeleteFileDTO = z.infer<typeof deleteFileSchema>;

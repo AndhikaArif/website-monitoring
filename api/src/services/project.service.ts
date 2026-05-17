@@ -295,6 +295,11 @@ export class ProjectService {
         },
 
         kepalaTukang: {
+          where: {
+            mandorId: {
+              not: null,
+            },
+          },
           select: {
             id: true,
             name: true,
@@ -367,8 +372,8 @@ export class ProjectService {
           createdAt: true,
           owner: {
             select: {
+              name: true,
               username: true,
-              email: true,
             },
           },
         },
@@ -854,10 +859,16 @@ export class ProjectService {
             },
           },
 
-          // Menghitung berapa Kepala Tukang yang sedang ditugaskan di proyek ini
+          // Menghitung berapa Kepala Tukang aktif yang sedang ditugaskan di proyek ini
           _count: {
             select: {
-              kepalaTukang: true,
+              kepalaTukang: {
+                where: {
+                  mandorId: {
+                    not: null,
+                  }, // Agar akun scramble tidak ikut terhitung
+                },
+              },
             },
           },
         },

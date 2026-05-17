@@ -128,10 +128,13 @@ export class DocumentationController {
   // Method delete file (untuk cleanup) di sini
   async deleteFile(req: Request, res: Response, next: NextFunction) {
     try {
-      const { cloudinaryId } = req.validatedBody as DeleteFileDTO;
+      const { cloudinaryId, fileType } = req.validatedBody as DeleteFileDTO;
 
       // Hapus dari Cloudinary
-      await documentationService.deleteFileFromCloudinary(cloudinaryId);
+      await documentationService.deleteFileFromCloudinary(
+        cloudinaryId,
+        fileType,
+      );
 
       return res.status(200).json({
         success: true,
