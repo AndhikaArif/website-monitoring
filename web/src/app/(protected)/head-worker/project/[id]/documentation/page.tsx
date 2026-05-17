@@ -266,7 +266,7 @@ export default function HeadWorkerDocumentationPage() {
 
     if (isNewlyUploaded) {
       try {
-        await deleteCloudinaryFile(cloudinaryId);
+        await deleteCloudinaryFile(cloudinaryId, fileToRemove.fileType);
         console.log(
           `✅ File spesifik (${cloudinaryId}) dihapus dari Cloudinary.`,
         );
@@ -359,7 +359,7 @@ export default function HeadWorkerDocumentationPage() {
       try {
         await Promise.all(
           newlyUploadedFiles.map((file) =>
-            deleteCloudinaryFile(file.cloudinaryId),
+            deleteCloudinaryFile(file.cloudinaryId, file.fileType),
           ),
         );
         console.log(

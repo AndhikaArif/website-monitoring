@@ -96,9 +96,10 @@ export const uploadDocumentationFiles = async (
 
 export const deleteCloudinaryFile = async (
   cloudinaryId: string,
+  fileType: "VIDEO" | "PHOTO",
 ): Promise<void> => {
   const res = await axios.delete(`${API_URL}/api/documentation/upload`, {
-    data: { cloudinaryId },
+    data: { cloudinaryId, fileType },
     withCredentials: true,
   });
   return res.data;

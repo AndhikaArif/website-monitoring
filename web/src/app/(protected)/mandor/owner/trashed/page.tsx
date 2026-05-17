@@ -61,19 +61,28 @@ export default function TrashOwnerPage() {
   const handleHardDelete = async (id: string, name: string) => {
     if (
       !window.confirm(
-        `Hapus permanen klien "${name}"? Data proyek yang terkait dengan klien ini mungkin akan terpengaruh.`,
+        `Hapus permanen owner "${name}"? Data proyek yang terkait dengan klien ini mungkin akan terpengaruh.`,
       )
     )
       return;
     try {
-      await hardDeleteOwner(id);
-      toast.success(`Klien "${name}" dihapus permanen`);
-      fetchTrashed();
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        toast.error(err.response?.data?.message || "Gagal menghapus permanen");
+      await toast.promise(hardDeleteOwner(id), {
+        loading: `Menghapus ${name}`,
+        success: `Owner "${name}" berhasil dihapus secara permanen!`,
+        error: (err) => {
+          if (axios.isAxiosError(err) && err.response?.data?.message) {
+            return err.response.data.message;
+          }
+          return "Gagal menghapus owner secara permanen";
+        },
+      });
+
+      if (owners.length === 1 && page > 1) {
+        setPage(page - 1);
+      } else {
+        fetchTrashed();
       }
-    }
+    } catch {}
   };
 
   return (

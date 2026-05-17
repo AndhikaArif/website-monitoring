@@ -5,8 +5,8 @@ export interface Project {
   status: "AKTIF" | "LIBUR" | "SELESAI";
   createdAt: string;
   owner?: {
+    name: string;
     username: string;
-    email: string;
   } | null;
 }
 

@@ -47,7 +47,7 @@ export default function MyProjectsPage() {
           err.response.data?.message || "Gagal mengambil data proyek sistem.";
 
         if (status === 404) {
-          // 🎯 404 di sini berarti tabel kosong. Biarkan user di halaman ini dan kosongkan state.
+          // 404 di sini berarti tabel kosong. Biarkan user di halaman ini dan kosongkan state.
           setProjects([]);
           setTotalPages(1);
           return;
@@ -248,10 +248,16 @@ export default function MyProjectsPage() {
                             </div>
                             <div>
                               <p className="font-semibold text-gray-700 text-xs">
-                                @{p.owner.username}
+                                {p.owner.name}
                               </p>
-                              <p className="text-[10px] text-gray-400">
-                                {p.owner.email}
+                              <p className="text-[10px] text-gray-400 truncate max-w-30">
+                                {p.owner.username.startsWith("deleted_") ? (
+                                  <span className="text-red-400 italic">
+                                    Akun Nonaktif
+                                  </span>
+                                ) : (
+                                  `@${p.owner.username}`
+                                )}
                               </p>
                             </div>
                           </div>

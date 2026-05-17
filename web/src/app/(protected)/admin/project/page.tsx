@@ -241,7 +241,13 @@ export default function AdminProjectsPage() {
                                 {p.owner.name}
                               </p>
                               <p className="text-[10px] text-gray-400 truncate max-w-30">
-                                @{p.owner.username}
+                                {p.owner.username.startsWith("deleted_") ? (
+                                  <span className="text-red-400 italic">
+                                    Akun Nonaktif
+                                  </span>
+                                ) : (
+                                  `@${p.owner.username}`
+                                )}
                               </p>
                             </div>
                           </div>

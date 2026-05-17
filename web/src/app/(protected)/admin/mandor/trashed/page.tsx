@@ -33,8 +33,16 @@ export default function TrashMandorPage() {
       setUsers(res.data || []);
       setTotalPages(res.meta.totalPages || 1);
     } catch (err: unknown) {
-      if (axios.isAxiosError(err) && err.response?.status !== 404) {
-        toast.error("Gagal mengambil data sampah mandor");
+      if (axios.isAxiosError(err)) {
+        if (err.response?.status === 404) {
+          // 🎯 KUNCI: Jika 404 (kosong), paksa tabel jadi kosong dan reset total halaman
+          setUsers([]);
+          setTotalPages(1);
+          return;
+        }
+        toast.error(
+          err.response?.data?.message || "Gagal mengambil data sampah mandor",
+        );
       }
     } finally {
       setLoading(false);
@@ -58,21 +66,36 @@ export default function TrashMandorPage() {
   };
 
   const handleHardDelete = async (id: string, name: string) => {
-    if (
-      !window.confirm(
-        `PERINGATAN: Akun "${name}" akan dihapus permanen dari sistem. Lanjutkan?`,
-      )
-    )
-      return;
+    const isConfirmed = window.confirm(
+      `⚠️ KONFIRMASI HAPUS PERMANEN ⚠️\n\n` +
+        `Anda akan menghapus Mandor "${name}" secara permanen dari sistem.\n\n` +
+        `SYARAT PENGHAPUSAN:\n` +
+        `Sistem akan menolak proses ini jika Mandor tersebut masih terikat pada Proyek, Kepala Tukang, atau Klien mana pun. Pastikan Anda telah melakukan "Transfer Mandor" terlebih dahulu.\n\n` +
+        `Lanjutkan penghapusan?`,
+    );
+
+    if (!isConfirmed) return;
+
     try {
-      await hardDeleteMandor(id);
-      toast.success(`Mandor "${name}" telah dihapus permanen`);
-      fetchTrashed();
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        toast.error(err.response?.data?.message || "Gagal menghapus permanen");
+      await toast.promise(hardDeleteMandor(id), {
+        loading: `Mengecek relasi dan menghapus ${name}...`,
+        success: `Mandor "${name}" berhasil dihapus permanen!`,
+        error: (err) => {
+          // Tangkap pesan spesifik penolakan dari Backend (status 400)
+          if (axios.isAxiosError(err) && err.response?.data?.message) {
+            return err.response.data.message;
+          }
+          return "Gagal menghapus mandor secara permanen";
+        },
+      });
+
+      // Perbaikan Paginasi: Jika item terakhir di halaman dihapus, mundur 1 halaman
+      if (users.length === 1 && page > 1) {
+        setPage(page - 1);
+      } else {
+        fetchTrashed();
       }
-    }
+    } catch {}
   };
 
   return (
