@@ -320,7 +320,6 @@ export class DocumentationService {
       where: { id },
       data: {
         ...cleanData,
-        updatedById: currentUser.id,
         ...(reportDate && { reportDate: this.parseReportDate(reportDate) }),
         ...(files && {
           files: {

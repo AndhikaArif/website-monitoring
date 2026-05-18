@@ -303,21 +303,50 @@ export class AuthServices {
       where: { mandorId: userId },
     });
 
-    // Hitung apakah Mandor masih memiliki bawahan (Kepala Tukang / Klien)
-    const subordinateCount = await prisma.user.count({
-      where: { mandorId: userId },
-    });
-
-    // Jika masih ada tanggungan, tolak dengan pesan yang informatif!
-    if (projectCount > 0 || subordinateCount > 0) {
+    if (projectCount > 0) {
       throw new AppError(
         400,
-        `Tidak dapat menghapus permanen. Mandor ini masih terikat pada ${projectCount} proyek dan ${subordinateCount} akun klien/tukang. Silakan pindahkan/transfer tanggungan tersebut ke Mandor lain terlebih dahulu.`,
+        `Tidak dapat menghapus permanen. Mandor ini masih terikat pada ${projectCount} proyek. Silakan transfer proyek tersebut ke Mandor lain terlebih dahulu.`,
       );
     }
 
-    // Jika sudah bersih (0 proyek dan 0 bawahan), hapus fisik secara permanen
-    await prisma.user.delete({ where: { id: userId } });
+    // Eksekusi Penghapusan Massal dalam 1 Transaksi agar aman
+    await prisma.$transaction(async (tx) => {
+      // Cari semua bawahan (Kepala Tukang) milik Mandor ini
+      const subordinates = await tx.user.findMany({
+        where: {
+          mandorId: userId,
+          role: UserRole.KEPALA_TUKANG,
+        },
+        select: { id: true },
+      });
+
+      // Lakukan "Scramble" massal untuk semua Kepala Tukang tersebut
+      if (subordinates.length > 0) {
+        for (const sub of subordinates) {
+          const timestamp = Date.now();
+          const randomSuffix = Math.random().toString(36).substring(2, 6);
+
+          await tx.user.update({
+            where: { id: sub.id },
+            data: {
+              email: `deleted_${timestamp}_${randomSuffix}@mail.com`,
+              username: `deleted_${timestamp}_${randomSuffix}`,
+              password: "DELETED_ACCOUNT_LOCKED",
+              phoneNumber: null,
+              address: null,
+              mandorId: null, // Putuskan relasi
+              deletedAt: new Date(),
+            },
+          });
+        }
+      }
+
+      // Setelah bawahannya beres, Mandor bisa dibunuh secara fisik (Hard Delete)
+      await tx.user.delete({
+        where: { id: userId },
+      });
+    });
 
     return { message: "Mandor berhasil dihapus permanen dari sistem" };
   }
