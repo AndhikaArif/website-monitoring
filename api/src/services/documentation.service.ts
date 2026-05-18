@@ -116,6 +116,30 @@ export class DocumentationService {
 
     const formattedDate = this.parseReportDate(payload.reportDate);
 
+    // 🎯 VALIDASI BARU (KEBAL TIMEZONE SERVER): Selalu patokan pada Waktu Indonesia Barat
+    const now = new Date();
+    const wibFormatter = new Intl.DateTimeFormat("id-ID", {
+      timeZone: "Asia/Jakarta", // Paksa jadi Waktu Indonesia
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+
+    // Format id-ID menghasilkan "DD/MM/YYYY" (contoh: 19/05/2026)
+    const [wibDay, wibMonth, wibYear] = wibFormatter.format(now).split("/");
+    const todayNumber = parseInt(`${wibYear}${wibMonth}${wibDay}`); // Hasil: 20260519
+
+    // Tanggal dari FE
+    const [reqDay, reqMonth, reqYear] = payload.reportDate.split("-");
+    const requestDateNumber = parseInt(`${reqYear}${reqMonth}${reqDay}`);
+
+    if (requestDateNumber > todayNumber) {
+      throw new AppError(
+        400,
+        "Tidak dapat membuat laporan untuk tanggal di masa depan. Harap masukkan tanggal hari ini atau sebelumnya.",
+      );
+    }
+
     // Cek Constraint @@unique: 1 Project, 1 Hari, 1 Sesi = 1 laporan
     const existing = await prisma.documentation.findFirst({
       where: {
@@ -272,6 +296,31 @@ export class DocumentationService {
       const newDate = payload.reportDate
         ? this.parseReportDate(payload.reportDate)
         : existingDoc.reportDate;
+
+      // 🎯 VALIDASI UPDATE (KEBAL TIMEZONE):
+      if (payload.reportDate) {
+        const now = new Date();
+        const wibFormatter = new Intl.DateTimeFormat("id-ID", {
+          timeZone: "Asia/Jakarta",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        });
+
+        const [wibDay, wibMonth, wibYear] = wibFormatter.format(now).split("/");
+        const todayNumber = parseInt(`${wibYear}${wibMonth}${wibDay}`);
+
+        const [reqDay, reqMonth, reqYear] = payload.reportDate.split("-");
+        const requestDateNumber = parseInt(`${reqYear}${reqMonth}${reqDay}`);
+
+        if (requestDateNumber > todayNumber) {
+          throw new AppError(
+            400,
+            "Tidak dapat mengubah laporan ke tanggal di masa depan.",
+          );
+        }
+      }
+
       const newSession = payload.session ?? existingDoc.session;
 
       const conflict = await prisma.documentation.findFirst({

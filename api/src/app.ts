@@ -15,7 +15,6 @@ import projectRoutes from "./routes/project.route.js";
 import documentationRoutes from "./routes/documentation.route.js";
 import ownerRoutes from "./routes/owner.route.js";
 import { ErrorMiddleware } from "./middlewares/error.middleware.js";
-import { initOrphanedFilesCron } from "./utils/cleanup.cron.js";
 
 class App {
   public app: Application;
@@ -29,7 +28,6 @@ class App {
     this.initializeStatus();
     this.initializeRoutes();
     this.initializeErrorHandler();
-    this.initializeCrons();
   }
 
   private initializeMiddlewares(): void {
@@ -65,11 +63,6 @@ class App {
   private initializeErrorHandler(): void {
     this.app.use(ErrorMiddleware.notFound);
     this.app.use(ErrorMiddleware.global);
-  }
-
-  private initializeCrons(): void {
-    initOrphanedFilesCron();
-    console.info("🕒 [System] Penjadwal Cron latar belakang aktif.");
   }
 
   public listen(): void {
