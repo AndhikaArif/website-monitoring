@@ -8,7 +8,7 @@ import {
   FiClock,
   FiMap,
   FiTarget,
-  FiTrendingUp,
+  FiActivity,
   FiImage,
   FiVideo,
   FiLoader,
@@ -109,13 +109,14 @@ export default function OwnerDocumentationDetailPage() {
                 </p>
               </div>
 
+              {/* Progress Section */}
               <div>
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                  <FiTrendingUp className="text-green-500" /> Progres & Kendala
+                  <FiActivity className="text-blue-500" /> Progres / Kendala
                 </h3>
-                <p className="text-gray-700 leading-relaxed bg-green-50/50 border border-green-100 p-4 rounded-2xl h-full whitespace-pre-wrap">
+                <p className="text-gray-700 leading-relaxed bg-blue-50/50 border border-blue-100 p-4 rounded-2xl h-full whitespace-pre-wrap">
                   {data.progress ||
-                    "Tidak ada rincian progres yang dicantumkan."}
+                    "Tidak ada rincian progres atau kendala yang dicantumkan."}
                 </p>
               </div>
             </div>

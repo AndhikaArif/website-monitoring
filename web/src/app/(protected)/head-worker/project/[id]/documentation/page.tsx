@@ -62,6 +62,11 @@ interface UploadResponseItem {
   id?: string;
 }
 
+const toSentenceCase = (text: string) => {
+  if (!text) return "";
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};
+
 export default function HeadWorkerDocumentationPage() {
   const params = useParams();
   const projectId = params.id as string;
@@ -74,6 +79,7 @@ export default function HeadWorkerDocumentationPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDoc, setEditingDoc] = useState<Documentation | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   // --- STATE PENCARIAN & PAGINASI ---
   const [searchInput, setSearchInput] = useState("");
@@ -249,6 +255,35 @@ export default function HeadWorkerDocumentationPage() {
     } finally {
       setIsUploading(false);
       e.target.value = "";
+    }
+  };
+
+  // --- DRAG AND DROP HANDLERS ---
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); // Mencegah browser membuka gambar secara default
+    e.stopPropagation();
+    if (!isDragging) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      // Kita buat sebuah event buatan (*mock event*) agar bisa meminjam fungsi handleFileUpload yang sudah ada
+      const syntheticEvent = {
+        target: { files },
+      } as React.ChangeEvent<HTMLInputElement>;
+
+      await handleFileUpload(syntheticEvent);
     }
   };
 
@@ -439,7 +474,7 @@ export default function HeadWorkerDocumentationPage() {
                   setSearchInput(e.target.value);
                   setPage(1); // Reset ke halaman 1 saat mengetik
                 }}
-                className="block w-full text-black pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 sm:text-sm transition-all"
+                className="block w-full text-black pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-indigo-500/10 sm:text-sm transition-all"
               />
               {debouncedSearch && (
                 <button
@@ -480,7 +515,7 @@ export default function HeadWorkerDocumentationPage() {
                   }
                   setPage(1);
                 }}
-                className="block w-full text-black px-4 py-2.5 border border-slate-200 rounded-xl leading-5 bg-slate-50 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 sm:text-sm transition-all cursor-pointer"
+                className="block w-full text-black px-4 py-2.5 border border-slate-200 rounded-xl leading-5 bg-slate-50 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-indigo-500/10 sm:text-sm transition-all cursor-pointer"
               />
             </div>
 
@@ -617,14 +652,36 @@ export default function HeadWorkerDocumentationPage() {
                           {doc.task}
                         </p>
 
-                        {doc.progress && (
-                          <div className="mt-4 pt-3 border-t border-slate-100">
-                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">
-                              Progress
-                            </p>
-                            <p className="text-xs text-slate-800 font-medium truncate">
-                              {doc.progress}
-                            </p>
+                        {/* Menampilkan Target dan Progres berdampingan */}
+                        {(doc.target || doc.progress) && (
+                          <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 gap-3">
+                            {doc.target && (
+                              <div>
+                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">
+                                  Target
+                                </p>
+                                <p
+                                  className="text-xs text-slate-800 font-medium truncate"
+                                  title={doc.target}
+                                >
+                                  {doc.target}
+                                </p>
+                              </div>
+                            )}
+
+                            {doc.progress && (
+                              <div>
+                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">
+                                  Progres / Kendala
+                                </p>
+                                <p
+                                  className="text-xs text-slate-800 font-medium truncate"
+                                  title={doc.progress}
+                                >
+                                  {doc.progress}
+                                </p>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -736,7 +793,7 @@ export default function HeadWorkerDocumentationPage() {
                           e.currentTarget.showPicker();
                         }
                       }}
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
                     />
                     {errors.reportDate && (
                       <p className="text-red-500 text-xs mt-1.5 font-medium">
@@ -750,7 +807,7 @@ export default function HeadWorkerDocumentationPage() {
                     </label>
                     <select
                       {...register("session")}
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all appearance-none cursor-pointer"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-indigo-500/10 transition-all appearance-none cursor-pointer"
                     >
                       <option value="PAGI">Pagi</option>
                       <option value="SORE">Sore</option>
@@ -770,8 +827,14 @@ export default function HeadWorkerDocumentationPage() {
                   <input
                     type="text"
                     {...register("workArea")}
+                    onBlur={(e) => {
+                      register("workArea").onBlur(e); // Tetap jalankan onBlur bawaan react-hook-form
+                      setValue("workArea", toSentenceCase(e.target.value), {
+                        shouldValidate: true,
+                      });
+                    }}
                     placeholder="Misal: Dapur / Kamar mandi / Lantai 2"
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
                   />
                   {errors.workArea && (
                     <p className="text-red-500 text-xs mt-1.5 font-medium">
@@ -787,8 +850,14 @@ export default function HeadWorkerDocumentationPage() {
                   <textarea
                     {...register("task")}
                     rows={3}
+                    onBlur={(e) => {
+                      register("task").onBlur(e);
+                      setValue("task", toSentenceCase(e.target.value), {
+                        shouldValidate: true,
+                      });
+                    }}
                     placeholder="Misal: Ngecor / Ngaci/ Bikin Openingan"
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all resize-none"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-indigo-500/10 transition-all resize-none"
                   />
                   {errors.task && (
                     <p className="text-red-500 text-xs mt-1.5 font-medium">
@@ -805,19 +874,31 @@ export default function HeadWorkerDocumentationPage() {
                     <input
                       type="text"
                       {...register("target")}
+                      onBlur={(e) => {
+                        register("target").onBlur(e);
+                        setValue("target", toSentenceCase(e.target.value), {
+                          shouldValidate: true,
+                        });
+                      }}
                       placeholder="Misal: Selesai hari ini"
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">
-                      Progress
+                      Progres / Kendala
                     </label>
                     <input
                       type="text"
                       {...register("progress")}
+                      onBlur={(e) => {
+                        register("progress").onBlur(e);
+                        setValue("progress", toSentenceCase(e.target.value), {
+                          shouldValidate: true,
+                        });
+                      }}
                       placeholder="Misal: 80% / Tinggal finishing"
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
                     />
                   </div>
                 </div>
@@ -828,47 +909,78 @@ export default function HeadWorkerDocumentationPage() {
                     Bukti Lapangan <span className="text-red-500">*</span>
                   </label>
                   <p className="text-xs text-slate-500 mb-3">
-                    Upload foto atau video progres (Maks. 50MB per file).
+                    Upload foto atau video progres (Maks. 50 file, dan 50MB per
+                    file).
                   </p>
 
-                  <div className="relative">
+                  {/* ZONA DRAG & DROP */}
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`relative w-full h-32 flex flex-col items-center justify-center border-2 border-dashed rounded-xl transition-all duration-200 cursor-pointer overflow-hidden ${
+                      isDragging
+                        ? "border-indigo-500 bg-indigo-50/50"
+                        : "border-slate-300 hover:bg-slate-100 hover:border-slate-400 bg-white"
+                    } ${isUploading ? "pointer-events-none opacity-60" : ""}`}
+                  >
+                    {/* INPUT TERSEMBUNYI (Memenuhi seluruh kotak secara tak kasat mata) */}
                     <input
                       type="file"
                       multiple
                       accept="image/*, video/*"
                       onChange={handleFileUpload}
                       disabled={isUploading}
-                      className="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-indigo-50 file:text-emerald-700 hover:file:bg-indigo-100 cursor-pointer disabled:opacity-50"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      title="Klik atau seret file ke sini"
                     />
-                  </div>
 
-                  {isUploading && (
-                    <div className="flex items-center gap-2 mt-4 text-emerald-600">
-                      <svg
-                        className="animate-spin h-5 w-5"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      <span className="text-sm font-semibold">
-                        Mengunggah file ke cloud...
-                      </span>
-                    </div>
-                  )}
+                    {/* TAMPILAN VISUAL KOTAK */}
+                    {isUploading ? (
+                      <div className="flex flex-col items-center text-emerald-600 z-0">
+                        <svg
+                          className="animate-spin h-8 w-8 mb-2"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        <span className="text-sm font-semibold">
+                          Mengunggah...
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center pointer-events-none z-0">
+                        <div
+                          className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-colors ${
+                            isDragging
+                              ? "bg-indigo-100 text-indigo-600"
+                              : "bg-slate-100 text-slate-400"
+                          }`}
+                        >
+                          <FiPlus size={24} />
+                        </div>
+                        <span className="text-sm font-bold text-slate-600">
+                          {isDragging
+                            ? "Lepaskan file di sini!"
+                            : "Klik atau seret file ke area ini"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
                   {errors.files && (
                     <p className="text-red-500 text-xs mt-2 font-medium">

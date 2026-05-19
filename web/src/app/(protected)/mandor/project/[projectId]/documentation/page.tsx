@@ -307,14 +307,36 @@ export default function MandorProjectDocumentationPage() {
                         {doc.task}
                       </p>
 
-                      {doc.progress && (
-                        <div className="mt-4 pt-3 border-t border-slate-100">
-                          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">
-                            Progress Lapangan
-                          </p>
-                          <p className="text-xs text-slate-800 font-medium truncate">
-                            {doc.progress}
-                          </p>
+                      {/* Menampilkan Target dan Progress berdampingan */}
+                      {(doc.target || doc.progress) && (
+                        <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 gap-3">
+                          {doc.target && (
+                            <div>
+                              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">
+                                Target
+                              </p>
+                              <p
+                                className="text-xs text-slate-800 font-medium truncate"
+                                title={doc.target}
+                              >
+                                {doc.target}
+                              </p>
+                            </div>
+                          )}
+
+                          {doc.progress && (
+                            <div>
+                              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">
+                                Progres / Kendala
+                              </p>
+                              <p
+                                className="text-xs text-slate-800 font-medium truncate"
+                                title={doc.progress}
+                              >
+                                {doc.progress}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

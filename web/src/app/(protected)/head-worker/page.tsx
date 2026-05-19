@@ -18,7 +18,6 @@ export default function AssignedProjectsPage() {
   // Jika Backend kamu support filter status untuk Assigned Project, kita aktifkan
   const [status, setStatus] = useState("");
   const [sortBy, setSortBy] = useState("startDate");
-  const [order, setOrder] = useState<"asc" | "desc">("desc");
 
   const router = useRouter();
 
@@ -26,7 +25,7 @@ export default function AssignedProjectsPage() {
     setLoading(true);
     try {
       // Pastikan service getAssignedProjects menerima parameter ini
-      const res = await getAssignedProjects(page, 10, status, sortBy, order);
+      const res = await getAssignedProjects(page, 10, status, sortBy);
       setProjects(res.data || []);
       setTotalPages(res.meta.totalPages || 1);
     } catch (err: unknown) {
@@ -75,7 +74,7 @@ export default function AssignedProjectsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, status, sortBy, order, router]);
+  }, [page, status, sortBy, router]);
 
   useEffect(() => {
     fetchData();
@@ -141,17 +140,6 @@ export default function AssignedProjectsPage() {
               <option value="startDate">Tanggal Mulai</option>
               <option value="projectName">Nama Proyek</option>
             </select>
-
-            {/* Order Button */}
-            <button
-              onClick={() => {
-                setOrder(order === "asc" ? "desc" : "asc");
-                setPage(1);
-              }}
-              className="px-4 py-2 bg-gray-50 rounded-xl text-sm font-medium text-gray-600 hover:bg-emerald-50 hover:text-emerald-600 transition-all border-none cursor-pointer"
-            >
-              {order === "asc" ? "A-Z ↓" : "Z-A ↓"}
-            </button>
           </div>
         </div>
 

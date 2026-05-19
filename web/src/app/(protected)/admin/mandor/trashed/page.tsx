@@ -181,7 +181,7 @@ export default function TrashMandorPage() {
                   <tr>
                     <td colSpan={3} className="text-center p-20 text-gray-400">
                       <FiTrash2 className="mx-auto mb-2 opacity-20" size={48} />
-                      <p>Tidak ada mandor di tong sampah.</p>
+                      <p>Tidak ada mandor di sampah.</p>
                     </td>
                   </tr>
                 )}

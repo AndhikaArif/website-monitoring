@@ -240,12 +240,26 @@ export class DocumentationService {
       }),
     };
 
+    let prismaOrderBy: any;
+
+    if (sortBy === "reportDate") {
+      // Jika disortir berdasarkan tanggal, terapkan urutan 3 lapis yang rapi
+      prismaOrderBy = [
+        { reportDate: order }, // Lapis 1: Tanggal (desc / terbaru di atas)
+        { project: { projectName: "asc" } }, // Lapis 2: Kelompokkan per Proyek/Rumah dulu (Penyelamat untuk Admin!)        { createdBy: { name: "asc" } }, // Lapis 2: Kelompokkan orang yang sama (Sesuai abjad)
+        { session: "asc" }, // Lapis 3: PAGI (P) selalu di kiri, SORE (S) di kanan
+      ];
+    } else {
+      // Jika disortir berdasarkan kolom lain (misal: uploadedAt)
+      prismaOrderBy = { [sortBy]: order };
+    }
+
     const [docs, total] = await Promise.all([
       prisma.documentation.findMany({
         where: whereClause,
         skip,
         take: limit,
-        orderBy: { [sortBy]: order },
+        orderBy: prismaOrderBy,
         include: {
           project: { select: { projectName: true } },
           files: true,

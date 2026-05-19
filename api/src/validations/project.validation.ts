@@ -64,9 +64,20 @@ export const paginationQuery = z.object({
   limit: z.coerce.number().min(1).max(50).default(10),
   status: z.enum(ProjectStatus).optional(),
   sortBy: z
-    .enum(["createdAt", "projectName", "startDate", "status"])
+    .preprocess(
+      (val) => {
+        const allowed = ["createdAt", "projectName", "startDate", "status"];
+        return allowed.includes(String(val)) ? val : undefined;
+      },
+      z.enum(["createdAt", "projectName", "startDate", "status"]),
+    )
     .optional(),
-  order: z.enum(["asc", "desc"]).optional(),
+  order: z
+    .preprocess(
+      (val) => (val === "asc" || val === "desc" ? val : undefined),
+      z.enum(["asc", "desc"]),
+    )
+    .optional(),
 });
 
 export type PaginationQueryDTO = z.infer<typeof paginationQuery>;

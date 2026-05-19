@@ -30,7 +30,11 @@ export class ProjectService {
       : "createdAt";
 
     const order: "asc" | "desc" =
-      query.order === "asc" || query.order === "desc" ? query.order : "desc";
+      query.order === "asc" || query.order === "desc"
+        ? query.order
+        : sortBy === "projectName"
+          ? "asc" // Jika nama proyek, otomatis A - Z
+          : "desc"; // Jika tanggal, otomatis Terbaru - Terlama
 
     return {
       where,

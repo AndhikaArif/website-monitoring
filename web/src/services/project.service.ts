@@ -15,14 +15,15 @@ export const getMyProjects = async (
   limit = 10,
   status = "",
   sortBy = "createdAt",
-  order = "desc",
+  order = "",
 ) => {
   const params = new URLSearchParams({
     page: String(page),
     limit: String(limit),
     ...(status && { status }),
-    sortBy,
-    order,
+    ...(status && { status }),
+    ...(sortBy && { sortBy }),
+    ...(order && { order }), // <-- Hanya dimasukkan ke URL jika 'order' ada isinya ('asc' atau 'desc')
   });
 
   const res = await axios.get<ProjectResponse>(
@@ -38,14 +39,15 @@ export const getMyTrashedProjects = async (
   limit = 10,
   status = "",
   sortBy = "createdAt",
-  order = "desc",
+  order = "",
 ) => {
   const params = new URLSearchParams({
     page: String(page),
     limit: String(limit),
     ...(status && { status }),
-    sortBy,
-    order,
+    ...(status && { status }),
+    ...(sortBy && { sortBy }),
+    ...(order && { order }), // <-- Hanya dimasukkan ke URL jika 'order' ada isinya ('asc' atau 'desc')
   });
 
   const res = await axios.get<ProjectResponse>(
@@ -153,14 +155,15 @@ export const getAssignedProjects = async (
   limit = 10,
   status = "",
   sortBy = "startDate",
-  order = "desc",
+  order = "",
 ) => {
   const params = new URLSearchParams({
     page: String(page),
     limit: String(limit),
     ...(status && { status }),
-    sortBy,
-    order,
+    ...(status && { status }),
+    ...(sortBy && { sortBy }),
+    ...(order && { order }), // <-- Hanya dimasukkan ke URL jika 'order' ada isinya ('asc' atau 'desc')
   });
 
   const res = await axios.get<AssignedProjectResponse>(
@@ -179,14 +182,15 @@ export const getOwnedProjects = async (
   limit = 10,
   status = "",
   sortBy = "startDate",
-  order = "desc",
+  order = "",
 ) => {
   const params = new URLSearchParams({
     page: String(page),
     limit: String(limit),
     ...(status && { status }),
-    sortBy,
-    order,
+    ...(status && { status }),
+    ...(sortBy && { sortBy }),
+    ...(order && { order }), // <-- Hanya dimasukkan ke URL jika 'order' ada isinya ('asc' atau 'desc')
   });
 
   const res = await axios.get<AssignedProjectResponse>(

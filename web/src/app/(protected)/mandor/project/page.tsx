@@ -25,14 +25,13 @@ export default function MyProjectsPage() {
 
   const [status, setStatus] = useState("");
   const [sortBy, setSortBy] = useState("createdAt");
-  const [order, setOrder] = useState<"asc" | "desc">("desc");
 
   const router = useRouter();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getMyProjects(page, 10, status, sortBy, order);
+      const res = await getMyProjects(page, 10, status, sortBy);
       setProjects(res.data || []);
       setTotalPages(res.meta.totalPages || 1);
     } catch (err: unknown) {
@@ -81,7 +80,7 @@ export default function MyProjectsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, status, sortBy, order, router]);
+  }, [page, status, sortBy, router]);
 
   useEffect(() => {
     fetchData();
@@ -184,17 +183,6 @@ export default function MyProjectsPage() {
               <option value="createdAt">Tanggal Mulai</option>
               <option value="projectName">Nama Proyek</option>
             </select>
-
-            {/* Order Button */}
-            <button
-              onClick={() => {
-                setOrder(order === "asc" ? "desc" : "asc");
-                setPage(1);
-              }}
-              className="px-4 py-2 bg-gray-50 rounded-xl text-sm font-medium text-gray-600 hover:bg-purple-50 hover:text-purple-600 transition-all border-none cursor-pointer"
-            >
-              {order === "asc" ? "A-Z ↓" : "Z-A ↓"}
-            </button>
           </div>
         </div>
         {/* TABLE */}

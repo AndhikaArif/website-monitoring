@@ -27,7 +27,6 @@ export default function TrashProjectPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [sortBy, setSortBy] = useState("createdAt");
-  const [order, setOrder] = useState<"asc" | "desc">("desc");
 
   const router = useRouter();
 
@@ -35,7 +34,7 @@ export default function TrashProjectPage() {
     setLoading(true);
     try {
       // Mengirimkan parameter ke service
-      const res = await getMyTrashedProjects(page, 10, "", sortBy, order);
+      const res = await getMyTrashedProjects(page, 10, "", sortBy);
       setProjects(res.data || []);
       setTotalPages(res.meta.totalPages || 1);
     } catch (err: unknown) {
@@ -45,7 +44,7 @@ export default function TrashProjectPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, sortBy, order]); // Trigger re-fetch saat param berubah
+  }, [page, sortBy]); // Trigger re-fetch saat param berubah
 
   useEffect(() => {
     fetchTrashed();
@@ -95,7 +94,7 @@ export default function TrashProjectPage() {
             </button>
             <div>
               <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-                Tong Sampah
+                Sampah
               </h1>
               <p className="text-gray-500 mt-1">
                 Pulihkan proyek yang dihapus.
@@ -119,15 +118,6 @@ export default function TrashProjectPage() {
               <option value="createdAt">Terbaru</option>
               <option value="projectName">Nama Proyek</option>
             </select>
-            <button
-              onClick={() => {
-                setOrder(order === "asc" ? "desc" : "asc");
-                setPage(1);
-              }}
-              className="px-4 py-2 bg-gray-50 rounded-xl text-sm font-medium text-gray-600 hover:bg-purple-50 transition-all border-none cursor-pointer"
-            >
-              {order === "asc" ? "Z-A ↑" : "A-Z ↓"}
-            </button>
           </div>
         </div>
 
