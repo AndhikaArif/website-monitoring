@@ -43,11 +43,9 @@ export default function ProtectedLayout({
 
       // Jika URL yang dikunjungi BUKAN milik Role tersebut
       if (allowedRoot && !pathname.toLowerCase().startsWith(allowedRoot)) {
-        // Jika user berada di root "/" (baru selesai login), arahkan dengan senyap tanpa memarahi
         if (pathname === "/") {
           router.replace(landingPage);
         } else {
-          // Jika benar-benar menyusup ke folder role lain (Misal: Owner maksa masuk ke /admin)
           toast.error("Akses Ditolak: Anda mencoba memasuki area terlarang.", {
             id: "unauthorized-route",
           });

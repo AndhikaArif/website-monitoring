@@ -79,7 +79,7 @@ export default function EditHeadWorkerPage() {
       <div className="min-h-screen flex flex-col justify-center items-center gap-4 bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-solid border-purple-600 border-r-transparent"></div>
         <p className="text-gray-500 font-medium animate-pulse">
-          Mengambil data head worker...
+          Mengambil data kepala tukang...
         </p>
       </div>
     );
@@ -101,9 +101,9 @@ export default function EditHeadWorkerPage() {
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
           {/* HEADER DENGAN GRADIENT UNGU */}
           <div className="bg-linear-to-r from-purple-600 to-purple-700 px-8 py-10 text-white">
-            <h1 className="text-3xl font-bold">Edit Profil Head Worker</h1>
+            <h1 className="text-3xl font-bold">Edit Profil Kepala Tukang</h1>
             <p className="text-purple-100 mt-2 opacity-90">
-              Perbarui informasi akun dan kredensial akses head worker.
+              Perbarui informasi akun dan kredensial akses kepala tukang.
             </p>
           </div>
 

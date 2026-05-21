@@ -30,7 +30,7 @@ export default function CreateHeadWorkerPage() {
           {/* HEADER CARD - Ubah ke Purple */}
           <div className="bg-linear-to-r from-purple-600 to-purple-700 px-8 py-10 text-white">
             <h1 className="text-3xl font-bold flex items-center gap-3">
-              <FiPlusCircle /> Tambah Head Worker Baru
+              <FiPlusCircle /> Tambah Kepala Tukang Baru
             </h1>
             <p className="text-purple-100 mt-2 opacity-90">
               Daftarkan kepala tukang baru untuk mengelola laporan proyek.
@@ -55,8 +55,8 @@ export default function CreateHeadWorkerPage() {
                     values,
                     { withCredentials: true },
                   );
-                  // Perbaikan teks: Head Worker, bukan Mandor
-                  toast.success("Head Worker berhasil dibuat! 🚀");
+                  // Perbaikan teks: Kepala Tukang, bukan Mandor
+                  toast.success("Kepala Tukang berhasil dibuat! 🚀");
                   router.push("/mandor/head-worker");
                 } catch (err: unknown) {
                   if (axios.isAxiosError(err)) {
@@ -93,7 +93,7 @@ export default function CreateHeadWorkerPage() {
                     </label>
                     <Field
                       name="name"
-                      placeholder="Masukkan nama lengkap head worker"
+                      placeholder="Masukkan nama lengkap kepala tukang"
                       className={`w-full px-4 py-3 text-black rounded-xl border outline-none transition-all focus:ring-4 ${
                         errors.name && touched.name
                           ? "border-red-300 focus:ring-red-50"
@@ -161,12 +161,12 @@ export default function CreateHeadWorkerPage() {
                       name="password"
                       label="Password Akun"
                       role="MANDOR"
-                      placeholder="Buat password head worker"
+                      placeholder="Buat password kepala tukang"
                       className="py-3 rounded-xl border-gray-200 focus:border-purple-500 focus:ring-purple-50"
                     />
                     <p className="text-[11px] text-gray-500 mt-2 flex items-start leading-tight">
                       <span className="mr-1 mt-0.5">•</span> Berikan password
-                      ini kepada Head Worker terkait untuk login.
+                      ini kepada kepala tukang terkait untuk login.
                     </p>
                   </div>
 
@@ -191,7 +191,7 @@ export default function CreateHeadWorkerPage() {
                       {isSubmitting ? (
                         <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                       ) : (
-                        "Daftarkan Head Worker"
+                        "Daftarkan Kepala Tukang"
                       )}
                     </button>
                   </div>

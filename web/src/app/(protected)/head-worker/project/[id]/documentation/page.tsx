@@ -909,7 +909,7 @@ export default function HeadWorkerDocumentationPage() {
                     Bukti Lapangan <span className="text-red-500">*</span>
                   </label>
                   <p className="text-xs text-slate-500 mb-3">
-                    Upload foto atau video progres (Maks. 50 file, dan 50MB per
+                    Upload foto atau video progres (Maks. 20 file, dan 50MB per
                     file).
                   </p>
 

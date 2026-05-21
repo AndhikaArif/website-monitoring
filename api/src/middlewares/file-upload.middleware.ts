@@ -29,7 +29,7 @@ export function fileUpload() {
     }),
     limits: {
       fileSize: 1024 * 1024 * 50, // 50MB
-      files: 50,
+      files: 20,
     },
     fileFilter: (req, file, cb) => {
       const allowedExt = [".jpg", ".jpeg", ".png", ".gif", ".mp4"];

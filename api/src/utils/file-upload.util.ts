@@ -21,14 +21,14 @@ export class FileUpload {
       let finalUrl = "";
 
       if (isVideo) {
-        // 🔥 OPTIMASI UNTUK VIDEO:
+        // OPTIMASI UNTUK VIDEO:
         // Tambahkan ".mp4" di belakang public_id agar browser mengenali formatnya
         finalUrl = cloudinary.url(`${uploadResult.public_id}.mp4`, {
           resource_type: "video",
           secure: true, // Pastikan pakai HTTPS
         });
       } else {
-        // 🔥 OPTIMASI UNTUK GAMBAR:
+        // OPTIMASI UNTUK GAMBAR:
         // Tetap pertahankan kompresi otomatis Cloudinary
         finalUrl = cloudinary.url(uploadResult.public_id, {
           resource_type: "image",

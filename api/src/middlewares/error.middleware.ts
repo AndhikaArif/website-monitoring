@@ -1,5 +1,6 @@
 import { type Request, type Response, type NextFunction } from "express";
 import { ZodError } from "zod";
+import multer from "multer";
 
 import { AppError } from "../errors/app.error.js";
 
@@ -27,6 +28,24 @@ export class ErrorMiddleware {
       return res
         .status(error.statusCode)
         .json({ message: error.message, errors: error.errors ?? null });
+    }
+
+    // HANDLE MULTER ERROR (Ukuran file & Jumlah file per request)
+    if (error instanceof multer.MulterError) {
+      let message = "Terjadi kesalahan saat mengunggah berkas.";
+
+      if (error.code === "LIMIT_FILE_SIZE") {
+        message =
+          "Ukuran berkas terlalu besar. Maksimal ukuran yang diperbolehkan adalah 50MB.";
+      } else if (error.code === "LIMIT_FILE_COUNT") {
+        message =
+          "Jumlah berkas terlalu banyak. Maksimal berkas dalam satu kali unggah adalah 20 file.";
+      }
+
+      return res.status(400).json({
+        message,
+        code: error.code, // Menyertakan kode asli multer (opsional, bagus untuk FE)
+      });
     }
 
     const errObj = error as any;

@@ -34,7 +34,7 @@ export default function TrashHeadWorkerPage() {
       setTotalPages(res.meta.totalPages || 1);
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response?.status !== 404) {
-        toast.error("Gagal mengambil data sampah head worker");
+        toast.error("Gagal mengambil data sampah kepala tukang");
       }
     } finally {
       setLoading(false);
@@ -48,12 +48,12 @@ export default function TrashHeadWorkerPage() {
   const handleRestore = async (id: string, name: string) => {
     try {
       await restoreHeadWorker(id);
-      toast.success(`Head Worker "${name}" berhasil dipulihkan`);
+      toast.success(`Kepala Tukang "${name}" berhasil dipulihkan`);
       fetchTrashed();
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         toast.error(
-          err.response?.data?.message || "Gagal memulihkan head worker",
+          err.response?.data?.message || "Gagal memulihkan kepala tukang",
         );
       }
     }
@@ -68,7 +68,7 @@ export default function TrashHeadWorkerPage() {
       return;
     try {
       await hardDeleteHeadWorker(id);
-      toast.success(`Head Worker "${name}" dihapus permanen`);
+      toast.success(`Kepala Tukang "${name}" dihapus permanen`);
       fetchTrashed();
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
@@ -89,7 +89,7 @@ export default function TrashHeadWorkerPage() {
           </button>
           <div>
             <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-              Sampah Head Worker
+              Sampah Kepala Tukang
             </h1>
             <p className="text-gray-500 mt-1">
               Pulihkan kepala tukang yang sebelumnya Anda hapus.

@@ -53,7 +53,7 @@ export default function ProjectDetailPage() {
     kepalaTukangName: string,
   ) => {
     const isConfirmed = window.confirm(
-      `Apakah Anda yakin ingin menghapus ${kepalaTukangName} sebagai penanggung jawab proyek ini?`,
+      `Apakah Anda yakin ingin menghapus ${kepalaTukangName} sebagai kepala tukang proyek ini?`,
     );
 
     if (!isConfirmed) return;
@@ -65,7 +65,7 @@ export default function ProjectDetailPage() {
 
       toast.success(`${kepalaTukangName} berhasil dihapus dari proyek`);
 
-      // Refresh data project agar list head worker langsung terupdate di UI
+      // Refresh data project agar list kepala tukang langsung terupdate di UI
       await fetchDetail();
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
@@ -311,11 +311,11 @@ export default function ProjectDetailPage() {
               </div>
             </div>
 
-            {/* HEAD WORKERS CARD */}
+            {/* KEPALA TUKANG CARD */}
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                  <FiUsers className="text-purple-600" /> Head Worker
+                  <FiUsers className="text-purple-600" /> Kepala Tukang
                 </h3>
                 <button
                   onClick={() =>

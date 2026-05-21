@@ -140,6 +140,22 @@ export class DocumentationService {
       );
     }
 
+    const totalFiles = payload.files?.length ?? 0;
+
+    if (totalFiles < 4) {
+      throw new AppError(
+        400,
+        `Anda mencoba menyimpan ${totalFiles} file, batas minimal adalah 4 file per laporan.`,
+      );
+    }
+
+    if (totalFiles > 20) {
+      throw new AppError(
+        400,
+        `Batas maksimal tercapai. Anda mencoba menyimpan ${totalFiles} file, batas maksimal adalah 20 file per laporan.`,
+      );
+    }
+
     // Cek Constraint @@unique: 1 Project, 1 Hari, 1 Sesi = 1 laporan
     const existing = await prisma.documentation.findFirst({
       where: {
@@ -353,6 +369,22 @@ export class DocumentationService {
           `Laporan sesi ${newSession} di tanggal tersebut sudah ada`,
         );
       }
+    }
+
+    const totalFiles = payload.files?.length ?? 0;
+
+    if (totalFiles < 4) {
+      throw new AppError(
+        400,
+        `Anda mencoba menyimpan ${totalFiles} file, batas minimal adalah 4 file per laporan.`,
+      );
+    }
+
+    if (totalFiles > 20) {
+      throw new AppError(
+        400,
+        `Batas maksimal tercapai. Anda mencoba menyimpan ${totalFiles} file, batas maksimal adalah 20 file per laporan.`,
+      );
     }
 
     // Hapus dari Cloudinary, wipe relasi DB, lalu recreate
