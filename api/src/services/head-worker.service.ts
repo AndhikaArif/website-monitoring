@@ -334,11 +334,16 @@ export class HeadWorkerServices {
 
         // 3. Putuskan relasi dari mandor agar hilang sepenuhnya dari daftar sistem mandor
         mandorId: null,
+
+        // 4. Kosongkan seluruh penugasan proyek (Unassign All)
+        assignedProjects: {
+          set: [],
+        },
       },
     });
 
     return {
-      message: "Kepala TUkang berhasil dihapus permanen dari sistem",
+      message: "Kepala Tukang berhasil dihapus permanen dari sistem",
     };
   }
 }

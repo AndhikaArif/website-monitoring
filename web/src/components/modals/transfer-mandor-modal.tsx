@@ -89,12 +89,21 @@ export default function TransferMandorModal({
   // Eksekusi pengiriman form pemindahan
   const onSubmit = async (data: AdminTransferMandorFormValues) => {
     try {
-      await adminTransferMandor(project.id, {
+      // 1. Tangkap response yang dikembalikan oleh fungsi service
+      const result = await adminTransferMandor(project.id, {
         newMandorId: data.newMandorId,
         keepKepalaTukang: data.keepKepalaTukang,
       });
 
-      toast.success("Mandor penanggung jawab berhasil dipindahtangankan!");
+      // 2. Ekstrak pesan dinamis dengan aman (antisipasi struktur response langsung atau response.data)
+      const successMessage =
+        result?.message ||
+        result?.data?.message ||
+        "Mandor penanggung jawab berhasil dipindahtugaskan!";
+
+      // 3. Tampilkan pesan spesifik dari Backend lewat toast
+      toast.success(successMessage);
+
       onClose(true); // Tutup modal dan instruksikan dasbor untuk menyegarkan tabel
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {

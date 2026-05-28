@@ -70,7 +70,10 @@ export class OwnerServices {
     });
 
     if (!existingOwner) {
-      throw new AppError(404, "Owner tidak ditemukan");
+      throw new AppError(
+        403,
+        "Akses ditolak. Anda hanya dapat mengedit data Klien yang Anda daftarkan sendiri.",
+      );
     }
 
     if (data.email || data.username) {
@@ -128,7 +131,10 @@ export class OwnerServices {
     });
 
     if (!existingOwner) {
-      throw new AppError(404, "Owner tidak ditemukan");
+      throw new AppError(
+        403,
+        "Akses ditolak. Anda hanya dapat manghapus data Klien yang Anda daftarkan sendiri.",
+      );
     }
 
     await prisma.user.update({
@@ -151,7 +157,14 @@ export class OwnerServices {
         id: ownerId,
         role: UserRole.OWNER,
         deletedAt: null,
-        mandorId: currentUser.id,
+        OR: [
+          { mandorId: currentUser.id },
+          {
+            ownedProjects: {
+              some: { mandorId: currentUser.id, deletedAt: null },
+            },
+          },
+        ],
       },
       select: {
         id: true,
@@ -181,7 +194,14 @@ export class OwnerServices {
     const whereClause: any = {
       role: UserRole.OWNER,
       deletedAt: null,
-      mandorId: currentUser.id,
+      OR: [
+        { mandorId: currentUser.id }, // Didaftarkan oleh Mandor ini
+        {
+          ownedProjects: {
+            some: { mandorId: currentUser.id, deletedAt: null },
+          },
+        }, // Punya proyek aktif di bawah Mandor ini
+      ],
       ...(search && {
         OR: [
           { name: { contains: search, mode: "insensitive" } },

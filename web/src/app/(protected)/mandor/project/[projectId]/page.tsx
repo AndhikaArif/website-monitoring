@@ -15,6 +15,7 @@ import {
   FiClock,
   FiTrash2,
   FiUser,
+  FiLock,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import {
@@ -294,14 +295,23 @@ export default function ProjectDetailPage() {
                       </div>
                     </div>
 
-                    {/* TOMBOL DELETE (UNASSIGN OWNER) */}
-                    <button
-                      onClick={handleUnassignOwner}
-                      className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all border-none cursor-pointer"
-                      title="Lepas klien dari proyek"
-                    >
-                      <FiTrash2 size={16} />
-                    </button>
+                    {/* PROTEKSI DI UI: Tombol hapus hanya muncul jika Mandor ini adalah pemilik/pembuat akun Owner tersebut */}
+                    {data.owner.mandorId === data.mandorId ? (
+                      <button
+                        onClick={handleUnassignOwner}
+                        className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all border-none cursor-pointer"
+                        title="Lepas klien dari proyek"
+                      >
+                        <FiTrash2 size={16} />
+                      </button>
+                    ) : (
+                      <span
+                        className="text-[10px] text-amber-500 bg-amber-50 px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-all font-semibold"
+                        title="Hanya Mandor Utama yang bisa melepas klien ini"
+                      >
+                        <FiLock size={16} />
+                      </span>
+                    )}
                   </div>
                 ) : (
                   <p className="text-xs text-gray-400 italic text-center py-4">

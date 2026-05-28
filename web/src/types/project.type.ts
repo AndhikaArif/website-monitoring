@@ -39,6 +39,7 @@ export interface ProjectOwner {
   name: string;
   username: string;
   email: string;
+  mandorId: string;
 }
 
 export interface LatestDocumentation {
@@ -56,6 +57,7 @@ export interface ProjectDetail {
   endDate?: string | null;
   description?: string | null;
   createdAt: string;
+  mandorId: string;
   kepalaTukang: HeadWorker[];
   owner?: ProjectOwner | null;
   latestDocumentation?: LatestDocumentation | null;

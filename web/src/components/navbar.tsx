@@ -204,7 +204,7 @@ export default function Navbar() {
 
           {/* Mobile Toggle Button */}
           <button
-            className={`md:hidden text-2xl z-50 ${isOpen ? "text-red-500" : "text-gray-700"} cursor-pointer`}
+            className={`md:hidden text-2xl relative z-55 ${isOpen ? "text-red-500" : "text-gray-700"} cursor-pointer`}
             onClick={() => setIsOpen(!isOpen)}
           >
             {isOpen ? <IoClose /> : <IoMenu />}
@@ -214,7 +214,7 @@ export default function Navbar() {
         {/* Overlay Background */}
         {isOpen && (
           <div
-            className="fixed inset-0 bg-black/20 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 md:hidden"
             onClick={() => setIsOpen(false)}
           />
         )}
@@ -222,7 +222,7 @@ export default function Navbar() {
         {/* Sidebar Menu */}
         <div
           className={`
-          fixed top-0 right-0 h-screen w-64 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-60 md:hidden
+          fixed top-0 right-0 h-screen w-64 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 md:hidden
           ${isOpen ? "translate-x-0" : "translate-x-full"}
         `}
         >
@@ -235,7 +235,7 @@ export default function Navbar() {
                   onClick={() => setIsOpen(false)}
                   className="text-gray-600 font-medium"
                 >
-                  Daftar Mandor
+                  Mandor
                 </Link>
 
                 <Link
@@ -256,7 +256,7 @@ export default function Navbar() {
                   onClick={() => setIsOpen(false)}
                   className="text-gray-600 font-medium"
                 >
-                  Dokumentasi
+                  Proyek
                 </Link>
 
                 <Link
@@ -264,7 +264,7 @@ export default function Navbar() {
                   onClick={() => setIsOpen(false)}
                   className="text-gray-600 font-medium"
                 >
-                  Head Worker
+                  Kepala Tukang
                 </Link>
 
                 <Link

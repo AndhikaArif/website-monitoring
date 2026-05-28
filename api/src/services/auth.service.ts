@@ -312,16 +312,18 @@ export class AuthServices {
 
     // Eksekusi Penghapusan Massal dalam 1 Transaksi agar aman
     await prisma.$transaction(async (tx) => {
-      // Cari semua bawahan (Kepala Tukang) milik Mandor ini
+      // Cari semua bawahan Kepala Tukang dan Owner milik Mandor ini
       const subordinates = await tx.user.findMany({
         where: {
           mandorId: userId,
-          role: UserRole.KEPALA_TUKANG,
+          role: {
+            in: [UserRole.KEPALA_TUKANG, UserRole.OWNER],
+          },
         },
         select: { id: true },
       });
 
-      // Lakukan "Scramble" massal untuk semua Kepala Tukang tersebut
+      // Lakukan "Scramble" massal untuk semua Kepala Tukang dan Owner tersebut
       if (subordinates.length > 0) {
         for (const sub of subordinates) {
           const timestamp = Date.now();
