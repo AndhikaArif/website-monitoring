@@ -4,8 +4,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_DOMAIN;
 
 export interface UpdateProfilePayload {
   name?: string;
-  phoneNumber?: string;
-  address?: string;
+  phoneNumber?: string | null;
+  address?: string | null;
 }
 
 export const getMyProfile = async () => {

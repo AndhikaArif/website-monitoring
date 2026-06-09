@@ -1,14 +1,14 @@
 "use client";
 
 import { IoClose } from "react-icons/io5";
-import { FiPhone, FiMapPin, FiMail } from "react-icons/fi";
-import { Mandor } from "@/types/mandor.type";
-import { useAuth } from "@/context/auth-context";
+import { FiMapPin, FiMail } from "react-icons/fi";
+import { FaWhatsapp } from "react-icons/fa";
+import { ProfileTarget } from "@/types/profile.type";
 
 interface ViewProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
-  user: Mandor | null;
+  user: ProfileTarget | null;
 }
 
 function getModalTheme(role?: string) {
@@ -46,16 +46,29 @@ function getModalTheme(role?: string) {
   }
 }
 
+// Fungsi untuk memastikan format nomor valid untuk wa.me
+function formatWhatsAppNumber(phone?: string | null) {
+  if (!phone) return ""; // !phone akan menangkap undefined, null, maupun string kosong ("")
+  let cleaned = phone.replace(/\D/g, ""); // Buang semua karakter selain angka (spasi, strip, +)
+
+  // Jika diawali 0, ubah jadi 62
+  if (cleaned.startsWith("0")) {
+    cleaned = "62" + cleaned.substring(1);
+  }
+  return cleaned;
+}
+
 export default function ViewProfileModal({
   isOpen,
   onClose,
   user: targetUser,
 }: ViewProfileModalProps) {
-  const { user: currentUser } = useAuth();
-
   if (!isOpen || !targetUser) return null;
 
-  const theme = getModalTheme(currentUser?.role);
+  // Asumsi role targetUser ada di properti role, jika tidak ada, fallback ke tema default
+  const theme = getModalTheme(targetUser.role);
+
+  const waNumber = formatWhatsAppNumber(targetUser.phoneNumber);
 
   return (
     <div
@@ -90,9 +103,16 @@ export default function ViewProfileModal({
               <h4 className="font-bold text-gray-900 text-base">
                 {targetUser.name}
               </h4>
-              <span className="px-2.5 py-0.5 bg-gray-100 text-gray-600 rounded-md text-xs font-mono lowercase">
-                @{targetUser.username}
-              </span>
+              {/* Proteksi Username jika tidak tersedia */}
+              {targetUser.username ? (
+                <span className="px-2.5 py-0.5 bg-gray-100 text-gray-600 rounded-md text-xs font-mono lowercase">
+                  @{targetUser.username}
+                </span>
+              ) : (
+                <span className="text-xs text-gray-400 italic">
+                  ID tidak tersedia
+                </span>
+              )}
             </div>
           </div>
 
@@ -102,19 +122,39 @@ export default function ViewProfileModal({
               <FiMail className="w-4 h-4 text-gray-400 mt-1 shrink-0" />
               <div>
                 <p className="text-xs text-gray-400 font-medium">Email</p>
-                <p className="font-medium text-gray-800">{targetUser.email}</p>
+                {/* Proteksi Email jika tidak tersedia */}
+                <p
+                  className={`font-medium ${targetUser.email ? "text-gray-800" : "text-gray-400 italic"}`}
+                >
+                  {targetUser.email || "Tidak tersedia"}
+                </p>
               </div>
             </div>
 
+            {/* Nomor HP dengan WhatsApp Link */}
             <div className="flex items-start gap-3">
-              <FiPhone className="w-4 h-4 text-gray-400 mt-1 shrink-0" />
+              <FaWhatsapp className="w-4 h-4 text-gray-400 mt-1 shrink-0" />
               <div>
                 <p className="text-xs text-gray-400 font-medium">Nomor HP</p>
-                <p
-                  className={`font-medium ${targetUser.phoneNumber ? "text-gray-800" : "text-gray-400 italic"}`}
-                >
-                  {targetUser.phoneNumber || "Belum diisi"}
-                </p>
+                {targetUser.phoneNumber ? (
+                  <a
+                    href={`https://wa.me/${waNumber}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1.5 transition-colors"
+                    title="Chat via WhatsApp"
+                  >
+                    {targetUser.phoneNumber}
+                    {/* Opsional: Teks indikator kecil */}
+                    <span className="text-[10px] bg-emerald-50 px-1.5 py-0.5 rounded text-emerald-600">
+                      Hubungi WA
+                    </span>
+                  </a>
+                ) : (
+                  <p className="font-medium text-gray-400 italic">
+                    Belum diisi
+                  </p>
+                )}
               </div>
             </div>
 
@@ -138,7 +178,7 @@ export default function ViewProfileModal({
         <div className="px-6 py-3 bg-gray-50 border-t border-gray-100 flex justify-end">
           <button
             onClick={onClose}
-            className={`px-5 py-2 bg-gray-900 hover:bg-black text-white font-medium text-sm rounded-xl transition-colors cursor-pointer ${theme.button}`}
+            className={`px-5 py-2 text-white font-medium text-sm rounded-xl transition-colors cursor-pointer ${theme.button}`}
           >
             Tutup
           </button>

@@ -19,12 +19,6 @@ export const updateProfileSchema = z.object({
     .min(5, "Alamat minimal 5 karakter")
     .optional()
     .or(z.literal("")),
-
-  avatarUrl: z
-    .string()
-    .url("Format URL foto profil tidak valid")
-    .optional()
-    .or(z.literal("")),
 });
 
 export type UpdateProfileFormValues = z.infer<typeof updateProfileSchema>;

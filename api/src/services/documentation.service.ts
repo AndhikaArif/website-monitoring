@@ -22,20 +22,6 @@ export class DocumentationService {
     return new Date(`${year}-${month}-${day}T00:00:00Z`);
   }
 
-  private buildQueryOptions(query: PaginationQueryDTO) {
-    const page = Math.max(query.page || 1, 1);
-    const limit = query.limit || 10;
-    const skip = (page - 1) * limit;
-
-    const sortBy: SortField = ALLOWED_SORT.includes(query.sortBy as SortField)
-      ? (query.sortBy as SortField)
-      : "reportDate"; // Default sorting untuk laporan biasanya tanggal kerja
-
-    const order: "asc" | "desc" = query.order === "asc" ? "asc" : "desc";
-
-    return { page, limit, skip, sortBy, order };
-  }
-
   async getByIdAndValidateOwnership(id: string, currentUser: IExistingUser) {
     const doc = await prisma.documentation.findUnique({
       where: { id },
@@ -48,6 +34,7 @@ export class DocumentationService {
             ownerId: true,
             // pengecekan daftar kepala tukang di proyek ini
             kepalaTukang: { select: { id: true, name: true, username: true } },
+            createdAt: true,
           },
         },
         files: true,
@@ -102,11 +89,15 @@ export class DocumentationService {
       );
     }
 
-    // SECURITY FIX: Pastikan Kepala Tukang terdaftar di project ini
+    // Pastikan Kepala Tukang terdaftar di project ini
     const projectAssignment = await prisma.project.findFirst({
       where: {
         id: payload.projectId,
         kepalaTukang: { some: { id: currentUser.id } },
+      },
+      select: {
+        id: true,
+        createdAt: true, //  Ambil tanggal dibuatnya proyek dari DB
       },
     });
 
@@ -116,7 +107,18 @@ export class DocumentationService {
 
     const formattedDate = this.parseReportDate(payload.reportDate);
 
-    // 🎯 VALIDASI BARU (KEBAL TIMEZONE SERVER): Selalu patokan pada Waktu Indonesia Barat
+    // Mencegah laporan sebelum proyek dimulai
+    const projectStartDate = new Date(projectAssignment.createdAt);
+    projectStartDate.setUTCHours(0, 0, 0, 0); // Set ke jam 00:00 agar perbandingan adil per hari
+
+    if (formattedDate < projectStartDate) {
+      throw new AppError(
+        400,
+        "Tidak dapat membuat laporan untuk tanggal sebelum proyek resmi didaftarkan/dimulai.",
+      );
+    }
+
+    // (KEBAL TIMEZONE SERVER): Selalu patokan pada Waktu Indonesia Barat
     const now = new Date();
     const wibFormatter = new Intl.DateTimeFormat("id-ID", {
       timeZone: "Asia/Jakarta", // Paksa jadi Waktu Indonesia
@@ -162,6 +164,7 @@ export class DocumentationService {
         projectId: payload.projectId,
         reportDate: formattedDate,
         session: payload.session,
+        createdById: currentUser.id,
       },
     });
 
@@ -209,7 +212,10 @@ export class DocumentationService {
       throw new AppError(403, "Akses ditolak untuk role Anda.");
     }
 
-    const { page, limit, skip, sortBy, order } = this.buildQueryOptions(query);
+    const sortBy = ALLOWED_SORT.includes(query.sortBy as SortField)
+      ? (query.sortBy as SortField)
+      : "reportDate";
+    const order = query.order === "asc" ? "asc" : "desc";
 
     // Tentukan filter dasar (Visibility/Penglihatan) berdasarkan Role
     let roleFilter = {};
@@ -229,6 +235,29 @@ export class DocumentationService {
       roleFilter = { project: { ownerId: currentUser.id } }; // Klien cuma lihat laporan dari rumahnya
     }
 
+    // Tentukan rentang waktu jika frontend mengirim parameter bulan dan tahun
+    let dateRangeFilter = {};
+
+    if (query.month && query.year) {
+      // JavaScript menghitung bulan dari 0 (0 = Januari, 5 = Juni)
+      const targetMonth = Number(query.month) - 1;
+      const targetYear = Number(query.year);
+
+      // Tanggal 1 di bulan tersebut, jam 00:00:00
+      const startDate = new Date(targetYear, targetMonth, 1);
+
+      // Tanggal terakhir di bulan tersebut (menggunakan 0 di parameter hari akan menghasilkan hari terakhir bulan sebelumnya)
+      const endDate = new Date(targetYear, targetMonth + 1, 0, 23, 59, 59, 999);
+
+      // Tambahkan filter ini untuk Prisma
+      dateRangeFilter = {
+        reportDate: {
+          gte: startDate,
+          lte: endDate,
+        },
+      };
+    }
+
     let searchDate: Date | undefined;
     if (query.search) {
       // Memeriksa apakah pengguna mengetik format DD-MM-YYYY
@@ -245,6 +274,7 @@ export class DocumentationService {
 
     const whereClause: any = {
       ...roleFilter,
+      ...dateRangeFilter,
       ...(query.status && { project: { status: query.status } }), // Filter status project jika perlu
       ...(query.projectId && { projectId: query.projectId }),
       ...(query.search && {
@@ -273,8 +303,6 @@ export class DocumentationService {
     const [docs, total] = await Promise.all([
       prisma.documentation.findMany({
         where: whereClause,
-        skip,
-        take: limit,
         orderBy: prismaOrderBy,
         include: {
           project: { select: { projectName: true } },
@@ -285,9 +313,85 @@ export class DocumentationService {
       prisma.documentation.count({ where: whereClause }),
     ]);
 
+    // Pengelompokan berdasarkan tanggal
+    const groupedDocsMap = new Map();
+
+    docs.forEach((doc) => {
+      // Ambil format YYYY-MM-DD sebagai referensi pengelompokan
+      const dateString = doc.reportDate.toISOString().split("T")[0];
+
+      // Kunci unik gabungan agar data tidak tercampur jika melihat banyak proyek sekaligus
+      const groupKey = `${doc.projectId}_${dateString}`;
+
+      // Jika wadah untuk tanggal ini belum ada, buat struktur dasarnya
+      if (!groupedDocsMap.has(groupKey)) {
+        groupedDocsMap.set(groupKey, {
+          projectId: doc.projectId,
+          projectName: doc.project.projectName,
+          reportDate: doc.reportDate,
+          sessions: {
+            PAGI: [],
+            SORE: [],
+          },
+          // TRACKING: Mengetahui kondisi asli data di Database
+          existingSessions: {
+            PAGI: false,
+            SORE: false,
+          },
+        });
+      }
+
+      // Masukkan detail dokumen ke dalam slot sesi yang sesuai (PAGI atau SORE)
+      groupedDocsMap.get(groupKey).sessions[doc.session].push(doc);
+
+      // Karena dokumen ini lolos filter pencarian, otomatis statusnya ADA di DB
+      groupedDocsMap.get(groupKey).existingSessions[doc.session] = true;
+    });
+
+    // Jika user sedang melakukan pencarian teks, perkaya info data asli dari DB
+    if (query.search && docs.length > 0) {
+      const uniquePairs = Array.from(groupedDocsMap.values()).map((g) => ({
+        projectId: g.projectId,
+        reportDate: g.reportDate,
+      }));
+
+      // Tarik info sesi apa saja yang sebenarnya eksis di DB untuk tanggal-tanggal yang COCOK ini
+      const realSessions = await prisma.documentation.findMany({
+        where: {
+          OR: uniquePairs.map((p) => ({
+            projectId: p.projectId,
+            reportDate: p.reportDate,
+          })),
+        },
+        select: {
+          projectId: true,
+          reportDate: true,
+          session: true,
+        },
+      });
+
+      // Tandai true jika sesinya memang ada di DB asli
+      realSessions.forEach((rs) => {
+        const dateString = rs.reportDate.toISOString().split("T")[0];
+        const groupKey = `${rs.projectId}_${dateString}`;
+        if (groupedDocsMap.has(groupKey)) {
+          groupedDocsMap.get(groupKey).existingSessions[rs.session] = true;
+        }
+      });
+    } else if (!query.search) {
+      // Jika tidak sedang searching, kondisi asli DB pasti sama dengan panjang array hasil filter
+      groupedDocsMap.forEach((group) => {
+        group.existingSessions.PAGI = group.sessions.PAGI.length > 0;
+        group.existingSessions.SORE = group.sessions.SORE.length > 0;
+      });
+    }
+
+    // Ubah kembali Map menjadi bentuk Array untuk dikirim ke frontend
+    const finalGroupedData = Array.from(groupedDocsMap.values());
+
     return {
-      data: docs,
-      meta: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 },
+      data: finalGroupedData,
+      meta: { total },
     };
   }
 
@@ -327,7 +431,7 @@ export class DocumentationService {
         ? this.parseReportDate(payload.reportDate)
         : existingDoc.reportDate;
 
-      // 🎯 VALIDASI UPDATE (KEBAL TIMEZONE):
+      //  VALIDASI UPDATE (KEBAL TIMEZONE):
       if (payload.reportDate) {
         const now = new Date();
         const wibFormatter = new Intl.DateTimeFormat("id-ID", {
@@ -343,10 +447,22 @@ export class DocumentationService {
         const [reqDay, reqMonth, reqYear] = payload.reportDate.split("-");
         const requestDateNumber = parseInt(`${reqYear}${reqMonth}${reqDay}`);
 
+        // Mencegah update ke tanggal masa depan
         if (requestDateNumber > todayNumber) {
           throw new AppError(
             400,
             "Tidak dapat mengubah laporan ke tanggal di masa depan.",
+          );
+        }
+
+        // Mencegah update ke tanggal sebelum proyek dimulai
+        const projectStartDate = new Date(existingDoc.project.createdAt);
+        projectStartDate.setUTCHours(0, 0, 0, 0);
+
+        if (newDate < projectStartDate) {
+          throw new AppError(
+            400,
+            "Tidak dapat mengubah laporan ke tanggal sebelum proyek resmi didaftarkan/dimulai.",
           );
         }
       }
@@ -432,10 +548,7 @@ export class DocumentationService {
 
   async delete(id: string, currentUser: IExistingUser) {
     if (currentUser.role !== UserRole.KEPALA_TUKANG) {
-      throw new AppError(
-        403,
-        "Hanya kepala tukang yang bisa delete dokumentasi",
-      );
+      throw new AppError(403, "Hanya kepala tukang yang bisa hapus laporan");
     }
 
     const existingDoc = await this.getByIdAndValidateOwnership(id, currentUser);
@@ -459,15 +572,27 @@ export class DocumentationService {
       );
     }
 
-    // Hapus semua file terkait di Cloudinary
-    const deletePromises = existingDoc.files.map((file) =>
-      cloudinary.uploader.destroy(file.cloudinaryId),
-    );
-    await Promise.all(deletePromises);
-
-    return await prisma.documentation.delete({
+    const deletedDoc = await prisma.documentation.delete({
       where: { id },
     });
+
+    // Hapus semua file terkait di Cloudinary
+    if (existingDoc.files && existingDoc.files.length > 0) {
+      try {
+        const deletePromises = existingDoc.files.map((file) =>
+          cloudinary.uploader.destroy(file.cloudinaryId),
+        );
+        await Promise.all(deletePromises);
+      } catch (error) {
+        // Jika Cloudinary gagal/timeout, tangkap errornya agar tidak menggagalkan response sukses
+        console.error(
+          `[Cloudinary Cleanup Error] Gagal menghapus aset untuk laporan ${id}:`,
+          error,
+        );
+      }
+    }
+
+    return deletedDoc;
   }
 
   async uploadFiles(files: Express.Multer.File[]) {
@@ -478,48 +603,51 @@ export class DocumentationService {
     cloudinaryId: string,
     fileType?: "VIDEO" | "PHOTO",
   ) {
-    // 🎯 Langsung panggil utilitasnya, karena try-catch sudah ada di dalam uploader
+    // Langsung panggil utilitasnya, karena try-catch sudah ada di dalam uploader
     return await uploader.deleteFromCloudinary(cloudinaryId, fileType);
   }
 
-  // --- FUNGSI DARURAT KHUSUS ADMIN ---
-
   async adminDeleteDocumentation(id: string, currentUser: IExistingUser) {
-    // 1. Lapisan Keamanan Mutlak: Hanya untuk Admin
     if (currentUser.role !== UserRole.ADMIN) {
       throw new AppError(
         403,
-        "Akses ditolak. Hanya Admin yang memiliki wewenang untuk menghapus sepihak arsip dokumentasi sistem.",
+        "Akses ditolak. Hanya Admin yang memiliki wewenang untuk menghapus sepihak laporan sistem.",
       );
     }
 
-    // 2. Cari dokumen target beserta lampiran file di dalamnya
+    // Cari laporan target beserta lampiran file di dalamnya
     const existingDoc = await prisma.documentation.findUnique({
       where: { id },
       include: { files: true },
     });
 
     if (!existingDoc) {
-      throw new AppError(404, "Arsip dokumentasi target tidak ditemukan.");
+      throw new AppError(404, "Laporan target tidak ditemukan.");
     }
 
-    // 3. Bersihkan aset berat (Foto/Video) dari server Cloudinary terlebih dahulu
-    if (existingDoc.files && existingDoc.files.length > 0) {
-      const deletePromises = existingDoc.files.map((file) =>
-        cloudinary.uploader.destroy(file.cloudinaryId),
-      );
-      await Promise.all(deletePromises);
-    }
-
-    // 4. Hapus baris induk dari PostgreSQL
-    // (Baris data di tabel DocumentationFile akan otomatis lenyap berkat aturan onDelete: Cascade)
+    // (Aturan onDelete: Cascade akan otomatis menghapus relasi di tabel DocumentationFile)
     await prisma.documentation.delete({
       where: { id },
     });
 
+    // Bersihkan aset berat (Foto/Video) dari server Cloudinary terlebih dahulu
+    if (existingDoc.files && existingDoc.files.length > 0) {
+      try {
+        const deletePromises = existingDoc.files.map((file) =>
+          cloudinary.uploader.destroy(file.cloudinaryId),
+        );
+        await Promise.all(deletePromises);
+      } catch (error) {
+        // Tangkap error pihak ketiga agar alur aplikasi untuk admin tetap berjalan lancar
+        console.error(
+          `[Cloudinary Admin Cleanup Error] Gagal menghapus aset untuk dokumen ${id}:`,
+          error,
+        );
+      }
+    }
+
     return {
-      message:
-        "Arsip dokumentasi beserta lampiran fisiknya berhasil dihapus oleh Admin.",
+      message: "Laporan beserta dokumentasinya berhasil dihapus oleh Admin.",
     };
   }
 }

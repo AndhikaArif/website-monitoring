@@ -25,14 +25,16 @@ import {
 import type { Documentation } from "@/types/documentation.type";
 
 export default function AdminDocumentationDetailPage() {
-  const { projectId, documentationId } = useParams() as {
-    projectId: string;
-    documentationId: string;
-  };
+  // ✅ PERBAIKAN 1: Pengambilan parameter URL yang aman
+  const params = useParams();
+  const urlProjectId = (params.projectId || params.id) as string;
+  const documentationId = params.documentationId as string;
+
   const router = useRouter();
 
   const [data, setData] = useState<Documentation | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false); // ✅ PERBAIKAN 2: State loading khusus tombol hapus
 
   const fetchDetail = useCallback(async () => {
     try {
@@ -63,11 +65,13 @@ export default function AdminDocumentationDetailPage() {
     if (!isConfirmed) return;
 
     try {
+      setIsDeleting(true);
       await adminDeleteDocumentation(documentationId);
       toast.success("Laporan berhasil dibumihanguskan dari sistem");
 
       // Jika sukses, tendang Admin kembali ke halaman daftar laporan proyek
-      router.push(`/admin/project/${projectId}/documentation`);
+      const finalProjectId = urlProjectId || data?.projectId;
+      router.push(`/admin/project/${finalProjectId}/documentation`);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         toast.error(
@@ -77,6 +81,17 @@ export default function AdminDocumentationDetailPage() {
       } else {
         toast.error("Terjadi kesalahan sistem saat menghapus data.");
       }
+      setIsDeleting(false); // Reset state jika gagal
+    }
+  };
+
+  // ✅ PERBAIKAN 3: Fallback navigasi mundur
+  const handleGoBack = () => {
+    const finalProjectId = urlProjectId || data?.projectId;
+    if (finalProjectId) {
+      router.push(`/admin/project/${finalProjectId}/documentation`);
+    } else {
+      router.back();
     }
   };
 
@@ -88,7 +103,20 @@ export default function AdminDocumentationDetailPage() {
     );
   }
 
-  if (!data) return null;
+  // ✅ PERBAIKAN 4: UI state kosong
+  if (!data) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-center p-4">
+        <p className="text-gray-500 mb-4">Detail laporan tidak ditemukan.</p>
+        <button
+          onClick={handleGoBack}
+          className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors cursor-pointer border-none"
+        >
+          Kembali ke Daftar Laporan
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8 text-black">
@@ -96,23 +124,29 @@ export default function AdminDocumentationDetailPage() {
         {/* NAVIGASI & AKSI KHUSUS ADMIN */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <button
-            onClick={() =>
-              router.push(`/admin/project/${projectId}/documentation`)
-            }
-            className="flex items-center text-gray-500 hover:text-indigo-600 transition-colors group bg-transparent border-none cursor-pointer font-medium"
+            onClick={handleGoBack}
+            className="flex items-center text-gray-500 hover:text-indigo-600 transition-colors group bg-transparent border-none cursor-pointer font-medium text-sm"
           >
-            <FiChevronLeft className="mr-1 group-hover:-translate-x-1 transition-transform" />
-            Kembali ke Daftar Audit Laporan
+            <FiChevronLeft
+              className="mr-1 group-hover:-translate-x-1 transition-transform"
+              size={18}
+            />
+            Kembali ke Daftar Laporan Harian
           </button>
 
           {/* Tombol Hapus Paksa di Dalam Halaman Detail */}
           <button
             onClick={handleDelete}
-            className="flex items-center gap-2 px-4 py-2.5 bg-red-50 text-red-600 hover:bg-red-500 hover:text-white rounded-xl transition-all font-bold text-sm cursor-pointer border border-red-100 hover:border-red-500 shadow-sm"
+            disabled={isDeleting}
+            className="flex items-center gap-2 px-4 py-2.5 bg-red-50 text-red-600 hover:bg-red-500 hover:text-white rounded-xl transition-all font-bold text-sm cursor-pointer border border-red-100 hover:border-red-500 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             title="Bumihanguskan Laporan Sepihak"
           >
-            <FiTrash2 size={16} />
-            Hapus Laporan Paksa
+            {isDeleting ? (
+              <FiLoader className="animate-spin" size={16} />
+            ) : (
+              <FiTrash2 size={16} />
+            )}
+            {isDeleting ? "Menghapus..." : "Hapus Laporan Paksa"}
           </button>
         </div>
 
@@ -120,7 +154,13 @@ export default function AdminDocumentationDetailPage() {
           {/* INFO DETAIL TUGAS */}
           <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
             <div className="flex flex-wrap items-center gap-3 mb-4">
-              <span className="bg-indigo-100 text-indigo-700 px-4 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5">
+              <span
+                className={`px-4 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border tracking-wider ${
+                  data.session === "PAGI"
+                    ? "bg-amber-50 text-amber-700 border-amber-200/40"
+                    : "bg-blue-50 text-blue-700 border-blue-200/40"
+                }`}
+              >
                 <FiClock size={14} /> Sesi {data.session}
               </span>
               <span className="text-gray-500 text-sm font-medium">
@@ -189,6 +229,7 @@ export default function AdminDocumentationDetailPage() {
                     ? new Date(data.uploadedAt).toLocaleDateString("id-ID", {
                         day: "numeric",
                         month: "short",
+                        year: "numeric", // ✅ PERBAIKAN 5: Tambah format tahun
                         hour: "2-digit",
                         minute: "2-digit",
                       })
@@ -209,7 +250,7 @@ export default function AdminDocumentationDetailPage() {
                 data.files.map((file, index) => (
                   <div
                     key={file.cloudinaryId}
-                    className="group relative rounded-2xl overflow-hidden border border-gray-200 bg-gray-50 h-40 md:h-48 w-full"
+                    className="group relative rounded-2xl overflow-hidden border border-gray-200 bg-gray-50 h-40 md:h-48 w-full shadow-sm"
                   >
                     {file.fileType === "VIDEO" ? (
                       <div className="relative w-full h-full bg-black">

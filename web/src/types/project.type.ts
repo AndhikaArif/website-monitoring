@@ -108,6 +108,11 @@ export interface AdminProject {
     name: string;
     username: string;
   } | null;
+  kepalaTukang?: {
+    id: string;
+    name: string;
+    username: string;
+  }[];
   _count: {
     kepalaTukang: number;
   };

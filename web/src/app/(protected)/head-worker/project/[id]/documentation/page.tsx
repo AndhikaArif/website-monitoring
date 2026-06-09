@@ -1,14 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import {
   FiPlus,
-  FiEdit2,
-  FiTrash2,
-  FiFileText,
   FiCalendar,
   FiX,
   FiSearch,
@@ -19,131 +14,159 @@ import {
 import toast from "react-hot-toast";
 import Image from "next/image";
 import axios from "axios";
+import Link from "next/link";
 
 import { useAuth } from "@/context/auth-context";
 
 // Service & Types
-import {
-  getProjectDocumentations,
-  deleteDocumentation,
-  createDocumentation,
-  updateDocumentation,
-  uploadDocumentationFiles,
-  deleteCloudinaryFile,
-} from "@/services/documentation.service";
+import { getProjectDocumentations } from "@/services/documentation.service";
+import { getProjectDetail } from "@/services/project.service";
 import type {
+  GroupedDocumentation,
+  DocumentationSession,
   Documentation,
-  DocumentationFile,
 } from "@/types/documentation.type";
 
-// Validation Schema
-import {
-  createDocSchema,
-  type CreateDocFormValues,
-} from "@/validation/documentation.validation";
+// Modal Component
+import CreateDocumentationModal from "@/components/modals/documentation-modal";
 
-interface ApiError {
-  response?: {
-    status?: number;
-    data?: {
-      message?: string;
-    };
-  };
-}
-
-interface UploadResponseItem {
-  resource_type?: string;
-  fileType?: string;
-  fileUrl?: string;
-  secure_url?: string;
-  url?: string;
-  cloudinaryId?: string;
-  public_id?: string;
-  id?: string;
-}
-
-const toSentenceCase = (text: string) => {
-  if (!text) return "";
-  return text.charAt(0).toUpperCase() + text.slice(1);
+// HELPER: Mengambil tanggal lokal YYYY-MM-DD tanpa terkena bug pergeseran UTC
+const getLocalDateString = (date: Date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
 export default function HeadWorkerDocumentationPage() {
   const params = useParams();
-  const projectId = params.id as string;
+  const projectId = (params.projectId || params.id) as string;
   const router = useRouter();
 
   const { user: currentUser } = useAuth();
+  const requestTimestampRef = useRef<number>(0);
 
-  const [docs, setDocs] = useState<Documentation[]>([]);
+  // 1. STATE UTAMA
+  const [docs, setDocs] = useState<GroupedDocumentation[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // 2. STATE MODAL & FORM
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isFormLocked, setIsFormLocked] = useState(false);
   const [editingDoc, setEditingDoc] = useState<Documentation | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
+  const [modalInitialDate, setModalInitialDate] = useState<string>("");
+  const [modalInitialSession, setModalInitialSession] =
+    useState<DocumentationSession>("PAGI");
 
-  // --- STATE PENCARIAN & PAGINASI ---
-  const [searchInput, setSearchInput] = useState("");
+  // 3. STATE FILTER WAKTU & PENCARIAN
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(
+    currentDate.getMonth() + 1,
+  );
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+  const [debouncedMonth, setDebouncedMonth] = useState(
+    currentDate.getMonth() + 1,
+  );
+  const [debouncedYear, setDebouncedYear] = useState(currentDate.getFullYear());
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const limit = 8; // Menampilkan 8 card per halaman (pas untuk grid 4x2 di desktop)
+  const [searchInput, setSearchInput] = useState("");
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
 
-  const [newlyUploadedFiles, setNewlyUploadedFiles] = useState<
-    DocumentationFile[]
-  >([]);
+  // 4. STATE UNTUK TANGGAL MULAI PROYEK DAN HARI INI
+  const [currentRealDate] = useState(new Date());
+  const [projectStartDate, setProjectStartDate] = useState<Date | null>(null);
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    getValues,
-    watch,
-    formState: { errors, isSubmitting },
-  } = useForm<CreateDocFormValues>({
-    resolver: zodResolver(createDocSchema),
-  });
+  // --- AMBIL DETAIL PROYEK UNTUK BATAS TANGGAL ---
+  useEffect(() => {
+    const fetchProjectInfo = async () => {
+      try {
+        if (!projectId) return;
+        const res = await getProjectDetail(projectId);
 
-  const currentFormFiles = watch("files") || [];
+        if (res.data?.startDate) {
+          setProjectStartDate(new Date(res.data.startDate));
+        } else if (res.data?.createdAt) {
+          setProjectStartDate(new Date(res.data.createdAt));
+        }
+      } catch (error) {
+        console.error("Gagal mengambil data proyek untuk kalender:", error);
+      }
+    };
 
-  const paramsNext = useParams();
+    fetchProjectInfo();
+  }, [projectId]);
 
-  const targetProjectId = (paramsNext.projectId || paramsNext.id) as string;
+  // --- LOGIKA PENGUNCIAN TOMBOL NAVIGASI BULAN ---
+  const isPrevMonthDisabled = () => {
+    if (!projectStartDate) return false;
+    const startYear = projectStartDate.getFullYear();
+    const startMonth = projectStartDate.getMonth() + 1;
 
-  // --- LOGIKA DEBOUNCE (DELAY PENCARIAN 500ms) ---
+    if (selectedYear < startYear) return true;
+    if (selectedYear === startYear && selectedMonth <= startMonth) return true;
+
+    return false;
+  };
+
+  const isNextMonthDisabled = () => {
+    const currentYear = currentRealDate.getFullYear();
+    const currentMonth = currentRealDate.getMonth() + 1;
+
+    if (selectedYear > currentYear) return true;
+    if (selectedYear === currentYear && selectedMonth >= currentMonth)
+      return true;
+
+    return false;
+  };
+
+  // --- LOGIKA DEBOUNCE PENCARIAN ---
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchInput);
-      setPage(1); // Otomatis kembali ke halaman 1 setiap ada pencarian baru
     }, 500);
-
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // --- GET DATA ---
+  // --- LOGIKA DEBOUNCE BULAN & TAHUN ---
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedMonth(selectedMonth);
+      setDebouncedYear(selectedYear);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [selectedMonth, selectedYear]);
+
+  // --- GET DATA BERDASARKAN BULAN, TAHUN & KEYWORD ---
   const fetchDocs = useCallback(async () => {
+    const currentTimestamp = Date.now();
+    requestTimestampRef.current = currentTimestamp;
+
     try {
       setLoading(true);
 
-      if (!targetProjectId) {
+      if (!projectId) {
         toast.error("ID Proyek tidak valid.");
         router.push("/head-worker");
         return;
       }
 
       const res = await getProjectDocumentations({
-        projectId: targetProjectId,
-        limit, // Menggunakan limit yang didefinisikan
-        page, // Mengirim nomor halaman saat ini
+        projectId,
+        month: debouncedMonth,
+        year: debouncedYear,
+        order: sortOrder,
         ...(debouncedSearch && { search: debouncedSearch }),
       });
+
+      // VALIDASI: Jika timestamp saat ini tidak sama dengan ref global,
+      // artinya user sudah berpindah bulan lagi dan memicu request baru. Abaikan data ini!
+      if (currentTimestamp !== requestTimestampRef.current) {
+        return;
+      }
+
       setDocs(res.data);
-      // Menangkap totalPages dari meta data backend
-      setTotalPages(res.meta?.totalPages || 1);
     } catch (error: unknown) {
-      // 1. Cek apakah ini error dari Axios (API)
       if (axios.isAxiosError(error)) {
-        // 2. Cek apakah Server Mati atau Internet Putus (Tidak ada response)
         if (!error.response) {
           toast.error(
             "Gagal terhubung ke server. Periksa koneksi internet Anda.",
@@ -156,914 +179,451 @@ export default function HeadWorkerDocumentationPage() {
         const message =
           error.response.data?.message || "Terjadi kesalahan sistem.";
 
-        // 3. Tangani berdasarkan Status Code spesifik
         if (status === 401) {
           toast.error("Sesi Anda telah berakhir. Silakan login kembali.", {
             id: "auth-error",
           });
           router.replace("/login");
-          return;
         } else if (status === 403) {
           toast.error(`Akses Ditolak: ${message}`, { id: "forbidden-error" });
           router.push("/head-worker");
-          return;
         } else if (status === 404 || status === 400) {
           toast.error("Proyek atau data laporan tidak ditemukan.", {
             id: "not-found-error",
           });
           router.push("/head-worker");
-          return;
         } else if (status === 500) {
           toast.error("Server sedang bermasalah. Silahkan coba lagi.", {
             id: "server-error",
           });
-          return;
         } else {
           toast.error(message, { id: "general-error" });
-          return;
         }
       } else {
-        // 4. Jika error berasal dari React/JavaScript (bukan API)
         toast.error("Terjadi kesalahan yang tidak terduga di browser Anda.", {
           id: "unknown-error",
         });
-        return;
       }
     } finally {
-      setLoading(false);
+      if (currentTimestamp === requestTimestampRef.current) {
+        setLoading(false);
+      }
     }
-  }, [targetProjectId, debouncedSearch, page, router]);
+  }, [
+    projectId,
+    debouncedSearch,
+    debouncedMonth,
+    debouncedYear,
+    sortOrder,
+    router,
+  ]);
 
   useEffect(() => {
     fetchDocs();
   }, [fetchDocs]);
 
-  // ---UPLOAD FILE---
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    try {
-      setIsUploading(true);
-      const fileArray = Array.from(files);
-      const response = await uploadDocumentationFiles(fileArray);
-
-      if (response.success) {
-        console.log("ISI RESPONSE UPLOAD:", response.data);
-
-        const rawData = response.data as UploadResponseItem[];
-
-        const uploadedData: DocumentationFile[] = rawData.map((item, index) => {
-          const finalUrl = item.url || item.fileUrl || item.secure_url || "";
-          const isVideo =
-            item.fileType === "VIDEO" ||
-            item.resource_type === "video" ||
-            finalUrl.toLowerCase().includes(".mp4");
-
-          console.log(
-            `File ke-${index + 1} dideteksi sebagai:`,
-            isVideo ? "VIDEO" : "PHOTO",
-            "| URL:",
-            finalUrl,
-          );
-
-          return {
-            fileUrl: finalUrl,
-            cloudinaryId: item.cloudinaryId || item.public_id || item.id || "",
-            fileType: isVideo ? "VIDEO" : "PHOTO",
-          };
-        });
-
-        setNewlyUploadedFiles((prev) => [...prev, ...uploadedData]);
-
-        const currentFiles = getValues("files") || [];
-        setValue("files", [...currentFiles, ...uploadedData], {
-          shouldValidate: true,
-        });
-
-        toast.success(`${uploadedData.length} file berhasil diunggah`);
-      }
-    } catch (error) {
-      const err = error as ApiError;
-      if (err?.response?.status === 500) {
-        toast.error(
-          "Gagal terhubung ke server atau database saat mengunggah file. Silakan coba lagi.",
-        );
-      } else {
-        toast.error(err?.response?.data?.message || "Gagal mengunggah file");
-      }
-    } finally {
-      setIsUploading(false);
-      e.target.value = "";
+  // --- NAVIGASI BULAN & TAHUN ---
+  const handlePrevMonth = () => {
+    if (selectedMonth === 1) {
+      setSelectedMonth(12);
+      setSelectedYear((y) => y - 1);
+    } else {
+      setSelectedMonth((m) => m - 1);
     }
   };
 
-  // --- DRAG AND DROP HANDLERS ---
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault(); // Mencegah browser membuka gambar secara default
-    e.stopPropagation();
-    if (!isDragging) setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      // Kita buat sebuah event buatan (*mock event*) agar bisa meminjam fungsi handleFileUpload yang sudah ada
-      const syntheticEvent = {
-        target: { files },
-      } as React.ChangeEvent<HTMLInputElement>;
-
-      await handleFileUpload(syntheticEvent);
-    }
-  };
-
-  // --- HAPUS FILE SPESIFIK ---
-  const handleRemoveSpecificFile = async (
-    fileToRemove: DocumentationFile,
-    index: number,
-  ) => {
-    const cloudinaryId = fileToRemove.cloudinaryId;
-    if (!cloudinaryId) return;
-
-    const isNewlyUploaded = newlyUploadedFiles.some(
-      (f) => f.cloudinaryId === cloudinaryId,
-    );
-
-    if (isNewlyUploaded) {
-      try {
-        await deleteCloudinaryFile(cloudinaryId, fileToRemove.fileType);
-        console.log(
-          `✅ File spesifik (${cloudinaryId}) dihapus dari Cloudinary.`,
-        );
-      } catch (error) {
-        console.error(
-          "❌ Gagal menghapus file spesifik dari Cloudinary",
-          error,
-        );
-        toast.error("Gagal menghapus foto dari server");
-      }
-    }
-
-    setNewlyUploadedFiles((prev) =>
-      prev.filter((f) => f.cloudinaryId !== cloudinaryId),
-    );
-
-    const currentFiles = getValues("files") || [];
-    const updatedFiles = currentFiles.filter((_, i) => i !== index);
-    setValue("files", updatedFiles, {
-      shouldValidate: true,
-    });
-  };
-
-  // --- DELETE DATA DOKUMENTASI ---
-  const handleDelete = async (docId: string) => {
-    if (
-      !confirm(
-        "Apakah Anda yakin ingin menghapus laporan ini? Semua foto terkait juga akan terhapus.",
-      )
-    )
-      return;
-
-    try {
-      await deleteDocumentation(docId);
-      toast.success("Laporan berhasil dihapus");
-      // Jika hapus data dan halaman kosong, mundur 1 halaman (kecuali halaman 1)
-      if (docs.length === 1 && page > 1) {
-        setPage(page - 1);
-      } else {
-        fetchDocs();
-      }
-    } catch (error) {
-      const err = error as ApiError;
-      if (err?.response?.status === 500) {
-        toast.error(
-          "Gagal terhubung ke server atau database. Laporan gagal dihapus.",
-        );
-      } else {
-        toast.error(err?.response?.data?.message || "Gagal menghapus laporan");
-      }
+  const handleNextMonth = () => {
+    if (selectedMonth === 12) {
+      setSelectedMonth(1);
+      setSelectedYear((y) => y + 1);
+    } else {
+      setSelectedMonth((m) => m + 1);
     }
   };
 
   // --- MODAL HANDLERS ---
   const openCreateModal = () => {
+    setIsFormLocked(false);
     setEditingDoc(null);
-    setNewlyUploadedFiles([]);
-    reset({
-      projectId,
-      session: "PAGI",
-      reportDate: new Date().toISOString().split("T")[0],
-      files: [],
-    });
+    setModalInitialDate(getLocalDateString());
+    setModalInitialSession("PAGI");
     setIsModalOpen(true);
   };
 
-  const openEditModal = (doc: Documentation) => {
-    setEditingDoc(doc);
-    setNewlyUploadedFiles([]);
-
-    const formattedDateForInput = new Date(doc.reportDate)
-      .toISOString()
-      .split("T")[0];
-
-    reset({
-      projectId,
-      reportDate: formattedDateForInput,
-      session: doc.session,
-      workArea: doc.workArea,
-      task: doc.task,
-      target: doc.target || "",
-      progress: doc.progress || "",
-      files: doc.files,
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleCancel = async () => {
-    if (newlyUploadedFiles.length > 0) {
-      try {
-        await Promise.all(
-          newlyUploadedFiles.map((file) =>
-            deleteCloudinaryFile(file.cloudinaryId, file.fileType),
-          ),
-        );
-        console.log(
-          `✅ Berhasil membersihkan ${newlyUploadedFiles.length} file sampah dari Cloudinary.`,
-        );
-      } catch (error) {
-        console.error("❌ Gagal membersihkan file sampah di Cloudinary", error);
-      }
-    }
-    setIsModalOpen(false);
+  const openShortcutCreateModal = (
+    targetDateString: string,
+    targetSession: DocumentationSession,
+  ) => {
+    setIsFormLocked(true);
     setEditingDoc(null);
-    setNewlyUploadedFiles([]);
-  };
-
-  // --- FORM SUBMIT ---
-  const onSubmit = async (data: CreateDocFormValues) => {
-    try {
-      const [year, month, day] = data.reportDate.split("-");
-      const formattedDate = `${day}-${month}-${year}`;
-
-      const formattedPayload = {
-        ...data,
-        reportDate: formattedDate,
-        projectId: projectId as string,
-      };
-
-      if (editingDoc) {
-        await updateDocumentation(editingDoc.id, formattedPayload);
-        toast.success("Laporan berhasil diperbarui");
-      } else {
-        await createDocumentation(formattedPayload);
-        toast.success("Laporan berhasil dibuat");
-        setPage(1); // Lempar user ke halaman 1 agar bisa lihat laporan terbarunya
-      }
-
-      setIsModalOpen(false);
-      fetchDocs();
-    } catch (error) {
-      const err = error as ApiError;
-      if (err?.response?.status === 500) {
-        toast.error(
-          "Gagal terhubung ke server atau database. Silakan coba lagi.",
-        );
-      } else {
-        toast.error(
-          err?.response?.data?.message || "Terjadi kesalahan saat menyimpan",
-        );
-      }
-    }
+    setModalInitialDate(targetDateString.split("T")[0]);
+    setModalInitialSession(targetSession);
+    setIsModalOpen(true);
   };
 
   return (
     <div className="min-h-screen bg-gray-50 text-black">
       <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-        {/* HEADER SECTION */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end mb-8 gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        {/* ================= HEADER SECTION ================= */}
+        <div className="flex flex-col xl:flex-row xl:justify-between xl:items-center mb-8 gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">
-              Laporan Harian
+              Daftar Laporan Harian
             </h1>
-            <p className="text-slate-500 text-sm mt-1 mb-4 sm:mb-0">
-              Catat dan pantau progres kerja lapangan proyek ini
+            <p className="text-slate-500 text-sm mt-1">
+              {currentUser?.name
+                ? `Halo ${currentUser.name}, `
+                : "Selamat bekerja. "}
+              {projectStartDate
+                ? `Proyek dimulai sejak ${projectStartDate.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}.`
+                : "Pantau dan catat progres harian di sini."}
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            {/* SEARCH BAR */}
-            <div className="relative w-full sm:w-64">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiSearch className="text-slate-400" />
-              </div>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
+            {/* INPUT PENCARIAN */}
+            <div className="relative flex-1 sm:w-64">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                <FiSearch size={18} />
+              </span>
               <input
                 type="text"
-                placeholder="Cari laporan..."
-                value={searchInput || ""}
-                onChange={(e) => {
-                  setSearchInput(e.target.value);
-                  setPage(1); // Reset ke halaman 1 saat mengetik
-                }}
-                className="block w-full text-black pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-indigo-500/10 sm:text-sm transition-all"
+                placeholder="Cari area / aktivitas..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-indigo-500/5 text-black placeholder-slate-400 transition-all"
               />
-              {debouncedSearch && (
+              {searchInput && (
                 <button
-                  onClick={() => {
-                    setSearchInput("");
-                    setPage(1);
-                  }}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                  type="button"
+                  onClick={() => setSearchInput("")}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"
                 >
                   <FiX size={16} />
                 </button>
               )}
             </div>
 
-            {/* FILTER TANGGAL KHUSUS PENCARIAN */}
-            <div className="relative w-full sm:w-auto">
-              <input
-                type="date"
-                title="Pilih tanggal dari kalender"
-                value={
-                  searchInput && /^\d{2}-\d{2}-\d{4}$/.test(searchInput)
-                    ? searchInput.split("-").reverse().join("-")
-                    : ""
-                }
-                onKeyDown={(e) => e.preventDefault()}
-                onClick={(e) => {
-                  if ("showPicker" in HTMLInputElement.prototype) {
-                    e.currentTarget.showPicker();
-                  }
-                }}
-                onChange={(e) => {
-                  const rawDate = e.target.value;
-                  if (rawDate) {
-                    const [year, month, day] = rawDate.split("-");
-                    setSearchInput(`${day}-${month}-${year}`);
-                  } else {
-                    setSearchInput("");
-                  }
-                  setPage(1);
-                }}
-                className="block w-full text-black px-4 py-2.5 border border-slate-200 rounded-xl leading-5 bg-slate-50 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-indigo-500/10 sm:text-sm transition-all cursor-pointer"
-              />
-            </div>
-
+            {/* TOMBOL FILTER TERBARU/TERLAMA */}
             <button
-              onClick={openCreateModal}
-              className="flex items-center justify-center gap-2 bg-emerald-600 text-white px-6 py-2.5 rounded-xl hover:bg-emerald-700 transition-all font-semibold shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 w-full sm:w-fit whitespace-nowrap cursor-pointer"
+              type="button"
+              onClick={() =>
+                setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))
+              }
+              className="flex items-center justify-center px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors shadow-sm cursor-pointer whitespace-nowrap"
+              title="Ubah Urutan"
             >
-              <FiPlus size={20} />
-              <span>Buat Laporan</span>
+              Urutan:{" "}
+              <span className="ml-1 text-emerald-600 font-bold">
+                {sortOrder === "desc" ? "Terbaru" : "Terlama"}
+              </span>
             </button>
+
+            {/* BUNGKUSAN NAVIGASI & TOMBOL */}
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              <div className="flex items-center justify-between sm:justify-start gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={handlePrevMonth}
+                  disabled={isPrevMonthDisabled()}
+                  className="p-2 hover:bg-white rounded-lg transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                  title="Bulan Sebelumnya"
+                >
+                  <FiChevronLeft size={20} className="text-slate-600" />
+                </button>
+                <div className="px-4 py-1.5 font-bold text-sm text-slate-700 min-w-35 text-center bg-white rounded-lg shadow-sm border border-slate-100">
+                  {new Date(selectedYear, selectedMonth - 1).toLocaleString(
+                    "id-ID",
+                    { month: "long", year: "numeric" },
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleNextMonth}
+                  disabled={isNextMonthDisabled()}
+                  className="p-2 hover:bg-white rounded-lg transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                  title="Bulan Selanjutnya"
+                >
+                  <FiChevronRight size={20} className="text-slate-600" />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={openCreateModal}
+                className="flex items-center justify-center gap-2 bg-emerald-600 text-white px-6 py-2.5 rounded-xl hover:bg-emerald-700 transition-all font-semibold shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 w-full sm:w-fit whitespace-nowrap cursor-pointer"
+              >
+                <FiPlus size={20} />
+                <span>Buat Laporan</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* LIST DOKUMENTASI */}
+        {/* ================= DAFTAR WADAH LAPORAN PER TANGGAL ================= */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-pulse">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-80 bg-slate-200 rounded-2xl" />
+          <div className="grid grid-cols-1 gap-6 animate-pulse">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-44 bg-slate-200 rounded-2xl" />
             ))}
           </div>
         ) : docs.length > 0 ? (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {docs.map((doc) => {
-                // Periksa apakah laporan ini milik user yang sedang aktif
-                const isOwner =
-                  currentUser?.id === (doc.createdById || doc.createdBy?.id);
+          <div className="flex flex-col gap-6">
+            {docs.map((dateGroup) => {
+              const dateObj = new Date(dateGroup.reportDate);
+              const displayDate = dateObj.toLocaleDateString("id-ID", {
+                weekday: "long",
+                day: "2-digit",
+                month: "long",
+                year: "numeric",
+              });
 
-                return (
-                  <div
-                    key={doc.id}
-                    className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg transition-shadow overflow-hidden flex flex-col group"
-                  >
-                    {/* IMAGE HEADER */}
-                    <div className="relative h-48 w-full bg-slate-100 border-b border-slate-100 overflow-hidden">
-                      {doc.files && doc.files.length > 0 ? (
-                        <>
-                          {doc.files[0].fileType === "VIDEO" ? (
-                            <video
-                              src={doc.files[0].fileUrl}
-                              className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
-                              controls
-                              preload="metadata"
-                              playsInline
-                            />
-                          ) : (
-                            <Image
-                              src={doc.files[0].fileUrl}
-                              alt="preview"
-                              fill
-                              sizes="(max-width: 768px) 100vw, 33vw"
-                              className="object-cover group-hover:scale-105 transition-transform duration-500"
-                              unoptimized
-                              onError={(e) => {
-                                e.currentTarget.src =
-                                  "https://via.placeholder.com/400x300.png?text=Gambar+Hilang";
-                                e.currentTarget.srcset = "";
-                              }}
-                            />
-                          )}
-                          {doc.files.length > 1 && (
-                            <div className="absolute bottom-3 right-3 bg-slate-900/70 backdrop-blur-md text-white text-[11px] font-bold px-3 py-1.5 rounded-full shadow-sm">
-                              +{doc.files.length - 1} File
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <div className="h-full w-full flex flex-col items-center justify-center text-slate-400">
-                          <FiFileText size={32} className="mb-2 opacity-50" />
-                          <span className="text-xs font-medium">
-                            Tidak ada media
-                          </span>
-                        </div>
-                      )}
-
-                      {/* FLOATING ACTION BUTTONS: HANYA MUNCUL JIKA PEMILIK LAPORAN */}
-                      {isOwner && (
-                        <div className="absolute top-3 right-3 flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 z-10">
-                          <button
-                            onClick={() => openEditModal(doc)}
-                            className="p-2 bg-white/90 backdrop-blur text-emerald-600 hover:bg-indigo-50 hover:text-emerald-700 rounded-lg shadow-sm transition-colors cursor-pointer"
-                            title="Edit Laporan"
-                          >
-                            <FiEdit2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(doc.id)}
-                            className="p-2 bg-white/90 backdrop-blur text-red-500 hover:bg-red-50 hover:text-red-700 rounded-lg shadow-sm transition-colors cursor-pointer"
-                            title="Hapus Laporan"
-                          >
-                            <FiTrash2 size={16} />
-                          </button>
-                        </div>
-                      )}
+              return (
+                <div
+                  key={dateGroup.reportDate}
+                  className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden"
+                >
+                  <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center gap-3">
+                    <div className="bg-indigo-50 p-2 rounded-lg text-indigo-600">
+                      <FiCalendar size={20} />
                     </div>
+                    <h2 className="text-base font-bold text-slate-800">
+                      {displayDate}
+                    </h2>
+                  </div>
 
-                    {/* CARD CONTENT */}
-                    <div className="p-5 flex-1 flex flex-col justify-between">
-                      <div>
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`text-[10px] font-extrabold px-2.5 py-1 rounded-md tracking-wider ${
-                                doc.session === "PAGI"
-                                  ? "bg-amber-100 text-amber-700 border border-amber-200/50"
-                                  : "bg-indigo-100 text-indigo-700 border border-indigo-200/50"
-                              }`}
+                  <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+                    {/* --- KOTAK SESI PAGI --- */}
+                    <div className="p-6">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-[10px] font-extrabold bg-amber-50 text-amber-700 px-2.5 py-1 rounded border border-amber-200/40 tracking-wider">
+                          SESI PAGI
+                        </span>
+                      </div>
+
+                      {dateGroup.sessions.PAGI.length > 0 ? (
+                        <div className="space-y-3">
+                          {dateGroup.sessions.PAGI.map((docItem) => (
+                            <Link
+                              key={docItem.id}
+                              href={`/head-worker/project/${projectId}/documentation/${docItem.id}`}
+                              className="block group"
                             >
-                              {doc.session}
+                              <div className="flex gap-4 bg-slate-50/50 border border-slate-200 rounded-xl p-3 hover:border-emerald-400 hover:bg-white hover:shadow-sm transition-all">
+                                <div className="w-24 h-20 bg-slate-200 rounded-lg relative overflow-hidden shrink-0">
+                                  {docItem.files?.[0]?.fileType === "VIDEO" ? (
+                                    <div className="w-full h-full bg-slate-800 flex items-center justify-center text-white text-[10px] font-bold">
+                                      VIDEO
+                                    </div>
+                                  ) : (
+                                    <Image
+                                      src={
+                                        docItem.files?.[0]?.fileUrl ||
+                                        "/placeholder.png"
+                                      }
+                                      alt="progres"
+                                      fill
+                                      className="object-cover"
+                                      unoptimized
+                                    />
+                                  )}
+                                </div>
+                                <div className="flex flex-col justify-between min-w-0">
+                                  <div>
+                                    <h3 className="font-bold text-sm text-slate-800 line-clamp-1 group-hover:text-emerald-600 transition-colors">
+                                      {docItem.workArea}
+                                    </h3>
+                                    <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">
+                                      {docItem.task}
+                                    </p>
+                                  </div>
+                                  <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-2 truncate">
+                                    <FiUser size={12} className="shrink-0" />
+                                    <span className="truncate">
+                                      {docItem.createdBy?.name || "Oleh Rekan"}
+                                    </span>
+                                  </p>
+                                </div>
+                              </div>
+                            </Link>
+                          ))}
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openShortcutCreateModal(
+                                dateGroup.reportDate,
+                                "PAGI",
+                              )
+                            }
+                            className="w-full flex items-center justify-center gap-1.5 h-10 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:bg-emerald-50/40 hover:border-emerald-400 hover:text-emerald-600 transition-colors cursor-pointer"
+                          >
+                            <FiPlus size={16} />
+                            <span className="text-xs font-bold">
+                              Tambah Pagi Lainnya
                             </span>
-                            <span className="text-xs font-semibold text-slate-500 flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                              <FiCalendar
-                                size={12}
-                                className="text-slate-400"
-                              />
-                              {new Date(doc.reportDate)
-                                .toLocaleDateString("id-ID", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                })
-                                .replace(/\//g, "-")}
-                            </span>
-                          </div>
+                          </button>
                         </div>
-
-                        <h3
-                          className="font-bold text-slate-800 text-lg leading-tight mb-2 line-clamp-1"
-                          title={doc.workArea}
+                      ) : /* JIKA KOSONG: Cek apakah sebenarnya kosong di DB atau hanya disembunyikan filter */
+                      dateGroup.existingSessions?.PAGI ? (
+                        <div className="w-full h-20 flex items-center justify-center border border-dashed border-slate-200 rounded-xl bg-slate-50/50 text-slate-400 text-[11px] text-center px-4 italic">
+                          Laporan pagi tidak cocok dengan pencarian
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openShortcutCreateModal(
+                              dateGroup.reportDate,
+                              "PAGI",
+                            )
+                          }
+                          className="w-full h-20 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:bg-emerald-50/40 hover:border-emerald-400 hover:text-emerald-600 transition-colors cursor-pointer"
                         >
-                          {doc.workArea}
-                        </h3>
-                        <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
-                          {doc.task}
-                        </p>
-
-                        {/* Menampilkan Target dan Progres berdampingan */}
-                        {(doc.target || doc.progress) && (
-                          <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 gap-3">
-                            {doc.target && (
-                              <div>
-                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">
-                                  Target
-                                </p>
-                                <p
-                                  className="text-xs text-slate-800 font-medium truncate"
-                                  title={doc.target}
-                                >
-                                  {doc.target}
-                                </p>
-                              </div>
-                            )}
-
-                            {doc.progress && (
-                              <div>
-                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">
-                                  Progres / Kendala
-                                </p>
-                                <p
-                                  className="text-xs text-slate-800 font-medium truncate"
-                                  title={doc.progress}
-                                >
-                                  {doc.progress}
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* FOOTER CARD: INFO PEMBUAT LAPORAN */}
-                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50/50 -mx-5 -mb-5 p-3 rounded-b-2xl">
-                        <FiUser
-                          className="text-emerald-600 shrink-0"
-                          size={13}
-                        />
-                        <span className="font-medium truncate flex-1">
-                          {doc.createdBy?.name || "Rekan Kerja"}
-                        </span>
-                        {/* Tanda kecil jika ini laporannya sendiri */}
-                        {isOwner && (
-                          <span className="text-[9px] bg-emerald-100 text-emerald-700 font-bold px-1.5 py-0.5 rounded">
-                            Milikmu
+                          <FiPlus size={20} className="mb-1" />
+                          <span className="text-xs font-bold">
+                            Isi Laporan Pagi
                           </span>
-                        )}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* --- KOTAK SESI SORE --- */}
+                    <div className="p-6">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-[10px] font-extrabold bg-blue-50 text-blue-700 px-2.5 py-1 rounded border border-blue-200/40 tracking-wider">
+                          SESI SORE
+                        </span>
                       </div>
+
+                      {dateGroup.sessions.SORE.length > 0 ? (
+                        <div className="space-y-3">
+                          {dateGroup.sessions.SORE.map((docItem) => (
+                            <Link
+                              key={docItem.id}
+                              href={`/head-worker/project/${projectId}/documentation/${docItem.id}`}
+                              className="block group"
+                            >
+                              <div className="flex gap-4 bg-slate-50/50 border border-slate-200 rounded-xl p-3 hover:border-emerald-400 hover:bg-white hover:shadow-sm transition-all">
+                                <div className="w-24 h-20 bg-slate-200 rounded-lg relative overflow-hidden shrink-0">
+                                  {docItem.files?.[0]?.fileType === "VIDEO" ? (
+                                    <div className="w-full h-full bg-slate-800 flex items-center justify-center text-white text-[10px] font-bold">
+                                      VIDEO
+                                    </div>
+                                  ) : (
+                                    <Image
+                                      src={
+                                        docItem.files?.[0]?.fileUrl ||
+                                        "/placeholder.png"
+                                      }
+                                      alt="progres"
+                                      fill
+                                      className="object-cover"
+                                      unoptimized
+                                    />
+                                  )}
+                                </div>
+                                <div className="flex flex-col justify-between min-w-0">
+                                  <div>
+                                    <h3 className="font-bold text-sm text-slate-800 line-clamp-1 group-hover:text-emerald-600 transition-colors">
+                                      {docItem.workArea}
+                                    </h3>
+                                    <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">
+                                      {docItem.task}
+                                    </p>
+                                  </div>
+                                  <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-2 truncate">
+                                    <FiUser size={12} className="shrink-0" />
+                                    <span className="truncate">
+                                      {docItem.createdBy?.name || "Oleh Rekan"}
+                                    </span>
+                                  </p>
+                                </div>
+                              </div>
+                            </Link>
+                          ))}
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openShortcutCreateModal(
+                                dateGroup.reportDate,
+                                "SORE",
+                              )
+                            }
+                            className="w-full flex items-center justify-center gap-1.5 h-10 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:bg-emerald-50/40 hover:border-emerald-400 hover:text-emerald-600 transition-colors cursor-pointer"
+                          >
+                            <FiPlus size={16} />
+                            <span className="text-xs font-bold">
+                              Tambah Sore Lainnya
+                            </span>
+                          </button>
+                        </div>
+                      ) : /* JIKA KOSONG: Cek apakah sebenarnya kosong di DB atau hanya disembunyikan filter */
+                      dateGroup.existingSessions?.SORE ? (
+                        <div className="w-full h-20 flex items-center justify-center border border-dashed border-slate-200 rounded-xl bg-slate-50/50 text-slate-400 text-[11px] text-center px-4 italic">
+                          Laporan sore tidak cocok dengan pencarian
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openShortcutCreateModal(
+                              dateGroup.reportDate,
+                              "SORE",
+                            )
+                          }
+                          className="w-full h-20 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:bg-emerald-50/40 hover:border-emerald-400 hover:text-emerald-600 transition-colors cursor-pointer"
+                        >
+                          <FiPlus size={20} className="mb-1" />
+                          <span className="text-xs font-bold">
+                            Isi Laporan Sore
+                          </span>
+                        </button>
+                      )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-
-            {/* PAGINATION CONTROLS */}
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-4 mt-10 mb-4">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="flex items-center gap-1 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer"
-                >
-                  <FiChevronLeft /> Sebelumnya
-                </button>
-                <span className="text-sm font-semibold text-slate-600 bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm">
-                  Hal {page} / {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="flex items-center gap-1 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm cursor-pointer"
-                >
-                  Selanjutnya <FiChevronRight />
-                </button>
-              </div>
-            )}
-          </>
+                </div>
+              );
+            })}
+          </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-20 px-4 bg-white rounded-3xl border-2 border-dashed border-slate-200">
-            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-              {debouncedSearch ? (
-                <FiSearch className="w-10 h-10 text-slate-400" />
-              ) : (
-                <FiFileText className="w-10 h-10 text-slate-400" />
-              )}
+          <div className="flex flex-col items-center justify-center py-24 px-4 bg-white rounded-2xl border border-slate-100 shadow-sm text-center">
+            <div className="bg-slate-50 p-5 rounded-full mb-5">
+              <FiSearch size={36} className="text-slate-400" />
             </div>
-            <h3 className="text-xl font-bold text-slate-700 mb-2">
-              {debouncedSearch
-                ? "Laporan Tidak Ditemukan"
-                : "Belum Ada Laporan"}
+            <h3 className="text-lg font-bold text-slate-800 mb-2">
+              Belum Ada Laporan
             </h3>
-            <p className="text-slate-500 text-center max-w-sm mb-6">
-              {debouncedSearch
-                ? `Tidak ada laporan yang cocok dengan kata kunci "${debouncedSearch}".`
-                : "Pekerjaan ini belum didokumentasikan. Klik tombol di bawah untuk membuat laporan pertama."}
+            <p className="text-slate-500 max-w-md mx-auto text-sm leading-relaxed">
+              Tidak ada laporan progres yang ditemukan pada periode atau
+              pencarian ini. Silakan buat laporan baru.
             </p>
-            {!debouncedSearch && (
-              <button
-                onClick={openCreateModal}
-                className="text-emerald-600 bg-indigo-50 hover:bg-indigo-100 font-semibold px-5 py-2.5 rounded-xl transition-colors cursor-pointer"
-              >
-                Buat Laporan Pertama
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={openCreateModal}
+              className="mt-6 flex items-center justify-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl hover:bg-emerald-700 transition-all font-semibold shadow-sm cursor-pointer"
+            >
+              <FiPlus size={18} />
+              <span>Buat Laporan Pertama</span>
+            </button>
           </div>
         )}
 
-        {/* MODAL FORM */}
-        {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 sm:p-0 backdrop-blur-sm transition-opacity">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto sm:m-4 animate-in fade-in zoom-in-95 duration-200">
-              <div className="sticky top-0 bg-white/80 backdrop-blur-md z-10 flex justify-between items-center p-6 border-b border-slate-100">
-                <h2 className="text-xl font-extrabold text-slate-800">
-                  {editingDoc ? "Edit Laporan Pekerjaan" : "Buat Laporan Baru"}
-                </h2>
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 rounded-full transition-colors cursor-pointer"
-                >
-                  <FiX size={22} />
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1.5">
-                      Tanggal <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      {...register("reportDate")}
-                      onKeyDown={(e) => e.preventDefault()}
-                      onClick={(e) => {
-                        if ("showPicker" in HTMLInputElement.prototype) {
-                          e.currentTarget.showPicker();
-                        }
-                      }}
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                    />
-                    {errors.reportDate && (
-                      <p className="text-red-500 text-xs mt-1.5 font-medium">
-                        {errors.reportDate.message}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1.5">
-                      Sesi Kerja <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      {...register("session")}
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-indigo-500/10 transition-all appearance-none cursor-pointer"
-                    >
-                      <option value="PAGI">Pagi</option>
-                      <option value="SORE">Sore</option>
-                    </select>
-                    {errors.session && (
-                      <p className="text-red-500 text-xs mt-1.5 font-medium">
-                        {errors.session.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5">
-                    Area Kerja <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    {...register("workArea")}
-                    onBlur={(e) => {
-                      register("workArea").onBlur(e); // Tetap jalankan onBlur bawaan react-hook-form
-                      setValue("workArea", toSentenceCase(e.target.value), {
-                        shouldValidate: true,
-                      });
-                    }}
-                    placeholder="Misal: Dapur / Kamar mandi / Lantai 2"
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                  />
-                  {errors.workArea && (
-                    <p className="text-red-500 text-xs mt-1.5 font-medium">
-                      {errors.workArea.message}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5">
-                    Deskripsi Pekerjaan <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    {...register("task")}
-                    rows={3}
-                    onBlur={(e) => {
-                      register("task").onBlur(e);
-                      setValue("task", toSentenceCase(e.target.value), {
-                        shouldValidate: true,
-                      });
-                    }}
-                    placeholder="Misal: Ngecor / Ngaci/ Bikin Openingan"
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-indigo-500/10 transition-all resize-none"
-                  />
-                  {errors.task && (
-                    <p className="text-red-500 text-xs mt-1.5 font-medium">
-                      {errors.task.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1.5">
-                      Target
-                    </label>
-                    <input
-                      type="text"
-                      {...register("target")}
-                      onBlur={(e) => {
-                        register("target").onBlur(e);
-                        setValue("target", toSentenceCase(e.target.value), {
-                          shouldValidate: true,
-                        });
-                      }}
-                      placeholder="Misal: Selesai hari ini"
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1.5">
-                      Progres / Kendala
-                    </label>
-                    <input
-                      type="text"
-                      {...register("progress")}
-                      onBlur={(e) => {
-                        register("progress").onBlur(e);
-                        setValue("progress", toSentenceCase(e.target.value), {
-                          shouldValidate: true,
-                        });
-                      }}
-                      placeholder="Misal: 80% / Tinggal finishing"
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-3 outline-none focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                    />
-                  </div>
-                </div>
-
-                {/* AREA UPLOAD FILE */}
-                <div className="bg-slate-50/50 border border-dashed border-slate-300 p-5 rounded-2xl">
-                  <label className="block text-sm font-bold text-slate-700 mb-1">
-                    Bukti Lapangan <span className="text-red-500">*</span>
-                  </label>
-                  <p className="text-xs text-slate-500 mb-3">
-                    Upload foto atau video progres (Maks. 20 file, dan 50MB per
-                    file).
-                  </p>
-
-                  {/* ZONA DRAG & DROP */}
-                  <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    className={`relative w-full h-32 flex flex-col items-center justify-center border-2 border-dashed rounded-xl transition-all duration-200 cursor-pointer overflow-hidden ${
-                      isDragging
-                        ? "border-indigo-500 bg-indigo-50/50"
-                        : "border-slate-300 hover:bg-slate-100 hover:border-slate-400 bg-white"
-                    } ${isUploading ? "pointer-events-none opacity-60" : ""}`}
-                  >
-                    {/* INPUT TERSEMBUNYI (Memenuhi seluruh kotak secara tak kasat mata) */}
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*, video/*"
-                      onChange={handleFileUpload}
-                      disabled={isUploading}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                      title="Klik atau seret file ke sini"
-                    />
-
-                    {/* TAMPILAN VISUAL KOTAK */}
-                    {isUploading ? (
-                      <div className="flex flex-col items-center text-emerald-600 z-0">
-                        <svg
-                          className="animate-spin h-8 w-8 mb-2"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
-                        <span className="text-sm font-semibold">
-                          Mengunggah...
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center pointer-events-none z-0">
-                        <div
-                          className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-colors ${
-                            isDragging
-                              ? "bg-indigo-100 text-indigo-600"
-                              : "bg-slate-100 text-slate-400"
-                          }`}
-                        >
-                          <FiPlus size={24} />
-                        </div>
-                        <span className="text-sm font-bold text-slate-600">
-                          {isDragging
-                            ? "Lepaskan file di sini!"
-                            : "Klik atau seret file ke area ini"}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {errors.files && (
-                    <p className="text-red-500 text-xs mt-2 font-medium">
-                      {errors.files.message}
-                    </p>
-                  )}
-
-                  {/* Preview File */}
-                  {currentFormFiles.length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-slate-200">
-                      {currentFormFiles.map((file, index) => (
-                        <div
-                          key={file.cloudinaryId || index}
-                          className="relative h-24 bg-slate-200 rounded-xl overflow-hidden group shadow-sm"
-                        >
-                          {!file.fileUrl ? (
-                            <div className="w-full h-full flex flex-col items-center justify-center text-[10px] font-medium text-slate-500">
-                              <span className="animate-pulse">Memuat...</span>
-                            </div>
-                          ) : (
-                            <>
-                              {file.fileType === "VIDEO" ? (
-                                <video
-                                  src={file.fileUrl}
-                                  className="object-cover w-full h-full"
-                                  controls
-                                  preload="metadata"
-                                  playsInline
-                                />
-                              ) : (
-                                <Image
-                                  src={file.fileUrl}
-                                  alt={`preview-${index}`}
-                                  fill
-                                  sizes="(max-width: 768px) 33vw, 20vw"
-                                  className="object-cover"
-                                  unoptimized
-                                  onError={(e) => {
-                                    e.currentTarget.src =
-                                      "https://via.placeholder.com/150x150.png?text=Error";
-                                    e.currentTarget.srcset = "";
-                                  }}
-                                />
-                              )}
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleRemoveSpecificFile(file, index)
-                                }
-                                className="absolute top-1 right-1 bg-red-500/90 hover:bg-red-600 text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm z-10"
-                                title="Hapus file ini"
-                              >
-                                <FiX size={14} />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-6 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={handleCancel}
-                    className="flex-1 py-3 border-2 border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-colors cursor-pointer"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 active:bg-emerald-800 disabled:bg-emerald-300 disabled:cursor-not-allowed transition-colors shadow-sm cursor-pointer"
-                  >
-                    {isSubmitting ? "Menyimpan..." : "Simpan Laporan"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+        {/* ================= PEMANGGILAN KOMPONEN MODAL ================= */}
+        <CreateDocumentationModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          projectId={projectId}
+          isFormLocked={isFormLocked}
+          initialDate={modalInitialDate}
+          initialSession={modalInitialSession}
+          editingDoc={editingDoc}
+          projectStartDate={
+            projectStartDate ? projectStartDate.toISOString() : ""
+          }
+          onSuccess={fetchDocs}
+        />
       </div>
     </div>
   );

@@ -86,7 +86,12 @@ router.post(
 router.get(
   "/:projectId",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.MANDOR, UserRole.OWNER, UserRole.ADMIN),
+  AuthMiddleWare.roleGuard(
+    UserRole.MANDOR,
+    UserRole.OWNER,
+    UserRole.ADMIN,
+    UserRole.KEPALA_TUKANG,
+  ),
   validate(projectIdParam, "params"),
   controller.getDetail,
 );

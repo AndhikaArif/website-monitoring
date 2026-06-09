@@ -16,8 +16,10 @@ import toast from "react-hot-toast";
 
 import { getAllProjectsForAdmin } from "@/services/project.service";
 import type { AdminProject } from "@/types/project.type";
+import type { ProfileTarget } from "@/types/profile.type";
 
 import TransferMandorModal from "@/components/modals/transfer-mandor-modal";
+import ViewProfileModal from "@/components/modals/view-profile-modal";
 
 export default function AdminProjectsPage() {
   const [projects, setProjects] = useState<AdminProject[]>([]);
@@ -32,6 +34,19 @@ export default function AdminProjectsPage() {
     null,
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // State untuk Modal Profil
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState<ProfileTarget | null>(
+    null,
+  );
+
+  // Fungsi pembuka profil
+  const handleViewProfile = (e: React.MouseEvent, user: ProfileTarget) => {
+    e.stopPropagation(); // Mencegah baris tabel ikut terklik
+    setSelectedProfile(user);
+    setIsProfileModalOpen(true);
+  };
 
   const router = useRouter();
 
@@ -64,7 +79,7 @@ export default function AdminProjectsPage() {
           router.replace("/login");
           return;
         } else if (status === 403) {
-          // 🎯 Satukan ID toast dengan ProtectedLayout agar tidak bertumpuk jika bocor 1 milidetik
+          // Satukan ID toast dengan ProtectedLayout agar tidak bertumpuk jika bocor 1 milidetik
           toast.error(`Akses Ditolak: ${message}`, {
             id: "unauthorized-route",
           });
@@ -214,19 +229,40 @@ export default function AdminProjectsPage() {
 
                       {/* KOLOM 2: MANDOR AKTIF */}
                       <td className="p-5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-                            <FiUser size={12} />
+                        {p.mandor ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                              <FiUser size={12} />
+                            </div>
+                            <div>
+                              <p
+                                className="font-semibold text-gray-800 text-xs truncate max-w-30 cursor-pointer hover:text-indigo-600 hover:underline transition-colors"
+                                onClick={(e) =>
+                                  handleViewProfile(e, {
+                                    ...p.mandor!,
+                                    role: "MANDOR",
+                                  })
+                                }
+                                title="Lihat Profil Mandor"
+                              >
+                                {p.mandor.name}
+                              </p>
+                              <p className="text-[10px] text-gray-400 truncate max-w-30">
+                                {p.mandor.username.startsWith("deleted_") ? (
+                                  <span className="text-red-400 italic">
+                                    Akun Nonaktif
+                                  </span>
+                                ) : (
+                                  `@${p.mandor.username}`
+                                )}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-semibold text-gray-800 text-xs truncate max-w-30">
-                              {p.mandor?.name || "Tanpa Nama"}
-                            </p>
-                            <p className="text-[10px] text-gray-400 truncate max-w-30">
-                              @{p.mandor?.username}
-                            </p>
-                          </div>
-                        </div>
+                        ) : (
+                          <span className="inline-block px-2 py-1 bg-gray-50 text-gray-400 text-[10px] font-medium rounded-md border border-gray-100">
+                            Tanpa nama
+                          </span>
+                        )}
                       </td>
 
                       {/* KOLOM 3: KLIEN PEMILIK */}
@@ -237,7 +273,16 @@ export default function AdminProjectsPage() {
                               <FiUser size={12} />
                             </div>
                             <div>
-                              <p className="font-semibold text-gray-700 text-xs truncate max-w-30">
+                              <p
+                                className="font-semibold text-gray-700 text-xs truncate max-w-30 cursor-pointer hover:text-indigo-600 hover:underline transition-colors"
+                                onClick={(e) =>
+                                  handleViewProfile(e, {
+                                    ...p.owner!,
+                                    role: "OWNER",
+                                  })
+                                }
+                                title="Lihat Profil"
+                              >
                                 {p.owner.name}
                               </p>
                               <p className="text-[10px] text-gray-400 truncate max-w-30">
@@ -260,10 +305,45 @@ export default function AdminProjectsPage() {
 
                       {/* KOLOM 4: STATISTIK TIM TUKANG */}
                       <td className="p-5 text-center">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 text-gray-600 text-xs font-bold rounded-lg border border-gray-100">
-                          <FiUsers className="text-gray-400" />
-                          {p._count?.kepalaTukang || 0}
-                        </span>
+                        <div className="relative inline-flex flex-col items-center group/tooltip">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-indigo-600 transition-colors text-xs font-bold rounded-lg border border-gray-100 cursor-help">
+                            <FiUsers className="text-gray-400 group-hover/tooltip:text-indigo-500" />
+                            {p._count?.kepalaTukang || 0}
+                          </span>
+
+                          {/* Kontainer Tooltip dengan pointer-events-auto */}
+                          {p.kepalaTukang && p.kepalaTukang.length > 0 && (
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 pb-2 w-max max-w-50 z-20 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200">
+                              <div className="bg-gray-800 text-white text-[11px] rounded-lg py-2 px-3 shadow-xl relative">
+                                <p className="font-semibold text-gray-400 mb-1.5 border-b border-gray-600 pb-1.5 text-left">
+                                  Daftar Kepala Tukang:
+                                </p>
+                                <ul className="text-left flex flex-col gap-1.5">
+                                  {p.kepalaTukang.map((kt) => (
+                                    <li
+                                      key={kt.id}
+                                      className="flex items-start gap-1.5 leading-tight cursor-pointer hover:text-indigo-300 transition-colors"
+                                      onClick={(e) =>
+                                        handleViewProfile(e, {
+                                          ...kt,
+                                          role: "KEPALA_TUKANG",
+                                        })
+                                      }
+                                    >
+                                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0 mt-0.75"></span>
+                                      <span className="truncate hover:underline">
+                                        {kt.name}
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+
+                                {/* Panah Bawah Tooltip */}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-gray-800"></div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </td>
 
                       {/* KOLOM 5: STATUS */}
@@ -359,6 +439,16 @@ export default function AdminProjectsPage() {
           project={selectedProject}
         />
       )}
+
+      {/* RENDER MODAL VIEW PROFILE */}
+      <ViewProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => {
+          setIsProfileModalOpen(false);
+          setSelectedProfile(null);
+        }}
+        user={selectedProfile}
+      />
     </div>
   );
 }

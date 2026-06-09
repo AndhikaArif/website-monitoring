@@ -15,6 +15,7 @@ import axios from "axios";
 
 import { getMandors, deleteMandor } from "@/services/mandor.service";
 import { Mandor } from "@/types/mandor.type";
+import type { ProfileTarget } from "@/types/profile.type";
 import ViewProfileModal from "@/components/modals/view-profile-modal";
 
 export default function MandorPage() {
@@ -23,7 +24,9 @@ export default function MandorPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  const [selectedMandor, setSelectedMandor] = useState<Mandor | null>(null);
+  const [selectedMandor, setSelectedMandor] = useState<ProfileTarget | null>(
+    null,
+  );
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
   const router = useRouter();
@@ -56,7 +59,7 @@ export default function MandorPage() {
           router.replace("/login");
           return;
         } else if (status === 403) {
-          // 🎯 Satukan ID toast dengan ProtectedLayout agar tidak bertumpuk jika bocor 1 milidetik
+          // Satukan ID toast dengan ProtectedLayout agar tidak bertumpuk jika bocor 1 milidetik
           toast.error(`Akses Ditolak: ${message}`, {
             id: "unauthorized-route",
           });
@@ -111,7 +114,10 @@ export default function MandorPage() {
   };
 
   const handleRowClick = (mandor: Mandor) => {
-    setSelectedMandor(mandor);
+    setSelectedMandor({
+      ...mandor,
+      role: "MANDOR",
+    });
     setIsViewModalOpen(true);
   };
 

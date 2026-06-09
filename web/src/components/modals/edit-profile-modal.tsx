@@ -65,7 +65,6 @@ export default function EditProfileModal({
       setLoadingFetch(true);
       getMyProfile()
         .then((data) => {
-          // Nama pasti sudah ada dari database, langsung kita pasang sebagai default value
           setName(data.name || "");
           setPhoneNumber(data.phoneNumber || "");
           setAddress(data.address || "");
@@ -80,6 +79,11 @@ export default function EditProfileModal({
         .finally(() => {
           setLoadingFetch(false);
         });
+    } else {
+      // Bersihkan state saat modal ditutup agar tidak membekas saat dibuka lagi
+      setName("");
+      setPhoneNumber("");
+      setAddress("");
     }
   }, [isOpen]);
 
@@ -90,7 +94,6 @@ export default function EditProfileModal({
     setLoadingSubmit(true);
     setMessage(null);
 
-    // Validasi ekstra: Jangan izinkan user mengosongkan nama
     if (!name.trim()) {
       setMessage({ type: "error", text: "Nama lengkap tidak boleh kosong." });
       setLoadingSubmit(false);
@@ -100,8 +103,8 @@ export default function EditProfileModal({
     try {
       await updateMyProfile({
         name: name.trim(),
-        phoneNumber: phoneNumber.trim() || undefined,
-        address: address.trim() || undefined,
+        phoneNumber: phoneNumber.trim() || null,
+        address: address.trim() || null,
       });
 
       setMessage({ type: "success", text: "Profil berhasil diperbarui!" });
@@ -125,8 +128,15 @@ export default function EditProfileModal({
   };
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 animate-fadeIn">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-60 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 animate-fadeIn"
+      >
+        {/* Header Modal */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100">
           <h3 className="font-bold text-gray-900 text-lg">Profil Saya</h3>
           <button
@@ -200,6 +210,7 @@ export default function EditProfileModal({
             </>
           )}
 
+          {/* Footer Actions */}
           <div className="flex gap-3 pt-2">
             <button
               type="button"

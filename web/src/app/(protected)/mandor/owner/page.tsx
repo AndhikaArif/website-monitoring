@@ -17,6 +17,7 @@ import toast from "react-hot-toast";
 
 import { getOwners, deleteOwner } from "@/services/owner.service";
 import { Owner } from "@/types/owner.type";
+import type { ProfileTarget } from "@/types/profile.type";
 import ViewProfileModal from "@/components/modals/view-profile-modal";
 
 export default function OwnerPage() {
@@ -26,7 +27,9 @@ export default function OwnerPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const [selectedOwner, setSelectedOwner] = useState<Owner | null>(null);
+  const [selectedOwner, setSelectedOwner] = useState<ProfileTarget | null>(
+    null,
+  );
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
   const router = useRouter();
@@ -116,7 +119,7 @@ export default function OwnerPage() {
   };
 
   const handleRowClick = (owner: Owner) => {
-    setSelectedOwner(owner);
+    setSelectedOwner({ ...owner, role: "OWNER" });
     setIsViewModalOpen(true);
   };
 

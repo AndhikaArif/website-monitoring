@@ -18,6 +18,7 @@ import {
   deleteHeadWorker,
 } from "@/services/head-worker.service";
 import { HeadWorker } from "@/types/head-worker.type";
+import type { ProfileTarget } from "@/types/profile.type";
 import ViewProfileModal from "@/components/modals/view-profile-modal";
 
 export default function HeadWorkerPage() {
@@ -27,7 +28,7 @@ export default function HeadWorkerPage() {
   const [loading, setLoading] = useState(false);
 
   const [selectedHeadWorker, setSelectedHeadWorker] =
-    useState<HeadWorker | null>(null);
+    useState<ProfileTarget | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
   const router = useRouter();
@@ -119,7 +120,10 @@ export default function HeadWorkerPage() {
   };
 
   const handleRowClick = (headworker: HeadWorker) => {
-    setSelectedHeadWorker(headworker);
+    setSelectedHeadWorker({
+      ...headworker,
+      role: "KEPALA_TUKANG",
+    });
     setIsViewModalOpen(true);
   };
 

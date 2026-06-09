@@ -262,22 +262,31 @@ export class ProjectService {
     if (
       currentUser.role !== UserRole.MANDOR &&
       currentUser.role !== UserRole.OWNER &&
-      currentUser.role !== UserRole.ADMIN
+      currentUser.role !== UserRole.ADMIN &&
+      currentUser.role !== UserRole.KEPALA_TUKANG
     ) {
       throw new AppError(
         403,
-        "Hanya mandor, klien, dan admin yang bisa melihat detail project",
+        "Hanya user yang terdaftar yang bisa melihat detail project",
       );
     }
+
+    // --- LOGIKA ROLE FILTER ---
+    let roleFilter = {};
+    if (currentUser.role === UserRole.MANDOR) {
+      roleFilter = { mandorId: currentUser.id };
+    } else if (currentUser.role === UserRole.OWNER) {
+      roleFilter = { ownerId: currentUser.id };
+    } else if (currentUser.role === UserRole.KEPALA_TUKANG) {
+      roleFilter = { kepalaTukang: { some: { id: currentUser.id } } };
+    }
+    // Jika role === ADMIN, roleFilter tetap kosong {} (Bisa melihat semua)
 
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
         deletedAt: null,
-        // Jika yang akses mandor, pastikan mandorId cocok. Jika klien, pastikan ownerId cocok.
-        ...(currentUser.role === UserRole.MANDOR
-          ? { mandorId: currentUser.id }
-          : { ownerId: currentUser.id }),
+        ...roleFilter,
       },
       select: {
         id: true,
@@ -334,7 +343,10 @@ export class ProjectService {
     });
 
     if (!project) {
-      throw new AppError(404, "Project tidak ditemukan");
+      throw new AppError(
+        404,
+        "Project tidak ditemukan atau Anda tidak memiliki akses.",
+      );
     }
 
     const latestDoc = project.documentations[0] ?? null;
@@ -499,15 +511,7 @@ export class ProjectService {
       }),
 
       prisma.project.count({
-        where: {
-          kepalaTukang: {
-            some: {
-              id: currentUser.id,
-            },
-          },
-          status: ProjectStatus.AKTIF,
-          deletedAt: null,
-        },
+        where: whereClause,
       }),
     ]);
 
@@ -862,6 +866,10 @@ export class ProjectService {
               id: true,
               name: true,
               username: true,
+              email: true,
+              phoneNumber: true,
+              address: true,
+              createdAt: true,
             },
           },
 
@@ -871,6 +879,28 @@ export class ProjectService {
               id: true,
               name: true,
               username: true,
+              email: true,
+              phoneNumber: true,
+              address: true,
+              createdAt: true,
+            },
+          },
+
+          // Tambahkan ini: Ambil data ID dan Nama Kepala Tukang untuk UI Tooltip/Hover
+          kepalaTukang: {
+            where: {
+              mandorId: {
+                not: null,
+              }, // Sinkron dengan _count agar akun scramble tidak ikut terbawa
+            },
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              email: true,
+              phoneNumber: true,
+              address: true,
+              createdAt: true,
             },
           },
 
@@ -998,73 +1028,73 @@ export class ProjectService {
           deletedAt: null,
         },
       });
-
-      // EKSEKUSI TRANSAKSI
-      try {
-        await prisma.$transaction(async (tx) => {
-          // a. Ganti mandorId di tabel Project dan putuskan hubungan dengan KT yang tidak memenuhi syarat
-          await tx.project.update({
-            where: { id: projectId },
-            data: {
-              mandorId: data.newMandorId,
-              ...(ktsToDisconnect.length > 0 && {
-                kepalaTukang: { disconnect: ktsToDisconnect },
-              }),
-            },
-          });
-
-          // b. Update mandorId untuk KT yang benar-benar 100% aman ditransfer (pindah atasan)
-          if (ktsToTransfer.length > 0) {
-            await tx.user.updateMany({
-              where: { id: { in: ktsToTransfer } },
-              data: { mandorId: data.newMandorId },
-            });
-          }
-
-          // Jika Klien tidak punya proyek lain lagi dengan mandor lama,
-          // pindahkan "kepemilikan" akun Klien sepenuhnya ke Mandor baru
-          if (project.ownerId && ownerActiveProjects === 0) {
-            await tx.user.update({
-              where: { id: project.ownerId },
-              data: { mandorId: data.newMandorId },
-            });
-          }
-
-          // Jika ownerActiveProjects > 0 (masih ada proyek lain),
-          // biarkan saja mandorId-nya. Proyek yang ditransfer toh sudah berganti mandor di langkah (a).
-        });
-      } catch (error: any) {
-        // 3. Terapkan ide UX-mu: Tangkap eror Timeout (P2028) dan suruh coba lagi
-        if (error.code === "P2028") {
-          throw new AppError(
-            503,
-            "Server sedang sibuk memproses data yang besar. Silakan coba tekan tombol Transfer lagi dalam beberapa saat.",
-          );
-        }
-
-        // Lempar eror lain jika bukan masalah timeout
-        throw error;
-      }
-
-      // Berikan pesan respons dinamis agar Admin tahu hasil pastinya
-      let responseMessage = "Mandor proyek berhasil diganti.";
-      if (data.keepKepalaTukang) {
-        if (ktsToTransfer.length > 0 && ktsToDisconnect.length === 0) {
-          responseMessage =
-            "Mandor proyek diganti dan seluruh tim Kepala Tukang berhasil dipindahkan ke atasan baru.";
-        } else if (ktsToTransfer.length > 0 && ktsToDisconnect.length > 0) {
-          responseMessage =
-            "Proyek berhasil dipindahkan. Sebagian Kepala Tukang ikut pindah, sebagian ditinggal (dilepas dari proyek ini) karena masih bertugas di proyek mandor lama/dihapus.";
-        } else if (project.kepalaTukang.length > 0) {
-          responseMessage =
-            "Proyek berhasil dipindahkan. Tidak ada Kepala Tukang yang ikut pindah karena mereka masih bertugas di proyek mandor lama.";
-        }
-      } else {
-        responseMessage =
-          "Proyek berhasil dipindahkan. Tim Kepala Tukang lama telah dilepas dari proyek sesuai permintaan.";
-      }
-
-      return { message: responseMessage };
     }
+
+    // EKSEKUSI TRANSAKSI
+    try {
+      await prisma.$transaction(async (tx) => {
+        // a. Ganti mandorId di tabel Project dan putuskan hubungan dengan KT yang tidak memenuhi syarat
+        await tx.project.update({
+          where: { id: projectId },
+          data: {
+            mandorId: data.newMandorId,
+            ...(ktsToDisconnect.length > 0 && {
+              kepalaTukang: { disconnect: ktsToDisconnect },
+            }),
+          },
+        });
+
+        // b. Update mandorId untuk KT yang benar-benar 100% aman ditransfer (pindah atasan)
+        if (ktsToTransfer.length > 0) {
+          await tx.user.updateMany({
+            where: { id: { in: ktsToTransfer } },
+            data: { mandorId: data.newMandorId },
+          });
+        }
+
+        // Jika Klien tidak punya proyek lain lagi dengan mandor lama,
+        // pindahkan "kepemilikan" akun Klien sepenuhnya ke Mandor baru
+        if (project.ownerId && ownerActiveProjects === 0) {
+          await tx.user.update({
+            where: { id: project.ownerId },
+            data: { mandorId: data.newMandorId },
+          });
+        }
+
+        // Jika ownerActiveProjects > 0 (masih ada proyek lain),
+        // biarkan saja mandorId-nya. Proyek yang ditransfer toh sudah berganti mandor di langkah (a).
+      });
+    } catch (error: any) {
+      // 3. Terapkan ide UX-mu: Tangkap eror Timeout (P2028) dan suruh coba lagi
+      if (error.code === "P2028") {
+        throw new AppError(
+          503,
+          "Server sedang sibuk memproses data yang besar. Silakan coba tekan tombol Transfer lagi dalam beberapa saat.",
+        );
+      }
+
+      // Lempar eror lain jika bukan masalah timeout
+      throw error;
+    }
+
+    // Berikan pesan respons dinamis agar Admin tahu hasil pastinya
+    let responseMessage = "Mandor proyek berhasil diganti.";
+    if (data.keepKepalaTukang) {
+      if (ktsToTransfer.length > 0 && ktsToDisconnect.length === 0) {
+        responseMessage =
+          "Mandor proyek diganti dan seluruh tim Kepala Tukang berhasil dipindahkan ke atasan baru.";
+      } else if (ktsToTransfer.length > 0 && ktsToDisconnect.length > 0) {
+        responseMessage =
+          "Proyek berhasil dipindahkan. Sebagian Kepala Tukang ikut pindah, sebagian ditinggal (dilepas dari proyek ini) karena masih bertugas di proyek mandor lama/dihapus.";
+      } else if (project.kepalaTukang.length > 0) {
+        responseMessage =
+          "Proyek berhasil dipindahkan. Tidak ada Kepala Tukang yang ikut pindah karena mereka masih bertugas di proyek mandor lama.";
+      }
+    } else {
+      responseMessage =
+        "Proyek berhasil dipindahkan. Tim Kepala Tukang lama telah dilepas dari proyek sesuai permintaan.";
+    }
+
+    return { message: responseMessage };
   }
 }

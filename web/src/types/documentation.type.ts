@@ -27,6 +27,21 @@ export interface Documentation {
   uploadedAt: string;
 }
 
+// Struktur wadah laporan per tanggal (hasil pengelompokan Backend)
+export interface GroupedDocumentation {
+  projectId: string;
+  projectName: string;
+  reportDate: string;
+  sessions: {
+    PAGI: Documentation[];
+    SORE: Documentation[];
+  };
+  existingSessions: {
+    PAGI: boolean;
+    SORE: boolean;
+  };
+}
+
 // ----------------------------------------------------
 // DTO (Data Transfer Objects) untuk Request & Response
 // ----------------------------------------------------
@@ -34,8 +49,8 @@ export interface Documentation {
 // Tipe parameter untuk axios.get (query string)
 export interface GetDocsParams {
   projectId: string;
-  page?: number;
-  limit?: number;
+  month?: number;
+  year?: number;
   sortBy?: "reportDate" | "uploadedAt" | "session";
   order?: "asc" | "desc";
   status?: string;
@@ -77,11 +92,8 @@ export interface ApiResponse<T> {
 export interface DocsResponse {
   success: boolean;
   message: string;
-  data: Documentation[];
+  data: GroupedDocumentation[];
   meta: {
-    page: number;
-    limit: number;
     total: number;
-    totalPages: number;
   };
 }

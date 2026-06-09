@@ -20,10 +20,10 @@ import { getDocumentationById } from "@/services/documentation.service";
 import type { Documentation } from "@/types/documentation.type";
 
 export default function OwnerDocumentationDetailPage() {
-  const { projectId, documentationId } = useParams() as {
-    projectId: string;
-    documentationId: string;
-  };
+  const params = useParams();
+  const urlProjectId = (params.projectId || params.id) as string;
+  const documentationId = params.documentationId as string;
+
   const router = useRouter();
 
   const [data, setData] = useState<Documentation | null>(null);
@@ -49,6 +49,16 @@ export default function OwnerDocumentationDetailPage() {
     fetchDetail();
   }, [fetchDetail]);
 
+  // Navigasi mundur dengan fallback data.projectId dari database
+  const handleGoBack = () => {
+    const finalProjectId = urlProjectId || data?.projectId;
+    if (finalProjectId) {
+      router.push(`/owner/project/${finalProjectId}/documentation`);
+    } else {
+      router.back(); // Fallback terakhir jika benar-benar tidak ada ID
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -57,16 +67,27 @@ export default function OwnerDocumentationDetailPage() {
     );
   }
 
-  if (!data) return null;
+  // UI khusus ketika data kosong/dihapus (daripada hanya me-return null yang layar putih blank)
+  if (!data) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-center p-4">
+        <p className="text-gray-500 mb-4">Detail laporan tidak ditemukan.</p>
+        <button
+          onClick={handleGoBack}
+          className="bg-amber-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-amber-700 transition-colors cursor-pointer border-none"
+        >
+          Kembali ke Daftar Laporan
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8 text-black">
       <div className="max-w-4xl mx-auto">
         {/* BACK BUTTON */}
         <button
-          onClick={() =>
-            router.push(`/owner/project/${projectId}/documentation`)
-          }
+          onClick={handleGoBack}
           className="flex items-center text-gray-500 hover:text-amber-600 transition-colors mb-6 group bg-transparent border-none cursor-pointer"
         >
           <FiChevronLeft className="mr-1 group-hover:-translate-x-1 transition-transform" />
@@ -77,7 +98,14 @@ export default function OwnerDocumentationDetailPage() {
           {/* INFO DETAIL TUGAS */}
           <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
             <div className="flex flex-wrap items-center gap-3 mb-4">
-              <span className="bg-amber-100 text-amber-700 px-4 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5">
+              <span
+                className={`px-4 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border tracking-wider ${
+                  data.session === "PAGI"
+                    ? "bg-amber-50 text-amber-700 border-amber-200/40"
+                    : "bg-blue-50 text-blue-700 border-blue-200/40"
+                }`}
+              >
+                {" "}
                 <FiClock size={14} /> Sesi {data.session}
               </span>
               <span className="text-gray-500 text-sm font-medium">
@@ -146,6 +174,7 @@ export default function OwnerDocumentationDetailPage() {
                     ? new Date(data.uploadedAt).toLocaleDateString("id-ID", {
                         day: "numeric",
                         month: "short",
+                        year: "numeric",
                         hour: "2-digit",
                         minute: "2-digit",
                       })

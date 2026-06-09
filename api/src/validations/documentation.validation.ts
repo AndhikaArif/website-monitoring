@@ -30,7 +30,8 @@ export const createDocSchema = z.object({
 
   files: z
     .array(fileSchema)
-    .min(1, "Minimal harus mengunggah 1 foto atau video"),
+    .min(4, "Minimal harus mengunggah 4 foto atau video per laporan sesi")
+    .max(20, "Batas maksimal adalah 20 file per laporan sesi"),
 });
 
 export type CreateDocDTO = z.infer<typeof createDocSchema>;
@@ -50,7 +51,14 @@ export const updateDocSchema = z.object({
   target: z.string().trim().optional(),
   progress: z.string().trim().optional(),
 
-  files: z.array(fileSchema).optional(),
+  files: z
+    .array(fileSchema)
+    .min(
+      4,
+      "Jika ingin mengubah file, minimal harus mengunggah 4 foto atau video",
+    )
+    .max(20, "Batas maksimal adalah 20 file per laporan sesi")
+    .optional(),
 });
 
 export type UpdateDocDTO = z.infer<typeof updateDocSchema>;
@@ -63,12 +71,19 @@ export type DocumentationIdParamDTO = z.infer<typeof documentationIdParam>;
 
 export const paginationQuery = z.object({
   projectId: z.string().uuid("Project ID tidak valid").optional(),
-  page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(500).default(10),
   status: z.enum(ProjectStatus).optional(),
   sortBy: z.enum(["reportDate", "uploadedAt", "session"]).optional(),
   order: z.enum(["asc", "desc"]).optional(),
   search: z.string().optional(),
+
+  // Menggunakan z.coerce agar otomatis mengubah string "?month=6" dari URL menjadi angka 6
+  month: z.coerce
+    .number()
+    .min(1, "Bulan tidak valid")
+    .max(12, "Bulan tidak valid")
+    .optional(),
+
+  year: z.coerce.number().min(2020, "Tahun minimal 2020").optional(),
 });
 
 export type PaginationQueryDTO = z.infer<typeof paginationQuery>;
