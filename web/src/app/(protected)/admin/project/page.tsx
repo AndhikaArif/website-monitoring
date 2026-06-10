@@ -14,7 +14,10 @@ import {
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 
-import { getAllProjectsForAdmin } from "@/services/project.service";
+import {
+  adminUpdateProjectStatus,
+  getAllProjectsForAdmin,
+} from "@/services/project.service";
 import type { AdminProject } from "@/types/project.type";
 import type { ProfileTarget } from "@/types/profile.type";
 
@@ -68,7 +71,7 @@ export default function AdminProjectsPage() {
           err.response.data?.message || "Gagal mengambil data proyek sistem.";
 
         if (status === 404) {
-          // 🎯 404 di sini berarti tabel kosong. Biarkan user di halaman ini dan kosongkan state.
+          // 404 di sini berarti tabel kosong. Biarkan user di halaman ini dan kosongkan state.
           setProjects([]);
           setTotalPages(1);
           return;
@@ -120,6 +123,59 @@ export default function AdminProjectsPage() {
     setSelectedProject(null);
     if (shouldRefresh) {
       fetchData(); // Muat ulang tabel jika mutasi di backend sukses
+    }
+  };
+
+  const handleStatusChange = async (
+    projectId: string,
+    oldStatus: string,
+    newStatus: string,
+  ) => {
+    // Kalau status yang diklik sama dengan status saat ini, hentikan proses
+    if (oldStatus === newStatus) return;
+
+    // Siapkan variabel untuk alert konfirmasi
+    let isConfirmed = false;
+
+    // Kasus 1: Mau ubah status MENJADI Selesai
+    if (newStatus === "AKTIF" || newStatus === "LIBUR") {
+      if (oldStatus === "SELESAI") {
+        // Kasus 2: Mau mengubah project yang SUDAH Selesai kembali ke Aktif/Libur
+        isConfirmed = window.confirm(
+          `Proyek ini sudah SELESAI. Yakin ingin mengembalikan statusnya menjadi ${newStatus}?\n\nIni akan mereset tanggal selesai (endDate) menjadi kosong.`,
+        );
+      } else {
+        // Kasus 3: Cuma pindah antara Aktif <-> Libur
+        isConfirmed = window.confirm(
+          `Yakin ingin mengubah status proyek menjadi ${newStatus}?`,
+        );
+      }
+    } else if (newStatus === "SELESAI") {
+      isConfirmed = window.confirm(
+        "Yakin ingin mengubah status menjadi SELESAI?\n\nIni akan otomatis mencatat tanggal hari ini sebagai tanggal selesai proyek.",
+      );
+    }
+
+    // Jika admin klik "Cancel" di alert, batalkan proses
+    if (!isConfirmed) {
+      // kembali ke awal tanpa perlu kita set state manual.
+      return;
+    }
+
+    // Jika "OK" eksekusi API Call
+    try {
+      // Pastikan payload sesuai dengan interface AdminUpdateStatusPayload
+      const payload = {
+        status: newStatus as "AKTIF" | "LIBUR" | "SELESAI",
+      };
+
+      await adminUpdateProjectStatus(projectId, payload);
+
+      fetchData();
+      toast.success("Status proyek berhasil diperbarui.");
+    } catch (error) {
+      console.error("Gagal update status proyek:", error);
+      toast.error("Terjadi kesalahan saat mengubah status. Silakan coba lagi.");
     }
   };
 
@@ -347,9 +403,16 @@ export default function AdminProjectsPage() {
                       </td>
 
                       {/* KOLOM 5: STATUS */}
-                      <td className="p-5 text-center">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                      <td
+                        className="p-5 text-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <select
+                          value={p.status}
+                          onChange={(e) =>
+                            handleStatusChange(p.id, p.status, e.target.value)
+                          }
+                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border-0 hover:bg-gray-400 cursor-pointer focus:ring-2 focus:ring-blue-500 focus:outline-none text-center appearance-none ${
                             p.status === "AKTIF"
                               ? "bg-green-100 text-green-700"
                               : p.status === "LIBUR"
@@ -357,8 +420,25 @@ export default function AdminProjectsPage() {
                                 : "bg-gray-100 text-gray-700"
                           }`}
                         >
-                          {p.status}
-                        </span>
+                          <option
+                            value="AKTIF"
+                            className="bg-white text-gray-900 font-medium"
+                          >
+                            AKTIF
+                          </option>
+                          <option
+                            value="LIBUR"
+                            className="bg-white text-gray-900 font-medium"
+                          >
+                            LIBUR
+                          </option>
+                          <option
+                            value="SELESAI"
+                            className="bg-white text-gray-900 font-medium"
+                          >
+                            SELESAI
+                          </option>
+                        </select>
                       </td>
 
                       {/* KOLOM 6: AKSI KENDALI */}

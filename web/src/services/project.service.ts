@@ -6,6 +6,7 @@ import {
   AssignedProjectResponse,
   AdminProjectResponse,
   TransferMandorPayload,
+  AdminUpdateStatusPayload,
 } from "../types/project.type";
 
 const API_URL = process.env.NEXT_PUBLIC_API_DOMAIN;
@@ -20,7 +21,6 @@ export const getMyProjects = async (
   const params = new URLSearchParams({
     page: String(page),
     limit: String(limit),
-    ...(status && { status }),
     ...(status && { status }),
     ...(sortBy && { sortBy }),
     ...(order && { order }), // <-- Hanya dimasukkan ke URL jika 'order' ada isinya ('asc' atau 'desc')
@@ -232,6 +232,18 @@ export const adminTransferMandor = async (
 ) => {
   const res = await axios.post(
     `${API_URL}/api/project/transfer-mandor/${projectId}`,
+    data,
+    { withCredentials: true },
+  );
+  return res.data;
+};
+
+export const adminUpdateProjectStatus = async (
+  projectId: string,
+  data: AdminUpdateStatusPayload,
+) => {
+  const res = await axios.patch(
+    `${API_URL}/api/project/${projectId}/status`,
     data,
     { withCredentials: true },
   );

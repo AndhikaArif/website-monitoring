@@ -51,6 +51,8 @@ export interface GetDocsParams {
   projectId: string;
   month?: number;
   year?: number;
+  startDate?: string;
+  endDate?: string;
   sortBy?: "reportDate" | "uploadedAt" | "session";
   order?: "asc" | "desc";
   status?: string;

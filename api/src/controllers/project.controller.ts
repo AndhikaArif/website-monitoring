@@ -9,6 +9,7 @@ import type {
   ProjectIdParamDTO,
   UpdateProjectDTO,
   AdminTransferMandorDTO,
+  AdminUpdateProjectStatusDTO,
 } from "../validations/project.validation.js";
 
 const projectService = new ProjectService();
@@ -291,6 +292,25 @@ export class ProjectController {
         projectId,
         transferPayload,
       );
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async adminUpdateStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.currentUser) throw new AppError(401, "Unauthenticated");
+
+      const { projectId } = req.validatedParams as ProjectIdParamDTO;
+      const payload = req.validatedBody as AdminUpdateProjectStatusDTO;
+
+      const result = await projectService.adminUpdateProjectStatus(
+        req.currentUser,
+        projectId,
+        payload,
+      );
+
       res.status(200).json(result);
     } catch (error) {
       next(error);

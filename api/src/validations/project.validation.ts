@@ -98,3 +98,11 @@ export const adminTransferMandorSchema = z.object({
 });
 
 export type AdminTransferMandorDTO = z.infer<typeof adminTransferMandorSchema>;
+
+export const adminUpdateProjectStatusSchema = z.object({
+  status: z.enum(ProjectStatus),
+});
+
+export type AdminUpdateProjectStatusDTO = z.infer<
+  typeof adminUpdateProjectStatusSchema
+>;

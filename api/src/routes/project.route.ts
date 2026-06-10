@@ -12,6 +12,7 @@ import {
   paginationQuery,
   updateProjectSchema,
   adminTransferMandorSchema,
+  adminUpdateProjectStatusSchema,
 } from "../validations/project.validation.js";
 
 const router = Router();
@@ -79,6 +80,16 @@ router.post(
   validate(projectIdParam, "params"),
   validate(adminTransferMandorSchema),
   controller.adminTransferMandor,
+);
+
+// 🔥 ADMIN UBAH STATUS PROJECT
+router.patch(
+  "/:projectId/status",
+  AuthMiddleWare.verifyToken,
+  AuthMiddleWare.roleGuard(UserRole.ADMIN),
+  validate(projectIdParam, "params"),
+  validate(adminUpdateProjectStatusSchema),
+  controller.adminUpdateStatus,
 );
 // --------------------------------------------------------
 

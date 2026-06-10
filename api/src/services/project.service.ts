@@ -250,7 +250,7 @@ export class ProjectService {
         );
       }
 
-      await prisma.project.delete({
+      await tx.project.delete({
         where: { id: projectId },
       });
     });
@@ -405,7 +405,7 @@ export class ProjectService {
     return {
       data: projects,
       meta: {
-        page,
+        page: safePage,
         limit,
         total,
         totalPages: Math.max(1, Math.ceil(total / limit)),
@@ -518,7 +518,7 @@ export class ProjectService {
     return {
       data: projects,
       meta: {
-        page,
+        page: safePage,
         limit,
         total,
         totalPages: Math.max(1, Math.ceil(total / limit)),
@@ -1096,5 +1096,53 @@ export class ProjectService {
     }
 
     return { message: responseMessage };
+  }
+
+  async adminUpdateProjectStatus(
+    currentUser: IExistingUser,
+    projectId: string,
+    data: { status: ProjectStatus },
+  ) {
+    // 1. Validasi Akses: Pastikan hanya Admin
+    if (currentUser.role !== UserRole.ADMIN) {
+      throw new AppError(
+        403,
+        "Akses ditolak. Hanya Admin yang dapat mengubah status proyek.",
+      );
+    }
+
+    // 2. Cari proyeknya
+    const project = await prisma.project.findFirst({
+      where: {
+        id: projectId,
+      },
+    });
+
+    if (!project) {
+      throw new AppError(404, "Proyek tidak ditemukan atau sudah dihapus.");
+    }
+
+    // 3. Siapkan payload data untuk update
+    const updatePayload: any = {
+      status: data.status,
+    };
+
+    // LOGIKA OTOMATIS: Jika diset SELESAI, isi endDate.
+    // Jika dikembalikan dari SELESAI ke AKTIF/LIBUR, kosongkan endDate.
+    if (data.status === ProjectStatus.SELESAI) {
+      updatePayload.endDate = new Date();
+    } else {
+      updatePayload.endDate = null;
+    }
+
+    const updated = await prisma.project.update({
+      where: { id: projectId },
+      data: updatePayload,
+    });
+
+    return {
+      message: `Status proyek berhasil diperbarui menjadi ${data.status}`,
+      data: updated,
+    };
   }
 }

@@ -133,3 +133,7 @@ export interface TransferMandorPayload {
   newMandorId: string;
   keepKepalaTukang: boolean;
 }
+
+export interface AdminUpdateStatusPayload {
+  status: "AKTIF" | "LIBUR" | "SELESAI";
+}

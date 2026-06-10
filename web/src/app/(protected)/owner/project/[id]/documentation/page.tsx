@@ -9,6 +9,7 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiUser,
+  FiLoader,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import Image from "next/image";
@@ -33,6 +34,7 @@ export default function OwnerProjectDocumentationPage() {
   // 1. STATE UTAMA
   const [docs, setDocs] = useState<GroupedDocumentation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // 2. STATE FILTER WAKTU & PENCARIAN
   const currentDate = new Date();
@@ -51,6 +53,7 @@ export default function OwnerProjectDocumentationPage() {
   // 3. STATE UNTUK TANGGAL MULAI PROYEK DAN HARI INI
   const [currentRealDate] = useState(new Date());
   const [projectStartDate, setProjectStartDate] = useState<Date | null>(null);
+  const [projectEndDate, setProjectEndDate] = useState<Date | null>(null);
 
   // --- AMBIL DETAIL PROYEK UNTUK BATAS TANGGAL ---
   useEffect(() => {
@@ -58,14 +61,51 @@ export default function OwnerProjectDocumentationPage() {
       try {
         if (!projectId) return;
         const res = await getProjectDetail(projectId);
+        const rawStartDate = res.data?.startDate || res.data?.createdAt;
+        const rawEndDate = res.data?.endDate;
 
-        if (res.data?.startDate) {
-          setProjectStartDate(new Date(res.data.startDate));
-        } else if (res.data?.createdAt) {
-          setProjectStartDate(new Date(res.data.createdAt));
+        let start: Date | null = null;
+        let end: Date | null = null;
+
+        if (rawStartDate) {
+          start = new Date(rawStartDate);
+          setProjectStartDate(start);
         }
+
+        if (rawEndDate) {
+          end = new Date(rawEndDate);
+          // Opsi validasi tambahan: cegah 'Invalid Date' jika string tanggal rusak
+          if (!isNaN(end.getTime())) {
+            setProjectEndDate(end);
+          } else {
+            end = null;
+          }
+        }
+
+        // Menentukan Bulan & Tahun Tampilan Awal
+        const today = new Date();
+        let targetMonth = today.getMonth() + 1;
+        let targetYear = today.getFullYear();
+
+        if (end && today.getTime() > end.getTime()) {
+          // Kasus A: Proyek sudah selesai di masa lalu -> Buka bulan terakhir proyek aktif
+          targetMonth = end.getMonth() + 1;
+          targetYear = end.getFullYear();
+        } else if (start && today.getTime() < start.getTime()) {
+          // Kasus B: Proyek belum mulai -> Buka bulan awal proyek
+          targetMonth = start.getMonth() + 1;
+          targetYear = start.getFullYear();
+        }
+
+        setSelectedMonth(targetMonth);
+        setSelectedYear(targetYear);
+        setDebouncedMonth(targetMonth);
+        setDebouncedYear(targetYear);
       } catch (error) {
-        console.error("Gagal mengambil data proyek untuk kalender:", error);
+        console.error("Gagal mengambil data proyek", error);
+        toast.error("Gagal memuat konfigurasi tanggal proyek.");
+      } finally {
+        setIsInitialized(true);
       }
     };
 
@@ -85,12 +125,17 @@ export default function OwnerProjectDocumentationPage() {
   };
 
   const isNextMonthDisabled = () => {
-    const currentYear = currentRealDate.getFullYear();
-    const currentMonth = currentRealDate.getMonth() + 1;
+    // Tentukan batas maksimal navigasi kalender
+    const limitDate = projectEndDate ? projectEndDate : currentRealDate;
 
-    if (selectedYear > currentYear) return true;
-    if (selectedYear === currentYear && selectedMonth >= currentMonth)
-      return true;
+    const limitYear = limitDate.getFullYear();
+    const limitMonth = limitDate.getMonth() + 1;
+
+    // Kunci tombol next jika tahun yang dipilih lebih besar dari batas
+    if (selectedYear > limitYear) return true;
+
+    // Kunci tombol next jika tahun sama, dan bulan yang dipilih sudah mencapai atau melewati batas
+    if (selectedYear === limitYear && selectedMonth >= limitMonth) return true;
 
     return false;
   };
@@ -114,6 +159,8 @@ export default function OwnerProjectDocumentationPage() {
 
   // --- GET DATA BERDASARKAN BULAN, TAHUN & KEYWORD ---
   const fetchDocs = useCallback(async () => {
+    if (!isInitialized) return;
+
     const currentTimestamp = Date.now();
     requestTimestampRef.current = currentTimestamp;
 
@@ -176,6 +223,7 @@ export default function OwnerProjectDocumentationPage() {
     debouncedYear,
     sortOrder,
     router,
+    isInitialized,
   ]);
 
   useEffect(() => {
@@ -201,6 +249,18 @@ export default function OwnerProjectDocumentationPage() {
     }
   };
 
+  // Tahan render utama jika inisialisasi tanggal proyek belum selesai
+  if (!isInitialized) {
+    return (
+      <div className="flex flex-col min-h-screen items-center justify-center bg-gray-50 text-black">
+        <FiLoader className="animate-spin text-amber-600 text-4xl mb-4" />
+        <p className="text-sm font-medium text-slate-500 animate-pulse">
+          Memuat data proyek...
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 text-black">
       <div className="p-4 sm:p-6 max-w-7xl mx-auto">
@@ -215,18 +275,39 @@ export default function OwnerProjectDocumentationPage() {
 
         {/* ================= HEADER SECTION ================= */}
         <div className="flex flex-col xl:flex-row xl:justify-between xl:items-center mb-8 gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 border-t-4 border-t-amber-500">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">
-              Riwayat Laporan Harian
-            </h1>
-            <p className="text-slate-500 text-sm mt-1">
-              {currentUser?.name
-                ? `Halo Bapak/Ibu ${currentUser.name}, `
-                : "Selamat datang. "}
-              {projectStartDate
-                ? `Pantau progres pengerjaan sejak ${projectStartDate.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}.`
-                : "Pantau progres proyek rumah Anda secara transparan."}
-            </p>
+          <div className="flex flex-col gap-3">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">
+                Riwayat Laporan Harian
+              </h1>
+              <p className="text-slate-500 text-sm mt-1">
+                {currentUser?.name
+                  ? `Halo Bapak/Ibu ${currentUser.name}, Pantau progres proyek rumah Anda secara transparan disini.`
+                  : "Selamat datang. "}
+              </p>
+            </div>
+
+            {/* BADGE TANGGAL PROYEK */}
+            {projectStartDate && (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-50 text-gray-900 rounded-lg text-sm font-medium border border-gray-100 w-fit">
+                <FiCalendar size={16} className="shrink-0" />
+                <span>
+                  {projectStartDate.toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}{" "}
+                  —{" "}
+                  {projectEndDate
+                    ? projectEndDate.toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })
+                    : "Sekarang (Berjalan)"}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">

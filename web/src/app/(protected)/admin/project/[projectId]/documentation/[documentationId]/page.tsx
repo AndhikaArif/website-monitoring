@@ -25,7 +25,6 @@ import {
 import type { Documentation } from "@/types/documentation.type";
 
 export default function AdminDocumentationDetailPage() {
-  // ✅ PERBAIKAN 1: Pengambilan parameter URL yang aman
   const params = useParams();
   const urlProjectId = (params.projectId || params.id) as string;
   const documentationId = params.documentationId as string;
@@ -34,7 +33,7 @@ export default function AdminDocumentationDetailPage() {
 
   const [data, setData] = useState<Documentation | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isDeleting, setIsDeleting] = useState(false); // ✅ PERBAIKAN 2: State loading khusus tombol hapus
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchDetail = useCallback(async () => {
     try {
@@ -85,7 +84,7 @@ export default function AdminDocumentationDetailPage() {
     }
   };
 
-  // ✅ PERBAIKAN 3: Fallback navigasi mundur
+  // Fallback navigasi mundur
   const handleGoBack = () => {
     const finalProjectId = urlProjectId || data?.projectId;
     if (finalProjectId) {
@@ -103,7 +102,7 @@ export default function AdminDocumentationDetailPage() {
     );
   }
 
-  // ✅ PERBAIKAN 4: UI state kosong
+  // UI state kosong
   if (!data) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-center p-4">

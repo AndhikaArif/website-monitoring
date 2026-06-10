@@ -16,7 +16,6 @@ export class AuthServices {
     if (currentUser.role !== UserRole.ADMIN) {
       throw new AppError(403, "Hanya admin yang bisa membuat mandor");
     }
-    // 🔍 cek duplicate
     const existing = await prisma.user.findFirst({
       where: {
         OR: [{ email: data.email }, { username: data.username }],
@@ -32,10 +31,8 @@ export class AuthServices {
       }
     }
 
-    // 🔐 hash password
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    // 💾 create user
     const mandor = await prisma.user.create({
       data: {
         name: data.name,
@@ -94,7 +91,7 @@ export class AuthServices {
       hashedPassword = await bcrypt.hash(data.password, 10);
     }
 
-    // BUILD UPDATE DATA (INI KUNCI NYA)
+    // BUILD UPDATE DATA
     const updateData: any = {};
 
     if (data.name !== undefined) updateData.name = data.name;
