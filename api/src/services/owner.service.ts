@@ -16,7 +16,7 @@ export class OwnerServices {
       throw new AppError(403, "Hanya mandor yang bisa membuat data owner");
     }
 
-    // 🔍 cek duplicate
+    // cek duplicate
     const existing = await prisma.user.findFirst({
       where: {
         OR: [{ email: data.email }, { username: data.username }],
@@ -32,10 +32,10 @@ export class OwnerServices {
       }
     }
 
-    // 🔐 hash password
+    // hash password
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    // 💾 create user
+    // create user
     const owner = await prisma.user.create({
       data: {
         name: data.name,
@@ -56,8 +56,21 @@ export class OwnerServices {
     ownerId: string,
     data: UpdateOwnerDTO,
   ) {
-    if (currentUser.role !== UserRole.MANDOR) {
-      throw new AppError(403, "Hanya mandor yang bisa update data owner");
+    if (
+      currentUser.role !== UserRole.MANDOR &&
+      currentUser.role !== UserRole.ADMIN
+    ) {
+      throw new AppError(
+        403,
+        "Hanya mandor atau admin yang bisa update data owner",
+      );
+    }
+
+    if (currentUser.role === UserRole.MANDOR && (data.email || data.username)) {
+      throw new AppError(
+        403,
+        "Mandor tidak memiliki akses untuk mengubah email atau username",
+      );
     }
 
     const existingOwner = await prisma.user.findFirst({
@@ -65,17 +78,17 @@ export class OwnerServices {
         id: ownerId,
         role: UserRole.OWNER,
         deletedAt: null,
-        mandorId: currentUser.id,
+        ...(currentUser.role === UserRole.MANDOR && {
+          mandorId: currentUser.id,
+        }),
       },
     });
 
     if (!existingOwner) {
-      throw new AppError(
-        403,
-        "Akses ditolak. Anda hanya dapat mengedit data Klien yang Anda daftarkan sendiri.",
-      );
+      throw new AppError(404, "Owner tidak ditemukan");
     }
 
+    // Pengecekan Duplikat secara GLOBAL (Hanya berjalan jika ADMIN yang mengubah email/username)
     if (data.email || data.username) {
       const duplicate = await prisma.user.findFirst({
         where: {
@@ -84,12 +97,20 @@ export class OwnerServices {
             ...(data.username ? [{ username: data.username }] : []),
           ],
           NOT: { id: ownerId },
-          deletedAt: null,
         },
       });
 
       if (duplicate) {
-        throw new AppError(400, "Email atau username sudah digunakan");
+        if (duplicate.deletedAt !== null) {
+          throw new AppError(
+            400,
+            "Email atau username ini masih digunakan oleh akun yang sudah dihapus (berada di riwayat owner). Silakan lakukan hapus permanen pada akun tersebut terlebih dahulu.",
+          );
+        }
+        throw new AppError(
+          400,
+          "Email atau username sudah digunakan oleh akun lain yang masih aktif.",
+        );
       }
     }
 
@@ -99,7 +120,7 @@ export class OwnerServices {
       hashedPassword = await bcrypt.hash(data.password, 10);
     }
 
-    // BUILD UPDATE DATA (INI KUNCI NYA)
+    // BUILD UPDATE DATA
     const updateData: any = {};
 
     if (data.name !== undefined) updateData.name = data.name;
@@ -131,10 +152,7 @@ export class OwnerServices {
     });
 
     if (!existingOwner) {
-      throw new AppError(
-        403,
-        "Akses ditolak. Anda hanya dapat manghapus data Klien yang Anda daftarkan sendiri.",
-      );
+      throw new AppError(404, "Owner tidak ditemukan");
     }
 
     await prisma.user.update({
@@ -247,16 +265,25 @@ export class OwnerServices {
   }
 
   async listTrashedOwner(currentUser: IExistingUser, query: ListOwnerQueryDTO) {
-    if (currentUser.role !== UserRole.MANDOR) {
-      throw new AppError(403, "Hanya mandor yang bisa melihat sampah owner");
+    if (
+      currentUser.role !== UserRole.MANDOR &&
+      currentUser.role !== UserRole.ADMIN
+    ) {
+      throw new AppError(
+        403,
+        "Hanya mandor atau admin yang bisa melihat riwayat owner",
+      );
     }
+
     const { page, limit, search } = query;
     const skip = (page - 1) * limit;
 
     const whereCondition: any = {
       role: UserRole.OWNER,
-      mandorId: currentUser.id,
       deletedAt: { not: null },
+      ...(currentUser.role === UserRole.MANDOR && {
+        mandorId: currentUser.id,
+      }),
       ...(search && {
         OR: [
           { name: { contains: search, mode: "insensitive" } },
@@ -279,6 +306,13 @@ export class OwnerServices {
           email: true,
           createdAt: true,
           deletedAt: true,
+          mandor: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+            },
+          },
         },
       }),
       prisma.user.count({ where: whereCondition }),
@@ -296,6 +330,16 @@ export class OwnerServices {
   }
 
   async restoreOwner(currentUser: IExistingUser, userId: string) {
+    if (
+      currentUser.role !== UserRole.MANDOR &&
+      currentUser.role !== UserRole.ADMIN
+    ) {
+      throw new AppError(
+        403,
+        "Hanya mandor atau admin yang bisa memulihkan owner",
+      );
+    }
+
     const user = await prisma.user.findFirst({
       where: {
         id: userId,
@@ -307,7 +351,7 @@ export class OwnerServices {
       },
     });
 
-    if (!user) throw new AppError(404, "Owner tidak ditemukan di sampah");
+    if (!user) throw new AppError(404, "Owner tidak ditemukan di riwayat");
 
     return await prisma.user.update({
       where: { id: userId },
@@ -316,18 +360,22 @@ export class OwnerServices {
   }
 
   async hardDeleteOwner(currentUser: IExistingUser, userId: string) {
+    if (currentUser.role !== UserRole.ADMIN) {
+      throw new AppError(
+        403,
+        "Hanya admin yang memiliki kewenangan untuk menghapus akun secara permanen",
+      );
+    }
+
     const user = await prisma.user.findFirst({
       where: {
         id: userId,
-        role: UserRole.OWNER, // Pastikan yang dihapus permanen adalah owner
+        role: UserRole.OWNER,
         deletedAt: { not: null },
-        ...(currentUser.role === UserRole.MANDOR && {
-          mandorId: currentUser.id,
-        }),
       },
     });
 
-    if (!user) throw new AppError(404, "Owner tidak ditemukan di sampah");
+    if (!user) throw new AppError(404, "Owner tidak ditemukan di riwayat");
 
     const timestamp = Date.now();
     // Menghasilkan string acak 4 karakter (contoh: 'a1b2') untuk menjamin keunikan mutlak
@@ -346,7 +394,7 @@ export class OwnerServices {
         phoneNumber: null,
         address: null,
 
-        // 3. Putuskan relasi dari mandor agar akun Klien ini hilang sepenuhnya dari tong sampah Mandor tersebut
+        // 3. Putuskan relasi dari mandor agar akun Owner ini hilang sepenuhnya dari riwayat owner tersebut
         mandorId: null,
       },
     });

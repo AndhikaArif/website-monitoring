@@ -16,10 +16,10 @@ export class HeadWorkerServices {
     data: CreateHeadWorkerDTO,
   ) {
     if (currentUser.role !== UserRole.MANDOR) {
-      throw new AppError(403, "Hanya mandor yang bisa membuat head worker");
+      throw new AppError(403, "Hanya mandor yang bisa membuat Kepala Tukang");
     }
 
-    // 🔍 cek duplicate
+    // cek duplicate
     const existing = await prisma.user.findFirst({
       where: {
         OR: [{ email: data.email }, { username: data.username }],
@@ -35,10 +35,10 @@ export class HeadWorkerServices {
       }
     }
 
-    // 🔐 hash password
+    // hash password
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    // 💾 create user
+    // create user
     const kepalaTukang = await prisma.user.create({
       data: {
         name: data.name,
@@ -59,23 +59,40 @@ export class HeadWorkerServices {
     kepalaTukangId: string,
     data: UpdateHeadWorkerDTO,
   ) {
-    if (currentUser.role !== UserRole.MANDOR) {
-      throw new AppError(403, "Hanya mandor yang bisa update head worker");
+    if (
+      currentUser.role !== UserRole.MANDOR &&
+      currentUser.role !== UserRole.ADMIN
+    ) {
+      throw new AppError(
+        403,
+        "Hanya mandor atau admin yang bisa update Kepala Tukang",
+      );
     }
 
+    if (currentUser.role === UserRole.MANDOR && (data.email || data.username)) {
+      throw new AppError(
+        403,
+        "Mandor tidak memiliki akses untuk mengubah email atau username",
+      );
+    }
+
+    // Cari data kepala tukang (Jika mandor, hanya bisa cari miliknya sendiri)
     const existingHeadWorker = await prisma.user.findFirst({
       where: {
         id: kepalaTukangId,
         role: UserRole.KEPALA_TUKANG,
         deletedAt: null,
-        mandorId: currentUser.id,
+        ...(currentUser.role === UserRole.MANDOR && {
+          mandorId: currentUser.id,
+        }),
       },
     });
 
     if (!existingHeadWorker) {
-      throw new AppError(404, "Head Worker tidak ditemukan");
+      throw new AppError(404, "Kepala Tukang tidak ditemukan");
     }
 
+    // Pengecekan Duplikat secara GLOBAL (Hanya berjalan jika ADMIN yang mengubah email/username)
     if (data.email || data.username) {
       const duplicate = await prisma.user.findFirst({
         where: {
@@ -84,13 +101,21 @@ export class HeadWorkerServices {
             ...(data.username ? [{ username: data.username }] : []),
           ],
           NOT: { id: kepalaTukangId },
-          deletedAt: null,
-          mandorId: currentUser.id,
         },
       });
 
       if (duplicate) {
-        throw new AppError(400, "Email atau username sudah digunakan");
+        if (duplicate.deletedAt !== null) {
+          throw new AppError(
+            400,
+            "Email atau username ini masih digunakan oleh akun yang sudah dihapus (berada di riwayat kepala tukang). Silakan lakukan hapus permanen pada akun tersebut terlebih dahulu.",
+          );
+        }
+
+        throw new AppError(
+          400,
+          "Email atau username sudah digunakan oleh akun lain yang masih aktif.",
+        );
       }
     }
 
@@ -100,7 +125,7 @@ export class HeadWorkerServices {
       hashedPassword = await bcrypt.hash(data.password, 10);
     }
 
-    // BUILD UPDATE DATA (INI KUNCI NYA)
+    // BUILD UPDATE DATA
     const updateData: any = {};
 
     if (data.name !== undefined) updateData.name = data.name;
@@ -119,7 +144,7 @@ export class HeadWorkerServices {
 
   async deleteHeadWorker(currentUser: IExistingUser, kepalaTukangId: string) {
     if (currentUser.role !== UserRole.MANDOR) {
-      throw new AppError(403, "Hanya mandor yang bisa menghapus head worker");
+      throw new AppError(403, "Hanya mandor yang bisa menghapus Kepala Tukang");
     }
 
     const existingHeadWorker = await prisma.user.findFirst({
@@ -132,7 +157,7 @@ export class HeadWorkerServices {
     });
 
     if (!existingHeadWorker) {
-      throw new AppError(404, "Head worker tidak ditemukan");
+      throw new AppError(404, "Kepala Tukang tidak ditemukan");
     }
 
     await prisma.user.update({
@@ -142,14 +167,14 @@ export class HeadWorkerServices {
       },
     });
 
-    return { message: "Head Worker berhasil dihapus" };
+    return { message: "Kepala Tukang berhasil dihapus" };
   }
 
   async getHeadWorkerById(currentUser: IExistingUser, kepalaTukangId: string) {
     if (currentUser.role !== UserRole.MANDOR) {
       throw new AppError(
         403,
-        "Hanya mandor yang bisa melihat detail head worker",
+        "Hanya mandor yang bisa melihat detail Kepala Tukang",
       );
     }
 
@@ -171,7 +196,7 @@ export class HeadWorkerServices {
     });
 
     if (!kepalaTukang) {
-      throw new AppError(404, "Head Worker tidak ditemukan");
+      throw new AppError(404, "Kepala Tukang tidak ditemukan");
     }
 
     return kepalaTukang;
@@ -184,7 +209,7 @@ export class HeadWorkerServices {
     if (currentUser.role !== UserRole.MANDOR) {
       throw new AppError(
         403,
-        "Hanya mandor yang bisa melihat daftar head worker",
+        "Hanya mandor yang bisa melihat daftar Kepala Tukang",
       );
     }
     const { page, limit } = query;
@@ -238,19 +263,26 @@ export class HeadWorkerServices {
     currentUser: IExistingUser,
     query: ListHeadWorkerQueryDTO,
   ) {
-    if (currentUser.role !== UserRole.MANDOR) {
+    if (
+      currentUser.role !== UserRole.MANDOR &&
+      currentUser.role !== UserRole.ADMIN
+    ) {
       throw new AppError(
         403,
-        "Hanya mandor yang bisa melihat sampah head worker",
+        "Hanya mandor atau admin yang bisa melihat riwayat Kepala Tukang",
       );
     }
+
     const { page, limit } = query;
     const skip = (page - 1) * limit;
 
     const whereCondition = {
       role: UserRole.KEPALA_TUKANG,
-      mandorId: currentUser.id, // Hanya head worker milik mandor ini
       deletedAt: { not: null },
+      // Jika MANDOR, batasi hanya melihat Kepala Tukangnya sendiri. Jika ADMIN, lolos (melihat semua).
+      ...(currentUser.role === UserRole.MANDOR && {
+        mandorId: currentUser.id,
+      }),
     };
 
     const [kepalaTukang, total] = await Promise.all([
@@ -266,6 +298,13 @@ export class HeadWorkerServices {
           email: true,
           createdAt: true,
           deletedAt: true,
+          mandor: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+            },
+          },
         },
       }),
       prisma.user.count({ where: whereCondition }),
@@ -283,6 +322,16 @@ export class HeadWorkerServices {
   }
 
   async restoreHeadWorker(currentUser: IExistingUser, userId: string) {
+    if (
+      currentUser.role !== UserRole.MANDOR &&
+      currentUser.role !== UserRole.ADMIN
+    ) {
+      throw new AppError(
+        403,
+        "Hanya mandor atau admin yang bisa memulihkan Kepala Tukang",
+      );
+    }
+
     // Cek dulu apakah user tersebut ada dan sesuai aksesnya
     const user = await prisma.user.findFirst({
       where: {
@@ -294,7 +343,8 @@ export class HeadWorkerServices {
       },
     });
 
-    if (!user) throw new AppError(404, "Head worker tidak ditemukan di sampah");
+    if (!user)
+      throw new AppError(404, "Kepala Tukang tidak ditemukan di riwayat");
 
     return await prisma.user.update({
       where: { id: userId },
@@ -303,23 +353,29 @@ export class HeadWorkerServices {
   }
 
   async hardDeleteHeadWorker(currentUser: IExistingUser, userId: string) {
+    if (currentUser.role !== UserRole.ADMIN) {
+      throw new AppError(
+        403,
+        "Hanya admin yang memiliki kewenangan untuk menghapus akun secara permanen",
+      );
+    }
+
     const user = await prisma.user.findFirst({
       where: {
         id: userId,
+        role: UserRole.KEPALA_TUKANG,
         deletedAt: { not: null },
-        ...(currentUser.role === UserRole.MANDOR && {
-          mandorId: currentUser.id,
-        }),
       },
     });
 
-    if (!user) throw new AppError(404, "Head worker tidak ditemukan di sampah");
+    if (!user)
+      throw new AppError(404, "Kepala Tukang tidak ditemukan di riwayat");
 
     const timestamp = Date.now();
     // Menghasilkan string acak 4 karakter (contoh: 'a1b2') untuk menjamin keunikan mutlak
     const randomSuffix = Math.random().toString(36).substring(2, 6);
 
-    // Kita jalankan update (scramble) alih-alih delete fisik
+    // Jalankan data scrambling
     await prisma.user.update({
       where: { id: userId },
       data: {
