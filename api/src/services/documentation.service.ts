@@ -142,6 +142,24 @@ export class DocumentationService {
       );
     }
 
+    // MENCEGAH UPLOAD DI HARI LIBUR
+    // Cek apakah reportDate yang direquest tercatat sebagai hari libur di proyek ini
+    const isHoliday = await prisma.projectHoliday.findUnique({
+      where: {
+        projectId_date: {
+          projectId: payload.projectId,
+          date: formattedDate,
+        },
+      },
+    });
+
+    if (isHoliday) {
+      throw new AppError(
+        400,
+        "Akses ditolak. Tidak dapat membuat laporan karena tanggal tersebut telah ditetapkan sebagai hari libur untuk proyek ini.",
+      );
+    }
+
     const totalFiles = payload.files?.length ?? 0;
 
     if (totalFiles < 4) {
@@ -465,6 +483,23 @@ export class DocumentationService {
             "Tidak dapat mengubah laporan ke tanggal sebelum proyek resmi didaftarkan/dimulai.",
           );
         }
+      }
+
+      // Cek apakah tanggal baru yang dipilih adalah hari libur
+      const isHoliday = await prisma.projectHoliday.findUnique({
+        where: {
+          projectId_date: {
+            projectId: existingDoc.projectId,
+            date: newDate,
+          },
+        },
+      });
+
+      if (isHoliday) {
+        throw new AppError(
+          400,
+          "Tidak dapat memindahkan laporan ke tanggal tersebut karena telah ditetapkan sebagai hari libur.",
+        );
       }
 
       const newSession = payload.session ?? existingDoc.session;

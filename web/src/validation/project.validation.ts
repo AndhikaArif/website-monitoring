@@ -50,3 +50,14 @@ export const adminUpdateProjectStatusSchema = z.object({
 export type AdminUpdateProjectStatusDTO = z.infer<
   typeof adminUpdateProjectStatusSchema
 >;
+
+export const scheduleHolidaySchema = z.object({
+  startDate: z
+    .string({ error: "Tanggal mulai wajib diisi" })
+    .regex(/^\d{2}-\d{2}-\d{4}$/, "Format tanggal mulai harus DD-MM-YYYY"),
+  endDate: z
+    .string({ error: "Tanggal selesai wajib diisi" })
+    .regex(/^\d{2}-\d{2}-\d{4}$/, "Format tanggal selesai harus DD-MM-YYYY"),
+});
+
+export type ScheduleHolidayFormValues = z.infer<typeof scheduleHolidaySchema>;

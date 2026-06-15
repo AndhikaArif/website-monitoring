@@ -22,6 +22,7 @@ import {
   getProjectDetail,
   unassignHeadWorker,
   unassignOwner,
+  updateProject,
 } from "@/services/project.service";
 import { ProjectDetail } from "@/types/project.type";
 
@@ -96,6 +97,26 @@ export default function ProjectDetailPage() {
     }
   };
 
+  const handleSelesaikanProyek = async () => {
+    const confirmSelesai = window.confirm(
+      "PERINGATAN: Mengubah status menjadi SELESAI berarti proyek telah berakhir secara resmi. Lanjutkan?",
+    );
+
+    if (confirmSelesai) {
+      try {
+        await updateProject(projectId, { status: "SELESAI" });
+        toast.success("Proyek telah selesai!");
+        await fetchDetail();
+      } catch (err: unknown) {
+        if (axios.isAxiosError(err)) {
+          toast.error(
+            err.response?.data?.message || "Gagal menyelesaikan proyek",
+          );
+        }
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -140,12 +161,30 @@ export default function ProjectDetailPage() {
                     <FiMapPin className="text-purple-500" /> {data.location}
                   </p>
                 </div>
-                <button
-                  onClick={() => router.push(`/mandor/project/edit/${data.id}`)}
-                  className="p-3 bg-gray-50 text-gray-600 rounded-2xl hover:bg-purple-50 hover:text-purple-600 transition-all border-none cursor-pointer"
-                >
-                  <FiEdit size={20} />
-                </button>
+                <div className="flex items-center gap-2">
+                  {/* Tombol Selesaikan Proyek (Hanya muncul jika belum selesai) */}
+                  {data.status !== "SELESAI" && (
+                    <>
+                      <button
+                        onClick={handleSelesaikanProyek}
+                        className="px-4 py-3 bg-green-50 text-green-600 rounded-2xl hover:bg-green-100 hover:text-green-700 transition-all font-bold text-sm border-none cursor-pointer"
+                      >
+                        Selesaikan Proyek
+                      </button>
+
+                      {/* Tombol Edit Project */}
+                      <button
+                        onClick={() =>
+                          router.push(`/mandor/project/edit/${data.id}`)
+                        }
+                        className="p-3 bg-gray-50 text-gray-600 rounded-2xl hover:bg-purple-50 hover:text-purple-600 transition-all border-none cursor-pointer"
+                        title="Edit Informasi Proyek"
+                      >
+                        <FiEdit size={20} />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
 
               <div className="border-t border-gray-50 pt-6">
@@ -230,8 +269,8 @@ export default function ProjectDetailPage() {
                   </p>
                 </div>
 
-                {/* Tampilkan Tanggal Selesai hanya jika data.endDate sudah terisi (Proyek SELESAI) */}
-                {data.endDate && (
+                {/* Tampilkan Tanggal Selesai jika data.endDate sudah terisi (Proyek SELESAI) */}
+                {data.endDate ? (
                   <div>
                     <p className="text-[10px] text-green-500 font-bold uppercase tracking-wider">
                       Tanggal Selesai
@@ -242,10 +281,7 @@ export default function ProjectDetailPage() {
                       })}
                     </p>
                   </div>
-                )}
-
-                {/* Info tambahan jika masih aktif */}
-                {!data.endDate && (
+                ) : (
                   <div>
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
                       Tanggal Selesai
@@ -258,13 +294,13 @@ export default function ProjectDetailPage() {
               </div>
             </div>
 
-            {/* 👉 OWNER CARD (KLIEN) */}
+            {/* OWNER CARD (KLIEN) */}
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-gray-800 flex items-center gap-2">
                   <FiUser className="text-purple-600" /> Klien (Owner)
                 </h3>
-                {/* Tampilkan tombol tambah hanya jika owner belum di-assign */}
+                {/* PROTEKSI UI: Tampilkan tombol tambah hanya jika owner belum di-assign DAN proyek belum selesai */}{" "}
                 {!data.owner && (
                   <button
                     onClick={() =>
@@ -295,8 +331,10 @@ export default function ProjectDetailPage() {
                       </div>
                     </div>
 
-                    {/* PROTEKSI DI UI: Tombol hapus hanya muncul jika Mandor ini adalah pemilik/pembuat akun Owner tersebut */}
-                    {data.owner.mandorId === data.mandorId ? (
+                    {/* PROTEKSI UI: Tombol Unnasign jika belum SELESAI dan milik milik Mandor yang tepat */}
+                    {data.status === "SELESAI" ? (
+                      <span></span>
+                    ) : data.owner.mandorId === data.mandorId ? (
                       <button
                         onClick={handleUnassignOwner}
                         className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all border-none cursor-pointer"
@@ -327,14 +365,18 @@ export default function ProjectDetailPage() {
                 <h3 className="font-bold text-gray-800 flex items-center gap-2">
                   <FiUsers className="text-purple-600" /> Kepala Tukang
                 </h3>
-                <button
-                  onClick={() =>
-                    router.push(`/mandor/project/${data.id}/assign`)
-                  }
-                  className="p-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-all border-none cursor-pointer"
-                >
-                  <FiUserPlus size={16} />
-                </button>
+
+                {/* PROTEKSI UI: Tampilkan tombol tambah hanya jika proyek belum selesai */}
+                {data.status !== "SELESAI" && (
+                  <button
+                    onClick={() =>
+                      router.push(`/mandor/project/${data.id}/assign`)
+                    }
+                    className="p-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-all border-none cursor-pointer"
+                  >
+                    <FiUserPlus size={16} />
+                  </button>
+                )}
               </div>
 
               <div className="space-y-3">
@@ -358,14 +400,16 @@ export default function ProjectDetailPage() {
                         </div>
                       </div>
 
-                      {/* TOMBOL DELETE (UNASSIGN) */}
-                      <button
-                        onClick={() => handleUnassign(hw.id, hw.name)}
-                        className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all border-none cursor-pointer"
-                        title={`Hapus ${hw.name} dari proyek`}
-                      >
-                        <FiTrash2 size={16} />
-                      </button>
+                      {/* PROTEKSI UI: Tombol hapus hanya muncul jika proyek belum selesai */}
+                      {data.status !== "SELESAI" && (
+                        <button
+                          onClick={() => handleUnassign(hw.id, hw.name)}
+                          className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all border-none cursor-pointer"
+                          title={`Hapus ${hw.name} dari proyek`}
+                        >
+                          <FiTrash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   ))
                 ) : (

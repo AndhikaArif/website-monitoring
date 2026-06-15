@@ -115,6 +115,14 @@ export default function Navbar() {
                 >
                   Proyek
                 </Link>
+
+                <Link
+                  href="/admin/arsip"
+                  onClick={() => setIsOpen(false)}
+                  className="text-gray-600 font-medium"
+                >
+                  Arsip
+                </Link>
               </>
             )}
 
@@ -244,6 +252,14 @@ export default function Navbar() {
                   className="text-gray-600 font-medium"
                 >
                   Proyek
+                </Link>
+
+                <Link
+                  href="/admin/arsip"
+                  onClick={() => setIsOpen(false)}
+                  className="text-gray-600 font-medium"
+                >
+                  Arsip
                 </Link>
               </>
             )}

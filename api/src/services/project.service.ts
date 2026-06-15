@@ -9,6 +9,7 @@ import type {
 import { ProjectStatus, UserRole } from "../generated/prisma/index.js";
 import type { IExistingUser } from "../types/auth.type.js";
 import { AppError } from "../errors/app.error.js";
+import { toTitleCase } from "../utils/to-title-case.js";
 
 type SortField = "createdAt" | "projectName" | "startDate" | "status";
 
@@ -48,12 +49,13 @@ export class ProjectService {
     query: PaginationQueryDTO,
   ) {
     const base = this.buildQuery(query);
+    const statusFilter = this.buildComputedStatusFilter(query.status);
 
     return {
       whereClause: {
         ...base.where,
         mandorId: currentUser.id,
-        ...(query.status && { status: query.status }),
+        ...statusFilter,
       },
       sortBy: base.sortBy,
       order: base.order,
@@ -66,6 +68,11 @@ export class ProjectService {
   ) {
     const base = this.buildQuery(query);
 
+    // Default Kepala Tukang: Tampilkan proyek yang belum selesai (Aktif & Libur)
+    const statusFilter = query.status
+      ? this.buildComputedStatusFilter(query.status)
+      : { endDate: null };
+
     return {
       whereClause: {
         ...base.where,
@@ -74,12 +81,70 @@ export class ProjectService {
             id: currentUser.id,
           },
         },
-        status: query.status
-          ? (query.status as ProjectStatus)
-          : { in: [ProjectStatus.AKTIF, ProjectStatus.LIBUR] },
+        ...statusFilter,
       },
       sortBy: base.sortBy,
       order: base.order,
+    };
+  }
+
+  // 1. Helper untuk mendapatkan tanggal hari ini (Format UTC 00:00:00 WIB)
+  private getTodayNormalized(): Date {
+    const now = new Date();
+    const wibFormatter = new Intl.DateTimeFormat("id-ID", {
+      timeZone: "Asia/Jakarta",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const [wibDay, wibMonth, wibYear] = wibFormatter.format(now).split("/");
+    return new Date(`${wibYear}-${wibMonth}-${wibDay}T00:00:00Z`);
+  }
+
+  // 2. Helper untuk mengubah query status frontend menjadi logika pencarian Prisma
+  private buildComputedStatusFilter(status?: string) {
+    if (!status) return {};
+
+    const today = this.getTodayNormalized();
+
+    if (status === ProjectStatus.SELESAI) {
+      return { endDate: { not: null } };
+    }
+
+    if (status === ProjectStatus.LIBUR) {
+      return {
+        endDate: null, // Belum selesai
+        projectHolidays: { some: { date: today } }, // Hari ini masuk daftar libur
+      };
+    }
+
+    if (status === ProjectStatus.AKTIF) {
+      return {
+        endDate: null, // Belum selesai
+        projectHolidays: { none: { date: today } }, // Hari ini TIDAK masuk daftar libur
+      };
+    }
+
+    return {};
+  }
+
+  // 3. Helper untuk menimpa field "status" pada JSON sebelum dikirim ke Frontend
+  private applyComputedStatus(project: any) {
+    if (!project) return project;
+
+    let computedStatus: ProjectStatus = ProjectStatus.AKTIF;
+
+    if (project.endDate) {
+      computedStatus = ProjectStatus.SELESAI;
+    } else if (project.projectHolidays && project.projectHolidays.length > 0) {
+      computedStatus = ProjectStatus.LIBUR;
+    }
+
+    // Ekstrak dan buang data projectHolidays agar respons API tetap bersih
+    const { projectHolidays, ...rest } = project;
+    return {
+      ...rest,
+      status: computedStatus,
     };
   }
 
@@ -90,8 +155,8 @@ export class ProjectService {
 
     const project = await prisma.project.create({
       data: {
-        projectName: data.projectName,
-        location: data.location,
+        projectName: toTitleCase(data.projectName),
+        location: toTitleCase(data.location),
         startDate: new Date(),
         description: data.description || null,
         mandorId: currentUser.id,
@@ -133,8 +198,12 @@ export class ProjectService {
 
     // Persiapkan data untuk update
     const updatePayload: any = {
-      ...(data.projectName !== undefined && { projectName: data.projectName }),
-      ...(data.location !== undefined && { location: data.location }),
+      ...(data.projectName !== undefined && {
+        projectName: toTitleCase(data.projectName),
+      }),
+      ...(data.location !== undefined && {
+        location: toTitleCase(data.location),
+      }),
       ...(data.description !== undefined && { description: data.description }),
       ...(data.status !== undefined && { status: data.status }),
     };
@@ -282,6 +351,8 @@ export class ProjectService {
     }
     // Jika role === ADMIN, roleFilter tetap kosong {} (Bisa melihat semua)
 
+    const today = this.getTodayNormalized(); // <--- Ambil tanggal hari ini
+
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
@@ -298,6 +369,11 @@ export class ProjectService {
         description: true,
         createdAt: true,
         mandorId: true,
+
+        projectHolidays: {
+          where: { date: today },
+          select: { id: true },
+        },
 
         owner: {
           select: {
@@ -351,8 +427,11 @@ export class ProjectService {
 
     const latestDoc = project.documentations[0] ?? null;
 
+    // ---> TIMPA STATUS SEBELUM RETURN <---
+    const projectWithComputedStatus = this.applyComputedStatus(project);
+
     return {
-      ...project,
+      ...projectWithComputedStatus,
       latestDocumentation: latestDoc,
       documentations: undefined,
     };
@@ -371,6 +450,8 @@ export class ProjectService {
       currentUser,
       query,
     );
+
+    const today = this.getTodayNormalized(); // <--- Ambil tanggal hari ini
 
     const [projects, total] = await Promise.all([
       prisma.project.findMany({
@@ -394,6 +475,10 @@ export class ProjectService {
               username: true,
             },
           },
+          projectHolidays: {
+            where: { date: today },
+            select: { id: true },
+          },
         },
       }),
 
@@ -402,8 +487,11 @@ export class ProjectService {
       }),
     ]);
 
+    // ---> PETAKAN ULANG ARRAY SEBELUM RETURN <---
+    const mappedProjects = projects.map((p) => this.applyComputedStatus(p));
+
     return {
-      data: projects,
+      data: mappedProjects,
       meta: {
         page: safePage,
         limit,
@@ -493,6 +581,8 @@ export class ProjectService {
       query,
     );
 
+    const today = this.getTodayNormalized(); // <--- Ambil tanggal hari ini
+
     const [projects, total] = await Promise.all([
       prisma.project.findMany({
         where: whereClause,
@@ -504,6 +594,16 @@ export class ProjectService {
           location: true,
           status: true,
           startDate: true,
+          owner: {
+            select: {
+              name: true,
+              username: true,
+            },
+          },
+          projectHolidays: {
+            where: { date: today },
+            select: { id: true },
+          },
         },
         orderBy: {
           [sortBy]: order,
@@ -515,8 +615,11 @@ export class ProjectService {
       }),
     ]);
 
+    // ---> PETAKAN ULANG ARRAY SEBELUM RETURN <---
+    const mappedProjects = projects.map((p) => this.applyComputedStatus(p));
+
     return {
-      data: projects,
+      data: mappedProjects,
       meta: {
         page: safePage,
         limit,
@@ -549,6 +652,8 @@ export class ProjectService {
       ...(query.status && { status: query.status }),
     };
 
+    const today = this.getTodayNormalized(); // <--- Ambil tanggal hari ini
+
     const [projects, total] = await Promise.all([
       prisma.project.findMany({
         where: whereClause,
@@ -562,13 +667,20 @@ export class ProjectService {
           status: true,
           startDate: true,
           endDate: true,
+          projectHolidays: {
+            where: { date: today },
+            select: { id: true },
+          },
         },
       }),
       prisma.project.count({ where: whereClause }),
     ]);
 
+    // ---> PETAKAN ULANG ARRAY SEBELUM RETURN <---
+    const mappedProjects = projects.map((p) => this.applyComputedStatus(p));
+
     return {
-      data: projects,
+      data: mappedProjects,
       meta: {
         page: safePage,
         limit,
@@ -726,8 +838,6 @@ export class ProjectService {
     };
   }
 
-  // --- FUNGSI BARU UNTUK KLIEN / OWNER ---
-
   async assignOwner(
     currentUser: IExistingUser,
     projectId: string,
@@ -841,6 +951,8 @@ export class ProjectService {
       ...(query.status && { status: query.status }),
     };
 
+    const today = this.getTodayNormalized(); // <--- Ambil tanggal hari ini
+
     // 4. Ambil data secara paralel untuk efisiensi performa server
     const [projects, total] = await Promise.all([
       prisma.project.findMany({
@@ -859,6 +971,12 @@ export class ProjectService {
           startDate: true,
           endDate: true,
           createdAt: true,
+
+          // Status proyek
+          projectHolidays: {
+            where: { date: today },
+            select: { id: true },
+          },
 
           // Info Mandor Penanggung Jawab saat ini (Penting untuk fitur Transfer Mandor)
           mandor: {
@@ -924,8 +1042,10 @@ export class ProjectService {
       }),
     ]);
 
+    const mappedProjects = projects.map((p) => this.applyComputedStatus(p));
+
     return {
-      data: projects,
+      data: mappedProjects,
       meta: {
         page: safePage,
         limit,
@@ -988,31 +1108,26 @@ export class ProjectService {
     const ktsToTransfer: string[] = [];
 
     for (const kt of project.kepalaTukang) {
-      if (kt.deletedAt !== null) {
-        // SOLUSI BUG 1: Jika KT sudah di-scramble, langsung lepas dari proyek, JANGAN ubah mandorId-nya
+      if (!data.keepKepalaTukang) {
+        // Admin memilih untuk mengganti/melepas semua KT lama
         ktsToDisconnect.push({ id: kt.id });
       } else {
-        if (!data.keepKepalaTukang) {
-          // Admin memilih untuk mengganti/melepas semua KT lama
+        // Admin ingin mempertahankan KT. Cek apakah KT ini dipakai di proyek aktif lain oleh Mandor lama?
+        const activeProjectsCount = await prisma.project.count({
+          where: {
+            mandorId: project.mandorId,
+            kepalaTukang: { some: { id: kt.id } },
+            deletedAt: null, // Hanya hitung proyek yang belum dihapus
+          },
+        });
+
+        if (activeProjectsCount > 1) {
+          // KT sedang dipakai di Proyek A (ini) dan Proyek B (milik mandor lama).
+          // Kita harus MELEPAS dia dari proyek ini agar Mandor lama tidak kehilangan dia di Proyek B.
           ktsToDisconnect.push({ id: kt.id });
         } else {
-          // Admin ingin mempertahankan KT. Cek apakah KT ini dipakai di proyek aktif lain oleh Mandor lama?
-          const activeProjectsCount = await prisma.project.count({
-            where: {
-              mandorId: project.mandorId,
-              kepalaTukang: { some: { id: kt.id } },
-              deletedAt: null, // Hanya hitung proyek yang belum dihapus
-            },
-          });
-
-          if (activeProjectsCount > 1) {
-            // SOLUSI BUG 2: KT sedang dipakai di Proyek A (ini) dan Proyek B (milik mandor lama).
-            // Kita harus MELEPAS dia dari proyek ini agar Mandor lama tidak kehilangan dia di Proyek B.
-            ktsToDisconnect.push({ id: kt.id });
-          } else {
-            // KT hanya bertugas murni di proyek ini. Aman untuk dipindahkan ke Mandor baru.
-            ktsToTransfer.push(kt.id);
-          }
+          // KT hanya bertugas murni di proyek ini. Aman untuk dipindahkan ke Mandor baru.
+          ktsToTransfer.push(kt.id);
         }
       }
     }
@@ -1077,7 +1192,7 @@ export class ProjectService {
       throw error;
     }
 
-    // Berikan pesan respons dinamis agar Admin tahu hasil pastinya
+    // Respons dinamis agar Admin tahu hasil pastinya
     let responseMessage = "Mandor proyek berhasil diganti.";
     if (data.keepKepalaTukang) {
       if (ktsToTransfer.length > 0 && ktsToDisconnect.length === 0) {
@@ -1103,7 +1218,6 @@ export class ProjectService {
     projectId: string,
     data: { status: ProjectStatus },
   ) {
-    // 1. Validasi Akses: Pastikan hanya Admin
     if (currentUser.role !== UserRole.ADMIN) {
       throw new AppError(
         403,
@@ -1111,7 +1225,6 @@ export class ProjectService {
       );
     }
 
-    // 2. Cari proyeknya
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
@@ -1122,7 +1235,7 @@ export class ProjectService {
       throw new AppError(404, "Proyek tidak ditemukan atau sudah dihapus.");
     }
 
-    // 3. Siapkan payload data untuk update
+    // Siapkan payload data untuk update
     const updatePayload: any = {
       status: data.status,
     };
@@ -1135,14 +1248,157 @@ export class ProjectService {
       updatePayload.endDate = null;
     }
 
-    const updated = await prisma.project.update({
-      where: { id: projectId },
-      data: updatePayload,
+    try {
+      // Langsung update
+      const updated = await prisma.project.update({
+        where: { id: projectId },
+        data: updatePayload,
+      });
+
+      return {
+        message: `Status proyek berhasil diperbarui menjadi ${data.status}`,
+        data: updated,
+      };
+    } catch (error: any) {
+      if (error.code === "P2028") {
+        throw new AppError(
+          503,
+          "Server sedang sibuk memproses data yang besar. Silakan coba beberapa saat lagi.",
+        );
+      }
+      throw error;
+    }
+  }
+
+  async deleteProjectHoliday(
+    currentUser: IExistingUser,
+    projectId: string,
+    dateString: string, // Format dari frontend, misal: "19-05-2026"
+  ) {
+    // 1. Validasi Akses: Hanya Admin atau Mandor yang diizinkan
+    if (
+      currentUser.role !== UserRole.ADMIN &&
+      currentUser.role !== UserRole.MANDOR
+    ) {
+      throw new AppError(
+        403,
+        "Akses ditolak. Anda tidak memiliki otoritas untuk menghapus hari libur.",
+      );
+    }
+
+    // 2. Proteksi Khusus Mandor: Pastikan ini adalah proyek miliknya
+    if (currentUser.role === UserRole.MANDOR) {
+      const project = await prisma.project.findFirst({
+        where: {
+          id: projectId,
+          mandorId: currentUser.id,
+          deletedAt: null,
+        },
+      });
+
+      if (!project) {
+        throw new AppError(
+          403,
+          "Akses ditolak. Anda hanya dapat mengelola hari libur pada proyek Anda sendiri.",
+        );
+      }
+    }
+
+    // 3. Parse string tanggal menjadi Date UTC (kebal timezone)
+    const [day, month, year] = dateString.split("-");
+    const targetDate = new Date(`${year}-${month}-${day}T00:00:00Z`);
+
+    // 4. Cek apakah data liburnya memang terdaftar di database
+    const existingHoliday = await prisma.projectHoliday.findUnique({
+      where: {
+        projectId_date: {
+          projectId: projectId,
+          date: targetDate,
+        },
+      },
+    });
+
+    if (!existingHoliday) {
+      throw new AppError(
+        404,
+        "Data hari libur pada tanggal tersebut tidak ditemukan.",
+      );
+    }
+
+    // 5. Hapus data libur
+    await prisma.projectHoliday.delete({
+      where: {
+        id: existingHoliday.id,
+      },
     });
 
     return {
-      message: `Status proyek berhasil diperbarui menjadi ${data.status}`,
-      data: updated,
+      message: `Hari libur untuk tanggal ${dateString} berhasil dibatalkan.`,
+    };
+  }
+
+  async scheduleProjectHolidays(
+    currentUser: IExistingUser,
+    projectId: string,
+    payload: { startDate: string; endDate: string }, // Format "DD-MM-YYYY"
+  ) {
+    // 1. Validasi Akses: Mandor atau Admin
+    if (
+      currentUser.role !== UserRole.MANDOR &&
+      currentUser.role !== UserRole.ADMIN
+    ) {
+      throw new AppError(
+        403,
+        "Akses ditolak. Hanya Mandor atau Admin yang dapat mengatur jadwal libur.",
+      );
+    }
+
+    // (Opsional) Jika yang login Mandor, pastikan ini proyek miliknya
+    if (currentUser.role === UserRole.MANDOR) {
+      const project = await prisma.project.findFirst({
+        where: { id: projectId, mandorId: currentUser.id },
+      });
+      if (!project)
+        throw new AppError(403, "Ini bukan proyek di bawah pengawasan Anda.");
+    }
+
+    // 2. Parse string menjadi Date UTC (kebal timezone)
+    const parseDate = (dateString: string) => {
+      const [day, month, year] = dateString.split("-");
+      return new Date(`${year}-${month}-${day}T00:00:00Z`);
+    };
+
+    const start = parseDate(payload.startDate);
+    const end = parseDate(payload.endDate);
+
+    if (start > end) {
+      throw new AppError(
+        400,
+        "Tanggal mulai libur tidak boleh lebih besar dari tanggal selesai.",
+      );
+    }
+
+    // 3. Buat array yang berisi semua tanggal di antara start dan end
+    const holidayDates: Date[] = [];
+    let currentDate = new Date(start);
+
+    while (currentDate <= end) {
+      holidayDates.push(new Date(currentDate));
+      // Tambah 1 hari ke currentDate
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // 4. Masukkan ke database sekaligus secara efisien (Bulk Insert)
+    const result = await prisma.projectHoliday.createMany({
+      data: holidayDates.map((date) => ({
+        projectId: projectId,
+        date: date,
+      })),
+      skipDuplicates: true, // PENTING: Abaikan jika ada tanggal yang sudah pernah diset libur sebelumnya
+    });
+
+    return {
+      message: `Berhasil mengatur ${result.count} hari libur untuk proyek ini.`,
     };
   }
 }

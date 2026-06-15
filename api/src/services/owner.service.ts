@@ -9,6 +9,7 @@ import type {
   ListOwnerQueryDTO,
 } from "../validations/owner.validation.js";
 import { UserRole } from "../generated/prisma/index.js";
+import { toTitleCase } from "../utils/to-title-case.js";
 
 export class OwnerServices {
   async createOwner(currentUser: IExistingUser, data: CreateOwnerDTO) {
@@ -35,10 +36,13 @@ export class OwnerServices {
     // hash password
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
+    // Ubah nama menjadi Title Case sebelum disave
+    const formattedName = toTitleCase(data.name);
+
     // create user
     const owner = await prisma.user.create({
       data: {
-        name: data.name,
+        name: formattedName,
         username: data.username,
         email: data.email,
         password: hashedPassword,
@@ -123,7 +127,10 @@ export class OwnerServices {
     // BUILD UPDATE DATA
     const updateData: any = {};
 
-    if (data.name !== undefined) updateData.name = data.name;
+    // Jika ada perubahan nama, format dulu ke Title Case
+    if (data.name !== undefined) {
+      updateData.name = toTitleCase(data.name);
+    }
     if (data.username !== undefined) updateData.username = data.username;
     if (data.email !== undefined) updateData.email = data.email;
     if (hashedPassword !== undefined) updateData.password = hashedPassword;
@@ -205,7 +212,7 @@ export class OwnerServices {
     if (currentUser.role !== UserRole.MANDOR) {
       throw new AppError(403, "Hanya mandor yang bisa melihat daftar owner");
     }
-    const { page, limit, search } = query;
+    const { page, limit } = query;
 
     const skip = (page - 1) * limit;
 
@@ -220,13 +227,6 @@ export class OwnerServices {
           },
         }, // Punya proyek aktif di bawah Mandor ini
       ],
-      ...(search && {
-        OR: [
-          { name: { contains: search, mode: "insensitive" } },
-          { username: { contains: search, mode: "insensitive" } },
-          { email: { contains: search, mode: "insensitive" } },
-        ],
-      }),
     };
 
     const [owners, total] = await Promise.all([
@@ -275,22 +275,17 @@ export class OwnerServices {
       );
     }
 
-    const { page, limit, search } = query;
+    const { page, limit, mandorId } = query;
     const skip = (page - 1) * limit;
 
     const whereCondition: any = {
       role: UserRole.OWNER,
       deletedAt: { not: null },
-      ...(currentUser.role === UserRole.MANDOR && {
-        mandorId: currentUser.id,
-      }),
-      ...(search && {
-        OR: [
-          { name: { contains: search, mode: "insensitive" } },
-          { username: { contains: search, mode: "insensitive" } },
-          { email: { contains: search, mode: "insensitive" } },
-        ],
-      }),
+      mandorId: { not: null }, // Ambil hanya yang masih punya Mandor (Belum di-hard delete)
+
+      ...(currentUser.role === UserRole.MANDOR
+        ? { mandorId: currentUser.id }
+        : { ...(mandorId && { mandorId }) }),
     };
 
     const [owners, total] = await Promise.all([

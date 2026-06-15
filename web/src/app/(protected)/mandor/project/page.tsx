@@ -24,7 +24,7 @@ export default function MyProjectsPage() {
   const [loading, setLoading] = useState(false);
 
   const [status, setStatus] = useState("");
-  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortBy, setSortBy] = useState("startDate");
 
   const router = useRouter();
 
@@ -125,7 +125,7 @@ export default function MyProjectsPage() {
               onClick={() => router.push("/mandor/project/trashed")}
               className="inline-flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold px-5 py-2.5 rounded-xl transition-all cursor-pointer border-none"
             >
-              <FiTrash2 className="mr-2" /> Sampah
+              <FiTrash2 className="mr-2" /> Riwayat
             </button>
 
             <button
@@ -180,7 +180,7 @@ export default function MyProjectsPage() {
               }}
               className="bg-gray-50 border-none text-sm rounded-xl px-4 py-2 text-gray-700 outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer"
             >
-              <option value="createdAt">Tanggal Mulai</option>
+              <option value="startDate">Tanggal Mulai</option>
               <option value="projectName">Nama Proyek</option>
             </select>
           </div>
@@ -192,6 +192,7 @@ export default function MyProjectsPage() {
               <thead className="bg-gray-50/50 text-gray-600 font-semibold uppercase text-[11px] tracking-wider">
                 <tr>
                   <th className="p-5">Proyek & Lokasi</th>
+                  <th className="p-5">Tanggal Mulai</th>
                   <th className="p-5">Klien / Owner</th>
                   <th className="p-5">Status</th>
                   <th className="p-5 text-right">Aksi</th>
@@ -199,11 +200,14 @@ export default function MyProjectsPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {loading ? (
-                  Array.from({ length: 3 }).map((_, i) => (
-                    <tr key={i} className="animate-pulse">
-                      <td colSpan={3} className="p-8 bg-gray-50/20" />
-                    </tr>
-                  ))
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="p-20 text-center animate-pulse text-gray-400"
+                    >
+                      Memproses data proyek...
+                    </td>
+                  </tr>
                 ) : projects.length > 0 ? (
                   projects.map((p) => (
                     <tr
@@ -225,6 +229,17 @@ export default function MyProjectsPage() {
                             </p>
                           </div>
                         </div>
+                      </td>
+
+                      {/* Tanggal Mulai Proyek */}
+                      <td className="p-5">
+                        <span className="text-xs font-medium text-gray-600 bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-100">
+                          {new Date(p.startDate).toLocaleDateString("id-ID", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </span>
                       </td>
 
                       {/* DATA KLIEN / OWNER */}
@@ -306,7 +321,7 @@ export default function MyProjectsPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={3} className="text-center p-20 text-gray-400">
+                    <td colSpan={5} className="text-center p-20 text-gray-400">
                       Belum ada proyek.
                     </td>
                   </tr>

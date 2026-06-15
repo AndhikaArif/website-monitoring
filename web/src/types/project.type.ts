@@ -3,6 +3,7 @@ export interface Project {
   projectName: string;
   location: string;
   status: "AKTIF" | "LIBUR" | "SELESAI";
+  startDate: string;
   createdAt: string;
   owner?: {
     name: string;
@@ -14,6 +15,13 @@ export interface CreateProjectPayload {
   projectName: string;
   location: string;
   description?: string | null;
+}
+
+export interface UpdateProjectPayload {
+  projectName?: string | null;
+  location?: string | null;
+  description?: string | null;
+  status?: "AKTIF" | "LIBUR" | "SELESAI";
 }
 
 export interface ProjectResponse {
@@ -78,6 +86,11 @@ export interface AssignedProject {
   location: string;
   status: "AKTIF" | "LIBUR" | "SELESAI";
   startDate: string;
+
+  owner?: {
+    name: string;
+    username: string;
+  } | null;
 }
 
 export interface AssignedProjectResponse {
@@ -136,4 +149,10 @@ export interface TransferMandorPayload {
 
 export interface AdminUpdateStatusPayload {
   status: "AKTIF" | "LIBUR" | "SELESAI";
+}
+
+// Payload untuk endpoint schedule holiday
+export interface ScheduleHolidayPayload {
+  startDate: string; // Format: "DD-MM-YYYY"
+  endDate: string; // Format: "DD-MM-YYYY"
 }

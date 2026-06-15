@@ -56,7 +56,7 @@ export default function CreateHeadWorkerPage() {
                     { withCredentials: true },
                   );
                   // Perbaikan teks: Kepala Tukang, bukan Mandor
-                  toast.success("Kepala Tukang berhasil dibuat! 🚀");
+                  toast.success("Kepala Tukang berhasil dibuat!");
                   router.push("/mandor/head-worker");
                 } catch (err: unknown) {
                   if (axios.isAxiosError(err)) {

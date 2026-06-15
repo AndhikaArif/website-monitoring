@@ -1,12 +1,14 @@
 import axios from "axios";
 import {
   CreateProjectPayload,
+  UpdateProjectPayload,
   ProjectResponse,
   ProjectDetailResponse,
   AssignedProjectResponse,
   AdminProjectResponse,
   TransferMandorPayload,
   AdminUpdateStatusPayload,
+  ScheduleHolidayPayload,
 } from "../types/project.type";
 
 const API_URL = process.env.NEXT_PUBLIC_API_DOMAIN;
@@ -45,7 +47,6 @@ export const getMyTrashedProjects = async (
     page: String(page),
     limit: String(limit),
     ...(status && { status }),
-    ...(status && { status }),
     ...(sortBy && { sortBy }),
     ...(order && { order }), // <-- Hanya dimasukkan ke URL jika 'order' ada isinya ('asc' atau 'desc')
   });
@@ -65,7 +66,7 @@ export const createProject = async (data: CreateProjectPayload) => {
   return res.data;
 };
 
-export const updateProject = async (id: string, data: CreateProjectPayload) => {
+export const updateProject = async (id: string, data: UpdateProjectPayload) => {
   const res = await axios.put(`${API_URL}/api/project/${id}`, data, {
     withCredentials: true,
   });
@@ -161,7 +162,6 @@ export const getAssignedProjects = async (
     page: String(page),
     limit: String(limit),
     ...(status && { status }),
-    ...(status && { status }),
     ...(sortBy && { sortBy }),
     ...(order && { order }), // <-- Hanya dimasukkan ke URL jika 'order' ada isinya ('asc' atau 'desc')
   });
@@ -187,7 +187,6 @@ export const getOwnedProjects = async (
   const params = new URLSearchParams({
     page: String(page),
     limit: String(limit),
-    ...(status && { status }),
     ...(status && { status }),
     ...(sortBy && { sortBy }),
     ...(order && { order }), // <-- Hanya dimasukkan ke URL jika 'order' ada isinya ('asc' atau 'desc')
@@ -245,6 +244,29 @@ export const adminUpdateProjectStatus = async (
   const res = await axios.patch(
     `${API_URL}/api/project/${projectId}/status`,
     data,
+    { withCredentials: true },
+  );
+  return res.data;
+};
+
+export const scheduleProjectHoliday = async (
+  projectId: string,
+  data: ScheduleHolidayPayload,
+) => {
+  const res = await axios.post(
+    `${API_URL}/api/project/${projectId}/holidays`,
+    data,
+    { withCredentials: true },
+  );
+  return res.data;
+};
+
+export const deleteProjectHoliday = async (
+  projectId: string,
+  dateString: string,
+) => {
+  const res = await axios.delete(
+    `${API_URL}/api/project/${projectId}/holidays/${dateString}`,
     { withCredentials: true },
   );
   return res.data;

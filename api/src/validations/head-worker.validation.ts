@@ -27,6 +27,7 @@ export type HeadWorkerParamsDTO = z.infer<typeof kepalaTukangParamsSchema>;
 export const listHeadWorkerQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(50).default(10),
+  mandorId: z.string().uuid("Invalid ID").optional(),
 });
 
 export type ListHeadWorkerQueryDTO = z.infer<typeof listHeadWorkerQuerySchema>;

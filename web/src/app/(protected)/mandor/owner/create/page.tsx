@@ -55,7 +55,7 @@ export default function CreateOwnerPage() {
                     { withCredentials: true },
                   );
 
-                  toast.success("Akun klien berhasil dibuat! 🚀");
+                  toast.success("Akun klien berhasil dibuat!");
                   router.push("/mandor/owner");
                 } catch (err: unknown) {
                   if (axios.isAxiosError(err)) {

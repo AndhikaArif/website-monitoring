@@ -470,6 +470,14 @@ export default function HeadWorkerDocumentationPage() {
                 year: "numeric",
               });
 
+              // Cek apakah user yang login sekarang sudah pernah bikin laporan di sesi ini
+              const hasCreatedPagi = dateGroup.sessions.PAGI.some(
+                (doc) => doc.createdBy?.id === currentUser?.id,
+              );
+              const hasCreatedSore = dateGroup.sessions.SORE.some(
+                (doc) => doc.createdBy?.id === currentUser?.id,
+              );
+
               return (
                 <div
                   key={dateGroup.reportDate}
@@ -540,21 +548,24 @@ export default function HeadWorkerDocumentationPage() {
                             </Link>
                           ))}
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              openShortcutCreateModal(
-                                dateGroup.reportDate,
-                                "PAGI",
-                              )
-                            }
-                            className="w-full flex items-center justify-center gap-1.5 h-10 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:bg-emerald-50/40 hover:border-emerald-400 hover:text-emerald-600 transition-colors cursor-pointer"
-                          >
-                            <FiPlus size={16} />
-                            <span className="text-xs font-bold">
-                              Tambah Pagi Lainnya
-                            </span>
-                          </button>
+                          {/* Tampilkan tombol tambah hanya jika user saat ini BELUM PERNAH membuat laporan pagi di tanggal ini */}
+                          {!hasCreatedPagi && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openShortcutCreateModal(
+                                  dateGroup.reportDate,
+                                  "PAGI",
+                                )
+                              }
+                              className="w-full flex items-center justify-center gap-1.5 h-10 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:bg-emerald-50/40 hover:border-emerald-400 hover:text-emerald-600 transition-colors cursor-pointer"
+                            >
+                              <FiPlus size={16} />
+                              <span className="text-xs font-bold">
+                                Tambah Pagi Lainnya
+                              </span>
+                            </button>
+                          )}
                         </div>
                       ) : /* JIKA KOSONG: Cek apakah sebenarnya kosong di DB atau hanya disembunyikan filter */
                       dateGroup.existingSessions?.PAGI ? (
@@ -635,21 +646,24 @@ export default function HeadWorkerDocumentationPage() {
                             </Link>
                           ))}
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              openShortcutCreateModal(
-                                dateGroup.reportDate,
-                                "SORE",
-                              )
-                            }
-                            className="w-full flex items-center justify-center gap-1.5 h-10 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:bg-emerald-50/40 hover:border-emerald-400 hover:text-emerald-600 transition-colors cursor-pointer"
-                          >
-                            <FiPlus size={16} />
-                            <span className="text-xs font-bold">
-                              Tambah Sore Lainnya
-                            </span>
-                          </button>
+                          {/* Tampilkan tombol tambah hanya jika user saat ini BELUM PERNAH membuat laporan sore di tanggal ini */}
+                          {!hasCreatedSore && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openShortcutCreateModal(
+                                  dateGroup.reportDate,
+                                  "SORE",
+                                )
+                              }
+                              className="w-full flex items-center justify-center gap-1.5 h-10 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 hover:bg-emerald-50/40 hover:border-emerald-400 hover:text-emerald-600 transition-colors cursor-pointer"
+                            >
+                              <FiPlus size={16} />
+                              <span className="text-xs font-bold">
+                                Tambah Sore Lainnya
+                              </span>
+                            </button>
+                          )}
                         </div>
                       ) : /* JIKA KOSONG: Cek apakah sebenarnya kosong di DB atau hanya disembunyikan filter */
                       dateGroup.existingSessions?.SORE ? (

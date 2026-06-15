@@ -137,17 +137,26 @@ export default function AdminProjectsPage() {
     // Siapkan variabel untuk alert konfirmasi
     let isConfirmed = false;
 
-    // Kasus 1: Mau ubah status MENJADI Selesai
-    if (newStatus === "AKTIF" || newStatus === "LIBUR") {
+    // Pisahkan logika konfirmasi berdasarkan target status baru
+    if (newStatus === "AKTIF") {
       if (oldStatus === "SELESAI") {
-        // Kasus 2: Mau mengubah project yang SUDAH Selesai kembali ke Aktif/Libur
         isConfirmed = window.confirm(
-          `Proyek ini sudah SELESAI. Yakin ingin mengembalikan statusnya menjadi ${newStatus}?\n\nIni akan mereset tanggal selesai (endDate) menjadi kosong.`,
+          "Proyek ini sudah SELESAI. Yakin ingin mengembalikan statusnya menjadi AKTIF?\n\nIni akan mereset tanggal selesai proyek (endDate).",
         );
       } else {
-        // Kasus 3: Cuma pindah antara Aktif <-> Libur
         isConfirmed = window.confirm(
-          `Yakin ingin mengubah status proyek menjadi ${newStatus}?`,
+          "Yakin ingin mengubah status proyek menjadi AKTIF kembali?",
+        );
+      }
+    } else if (newStatus === "LIBUR") {
+      if (oldStatus === "SELESAI") {
+        isConfirmed = window.confirm(
+          "Proyek ini sudah SELESAI. Yakin ingin mengubah statusnya menjadi LIBUR?\n\nIni akan mereset tanggal selesai proyek (endDate) dan mencatat hari ini sebagai hari libur.",
+        );
+      } else {
+        // WARNING TAMBAHAN UNTUK HARI LIBUR
+        isConfirmed = window.confirm(
+          "⚠️ PENTING: Yakin ingin meliburkan proyek hari ini?\n\nJika diliburkan, sistem akan memblokir akses Kepala Tukang sehingga mereka TIDAK BISA membuat laporan dokumentasi (sesi pagi maupun sore) untuk tanggal ini.",
         );
       }
     } else if (newStatus === "SELESAI") {
@@ -251,11 +260,14 @@ export default function AdminProjectsPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {loading ? (
-                  Array.from({ length: 3 }).map((_, i) => (
-                    <tr key={i} className="animate-pulse">
-                      <td colSpan={6} className="p-8 bg-gray-50/20" />
-                    </tr>
-                  ))
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="p-20 text-center animate-pulse text-gray-400"
+                    >
+                      Memproses data proyek...
+                    </td>
+                  </tr>
                 ) : projects.length > 0 ? (
                   projects.map((p) => (
                     <tr

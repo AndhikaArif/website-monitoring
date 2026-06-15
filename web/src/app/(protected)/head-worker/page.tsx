@@ -3,7 +3,13 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import { FiBriefcase, FiMapPin, FiFilter, FiArrowRight } from "react-icons/fi";
+import {
+  FiBriefcase,
+  FiMapPin,
+  FiFilter,
+  FiArrowRight,
+  FiUser,
+} from "react-icons/fi";
 import toast from "react-hot-toast";
 
 import { getAssignedProjects } from "@/services/project.service";
@@ -15,8 +21,7 @@ export default function AssignedProjectsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  // Jika Backend kamu support filter status untuk Assigned Project, kita aktifkan
-  const [status, setStatus] = useState("");
+  const [status] = useState("");
   const [sortBy, setSortBy] = useState("startDate");
 
   const router = useRouter();
@@ -40,7 +45,7 @@ export default function AssignedProjectsPage() {
           err.response.data?.message || "Gagal mengambil data proyek sistem.";
 
         if (status === 404) {
-          // 🎯 404 di sini berarti tabel kosong. Biarkan user di halaman ini dan kosongkan state.
+          // 404 di sini berarti tabel kosong. Biarkan user di halaman ini dan kosongkan state.
           setProjects([]);
           setTotalPages(1);
           return;
@@ -51,7 +56,7 @@ export default function AssignedProjectsPage() {
           router.replace("/login");
           return;
         } else if (status === 403) {
-          // 🎯 Satukan ID toast dengan ProtectedLayout agar tidak bertumpuk jika bocor 1 milidetik
+          // Satukan ID toast dengan ProtectedLayout agar tidak bertumpuk jika bocor 1 milidetik
           toast.error(`Akses Ditolak: ${message}`, {
             id: "unauthorized-route",
           });
@@ -114,20 +119,6 @@ export default function AssignedProjectsPage() {
               <FiFilter />
             </div>
 
-            {/* Filter Status */}
-            <select
-              value={status}
-              onChange={(e) => {
-                setStatus(e.target.value);
-                setPage(1);
-              }}
-              className="bg-gray-50 border-none text-sm rounded-xl px-4 py-2 text-gray-700 outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
-            >
-              <option value="">Semua Status</option>
-              <option value="AKTIF">AKTIF</option>
-              <option value="LIBUR">LIBUR</option>
-            </select>
-
             {/* Sort By */}
             <select
               value={sortBy}
@@ -151,17 +142,21 @@ export default function AssignedProjectsPage() {
                 <tr>
                   <th className="p-5">Proyek & Lokasi</th>
                   <th className="p-5">Tanggal Mulai</th>
+                  <th className="p-5">Klien / Owner</th>
                   <th className="p-5">Status</th>
                   <th className="p-5 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {loading ? (
-                  Array.from({ length: 3 }).map((_, i) => (
-                    <tr key={i} className="animate-pulse">
-                      <td colSpan={4} className="p-8 bg-gray-50/20" />
-                    </tr>
-                  ))
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="p-20 text-center animate-pulse text-gray-400"
+                    >
+                      Memproses data proyek...
+                    </td>
+                  </tr>
                 ) : projects.length > 0 ? (
                   projects.map((p) => (
                     <tr
@@ -196,6 +191,37 @@ export default function AssignedProjectsPage() {
                           year: "numeric",
                         })}
                       </td>
+
+                      {/* DATA KLIEN / OWNER */}
+                      <td className="p-5">
+                        {p.owner ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 shrink-0">
+                              <FiUser size={12} />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-700 text-xs">
+                                {p.owner.name}
+                              </p>
+                              <p className="text-[10px] text-gray-400 truncate max-w-30">
+                                {p.owner.username.startsWith("deleted_") ? (
+                                  <span className="text-red-400 italic">
+                                    Akun Nonaktif
+                                  </span>
+                                ) : (
+                                  `@${p.owner.username}`
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          // Fallback UI selama Backend belum mengirim data
+                          <span className="inline-block px-2 py-1 bg-gray-50 text-gray-400 text-[10px] font-medium rounded-md border border-gray-100 italic">
+                            Belum di-assign
+                          </span>
+                        )}
+                      </td>
+
                       <td className="p-5">
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
@@ -222,7 +248,7 @@ export default function AssignedProjectsPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={4} className="text-center p-20 text-gray-400">
+                    <td colSpan={5} className="text-center p-20 text-gray-400">
                       Belum ada proyek yang ditugaskan kepada Anda.
                     </td>
                   </tr>

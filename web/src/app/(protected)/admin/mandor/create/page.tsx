@@ -53,7 +53,7 @@ export default function CreateMandorPage() {
                     values,
                     { withCredentials: true },
                   );
-                  toast.success("Mandor berhasil dibuat! 🚀");
+                  toast.success("Mandor berhasil dibuat!");
                   router.push("/admin/mandor");
                 } catch (err: unknown) {
                   if (axios.isAxiosError(err)) {

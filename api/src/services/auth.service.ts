@@ -10,6 +10,7 @@ import type {
   UpdateMandorDTO,
 } from "../validations/auth.validation.js";
 import { UserRole } from "../generated/prisma/index.js";
+import { toTitleCase } from "../utils/to-title-case.js";
 
 export class AuthServices {
   async createMandor(currentUser: IExistingUser, data: CreateMandorDTO) {
@@ -33,9 +34,12 @@ export class AuthServices {
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
+    // Ubah nama menjadi Title Case sebelum disave
+    const formattedName = toTitleCase(data.name);
+
     const mandor = await prisma.user.create({
       data: {
-        name: data.name,
+        name: formattedName,
         username: data.username,
         email: data.email,
         password: hashedPassword,
@@ -94,7 +98,10 @@ export class AuthServices {
     // BUILD UPDATE DATA
     const updateData: any = {};
 
-    if (data.name !== undefined) updateData.name = data.name;
+    // Jika ada perubahan nama, format dulu ke Title Case
+    if (data.name !== undefined) {
+      updateData.name = toTitleCase(data.name);
+    }
     if (data.username !== undefined) updateData.username = data.username;
     if (data.email !== undefined) updateData.email = data.email;
     if (hashedPassword !== undefined) updateData.password = hashedPassword;
@@ -356,7 +363,7 @@ export class AuthServices {
   ): Promise<IExistingUser> {
     const existingUser = await prisma.user.findFirst({
       where: {
-        OR: [{ username }, { email: username }],
+        username,
         deletedAt: null,
       },
     });
@@ -391,7 +398,7 @@ export class AuthServices {
     };
 
     const authToken = Jwt.sign(payload, process.env.JWT_SECRET as string, {
-      expiresIn: "90d",
+      expiresIn: "7d",
     });
 
     return authToken;

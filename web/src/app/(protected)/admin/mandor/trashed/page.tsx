@@ -35,13 +35,13 @@ export default function TrashMandorPage() {
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         if (err.response?.status === 404) {
-          // 🎯 KUNCI: Jika 404 (kosong), paksa tabel jadi kosong dan reset total halaman
+          // Jika 404 (kosong), paksa tabel jadi kosong dan reset total halaman
           setUsers([]);
           setTotalPages(1);
           return;
         }
         toast.error(
-          err.response?.data?.message || "Gagal mengambil data sampah mandor",
+          err.response?.data?.message || "Gagal mengambil data riwayat mandor",
         );
       }
     } finally {
@@ -70,7 +70,7 @@ export default function TrashMandorPage() {
       `⚠️ KONFIRMASI HAPUS PERMANEN ⚠️\n\n` +
         `Anda akan menghapus Mandor "${name}" secara permanen dari sistem.\n\n` +
         `SYARAT PENGHAPUSAN:\n` +
-        `Sistem akan menolak proses ini jika Mandor tersebut masih terikat pada Proyek, Kepala Tukang, atau Klien mana pun. Pastikan Anda telah melakukan "Transfer Mandor" terlebih dahulu.\n\n` +
+        `Sistem akan menolak proses ini jika Mandor tersebut masih terikat pada Proyek. Pastikan Anda telah melakukan "Transfer Mandor" terlebih dahulu.\n\n` +
         `Lanjutkan penghapusan?`,
     );
 
@@ -111,7 +111,7 @@ export default function TrashMandorPage() {
             </button>
             <div>
               <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-                Sampah Mandor
+                Riwayat Mandor
               </h1>
               <p className="text-gray-500 mt-1">
                 Daftar akun mandor yang telah dinonaktifkan.
@@ -181,7 +181,7 @@ export default function TrashMandorPage() {
                   <tr>
                     <td colSpan={3} className="text-center p-20 text-gray-400">
                       <FiTrash2 className="mx-auto mb-2 opacity-20" size={48} />
-                      <p>Tidak ada mandor di sampah.</p>
+                      <p>Riwayat Mandor kosong</p>
                     </td>
                   </tr>
                 )}

@@ -6,6 +6,12 @@ export interface HeadWorker {
   phoneNumber?: string | null;
   address?: string | null;
   createdAt: string;
+  deletedAt: string;
+  mandor?: {
+    id: string;
+    name: string;
+    username: string;
+  };
 }
 
 export interface UpdateHeadWorkerPayload {

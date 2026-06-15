@@ -27,7 +27,7 @@ router.get(
 router.get(
   "/trashed",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.MANDOR),
+  AuthMiddleWare.roleGuard(UserRole.MANDOR, UserRole.ADMIN),
   validate(paginationQuery, "query"),
   kepalaTukangController.listTrashedHeadWorker,
 );
@@ -51,7 +51,7 @@ router.get(
 router.put(
   "/:id",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.MANDOR),
+  AuthMiddleWare.roleGuard(UserRole.MANDOR, UserRole.ADMIN),
   validate(kepalaTukangParamsSchema, "params"),
   validate(updateHeadWorkerSchema),
   kepalaTukangController.updateHeadWorker,
@@ -68,7 +68,7 @@ router.delete(
 router.put(
   "/:id/restore",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.MANDOR),
+  AuthMiddleWare.roleGuard(UserRole.MANDOR, UserRole.ADMIN),
   validate(kepalaTukangParamsSchema, "params"),
   kepalaTukangController.restoreHeadWorker,
 );
@@ -76,7 +76,7 @@ router.put(
 router.delete(
   "/:id/hard-delete",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.MANDOR),
+  AuthMiddleWare.roleGuard(UserRole.ADMIN),
   validate(kepalaTukangParamsSchema, "params"),
   kepalaTukangController.hardDeleteHeadWorker,
 );

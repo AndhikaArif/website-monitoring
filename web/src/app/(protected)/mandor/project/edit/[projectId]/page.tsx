@@ -1,5 +1,3 @@
-// app/mandor/projects/edit/[projectId]/page.tsx
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -14,10 +12,8 @@ import {
   FiChevronLeft,
   FiEdit3,
   FiAlignLeft,
-  FiActivity, // Icon tambahan untuk status
 } from "react-icons/fi";
 
-// Pastikan skema update kamu mengizinkan field 'status'
 import { updateProjectSchema } from "@/validation/project.validation";
 import { getProjectDetail, updateProject } from "@/services/project.service";
 
@@ -29,14 +25,18 @@ export default function EditProjectPage() {
     projectName: "",
     location: "",
     description: "",
-    status: "",
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Buat flag untuk melacak status mount komponen
+    let isMounted = true;
+
     const fetchDetail = async () => {
       try {
         const res = await getProjectDetail(projectId);
+        if (!isMounted) return;
+
         const data = res.data;
 
         // BLOKIR AKSES JIKA STATUS SUDAH SELESAI
@@ -49,13 +49,15 @@ export default function EditProjectPage() {
           return; // Hentikan eksekusi kode di bawahnya
         }
 
+        // Hanya mengambil data field teks saja
         setInitialData({
           projectName: data.projectName || "",
           location: data.location || "",
           description: data.description || "",
-          status: data.status || "AKTIF",
         });
       } catch (error: unknown) {
+        if (!isMounted) return;
+
         if (axios.isAxiosError(error)) {
           if (!error.response) {
             toast.error("Gagal terhubung ke server.", { id: "network-error" });
@@ -95,10 +97,17 @@ export default function EditProjectPage() {
           router.replace("/mandor/project");
         }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
     fetchDetail();
+
+    // Cleanup function: ubah flag saat komponen di-unmount oleh React
+    return () => {
+      isMounted = false;
+    };
   }, [projectId, router]);
 
   if (loading) {
@@ -156,7 +165,7 @@ export default function EditProjectPage() {
                 }
               }}
             >
-              {({ isSubmitting, errors, touched, setFieldValue, values }) => (
+              {({ isSubmitting, errors, touched }) => (
                 <Form className="space-y-6">
                   {/* FIELD NAMA PROYEK */}
                   <div>
@@ -177,37 +186,6 @@ export default function EditProjectPage() {
                       component="div"
                       className="text-red-500 text-xs mt-2 ml-1"
                     />
-                  </div>
-
-                  {/* FIELD STATUS PROYEK */}
-                  <div>
-                    <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                      <FiActivity className="mr-2 text-purple-500" /> Status
-                      Proyek
-                    </label>
-                    <select
-                      name="status"
-                      value={values.status}
-                      onChange={(e) => {
-                        const newStatus = e.target.value;
-                        if (newStatus === "SELESAI") {
-                          const confirmSelesai = window.confirm(
-                            "PERINGATAN: Mengubah status menjadi SELESAI berarti proyek telah berakhir dan tidak bisa menerima dokumentasi lagi. Pastikan semua pekerjaan sudah dicek. Lanjutkan?",
-                          );
-                          if (!confirmSelesai) return; // Jika batal, jangan ganti status
-                        }
-                        setFieldValue("status", newStatus);
-                      }}
-                      className="w-full px-4 py-3 text-black rounded-xl border border-gray-200 outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-50 transition-all bg-white cursor-pointer"
-                    >
-                      <option value="AKTIF">AKTIF</option>
-                      <option value="LIBUR">LIBUR</option>
-                      <option value="SELESAI">SELESAI</option>
-                    </select>
-                    <p className="text-[10px] text-gray-400 mt-2 px-1 italic">
-                      *Status SELESAI akan menandai proyek berakhir secara
-                      resmi.
-                    </p>
                   </div>
 
                   {/* FIELD LOKASI */}

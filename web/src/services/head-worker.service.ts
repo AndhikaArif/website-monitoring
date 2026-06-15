@@ -33,18 +33,35 @@ export const updateHeadWorker = async (
   });
   return res.data;
 };
+
 export const deleteHeadWorker = async (id: string) => {
   await axios.delete(`${API_URL}/api/head-worker/${id}`, {
     withCredentials: true,
   });
 };
 
-export const getTrashedHeadWorkers = (page = 1, limit = 10) =>
-  axios
-    .get(`${API_URL}/api/head-worker/trashed?page=${page}&limit=${limit}`, {
+export const getTrashedHeadWorkers = (
+  page = 1,
+  limit = 10,
+  mandorId?: string,
+) => {
+  const params: { page: number; limit: number; mandorId?: string } = {
+    page,
+    limit,
+  };
+
+  // Jika mandorId ada (Admin memilih filter), masukkan ke query params
+  if (mandorId) {
+    params.mandorId = mandorId;
+  }
+
+  return axios
+    .get(`${API_URL}/api/head-worker/trashed`, {
+      params,
       withCredentials: true,
     })
     .then((res) => res.data);
+};
 
 export const restoreHeadWorker = (id: string) =>
   axios.put(

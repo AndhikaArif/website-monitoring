@@ -257,7 +257,7 @@ export default function HeadWorkerDocumentationDetailPage() {
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                   <FiTarget className="text-indigo-500" /> Target Pekerjaan
                 </h3>
-                <p className="text-slate-700 text-sm leading-relaxed bg-indigo-50/30 border border-indigo-100/50 p-4 rounded-2xl h-full">
+                <p className="text-gray-400 text-sm leading-relaxed bg-indigo-50/30 border border-indigo-100/50 p-4 rounded-2xl h-full">
                   {data.target || "Tidak ada rincian target yang dicantumkan."}
                 </p>
               </div>
@@ -268,7 +268,7 @@ export default function HeadWorkerDocumentationDetailPage() {
                   <FiActivity className="text-emerald-500" /> Progres / Kendala
                   Lapangan
                 </h3>
-                <p className="text-slate-700 text-sm leading-relaxed bg-emerald-50/30 border border-emerald-100/50 p-4 rounded-2xl h-full whitespace-pre-wrap">
+                <p className="text-gray-400 text-sm leading-relaxed bg-emerald-50/30 border border-emerald-100/50 p-4 rounded-2xl h-full whitespace-pre-wrap">
                   {data.progress ||
                     "Tidak ada rincian progres atau kendala yang dicantumkan."}
                 </p>

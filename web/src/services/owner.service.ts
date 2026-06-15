@@ -34,15 +34,24 @@ export const deleteOwner = async (id: string) => {
   });
 };
 
-export const getTrashedOwners = (page = 1, limit = 10, search = "") =>
-  axios
-    .get(
-      `${API_URL}/api/owner/trashed?page=${page}&limit=${limit}&search=${search}`,
-      {
-        withCredentials: true,
-      },
-    )
+export const getTrashedOwners = (page = 1, limit = 10, mandorId?: string) => {
+  const params: { page: number; limit: number; mandorId?: string } = {
+    page,
+    limit,
+  };
+
+  // Jika mandorId ada (Admin memilih filter), masukkan ke query params
+  if (mandorId) {
+    params.mandorId = mandorId;
+  }
+
+  return axios
+    .get(`${API_URL}/api/owner/trashed`, {
+      params,
+      withCredentials: true,
+    })
     .then((res) => res.data);
+};
 
 export const restoreOwner = (id: string) =>
   axios.put(

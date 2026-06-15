@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "../config/prisma.config.js";
 import { AppError } from "../errors/app.error.js";
 import type { UpdateProfileDTO } from "../validations/profile.validation.js";
+import { toTitleCase } from "../utils/to-title-case.js";
 
 export class ProfileService {
   async getMyProfile(userId: string) {

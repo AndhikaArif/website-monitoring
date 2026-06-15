@@ -10,6 +10,8 @@ import type {
   UpdateProjectDTO,
   AdminTransferMandorDTO,
   AdminUpdateProjectStatusDTO,
+  ScheduleHolidayDTO,
+  DeleteHolidayParamDTO,
 } from "../validations/project.validation.js";
 
 const projectService = new ProjectService();
@@ -309,6 +311,45 @@ export class ProjectController {
         req.currentUser,
         projectId,
         payload,
+      );
+
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async scheduleHoliday(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.currentUser) throw new AppError(401, "Unauthenticated");
+
+      const { projectId } = req.validatedParams as ProjectIdParamDTO;
+      const payload = req.validatedBody as ScheduleHolidayDTO;
+
+      const result = await projectService.scheduleProjectHolidays(
+        req.currentUser,
+        projectId,
+        payload,
+      );
+
+      res.status(201).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteProjectHoliday(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.currentUser) throw new AppError(401, "Unauthenticated");
+
+      // Di sini kita asumsikan dateString diambil dari URL parameter
+      const { projectId, dateString } =
+        req.validatedParams as DeleteHolidayParamDTO;
+
+      const result = await projectService.deleteProjectHoliday(
+        req.currentUser,
+        projectId,
+        dateString,
       );
 
       res.status(200).json(result);

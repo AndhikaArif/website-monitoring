@@ -9,6 +9,7 @@ import type {
   ListHeadWorkerQueryDTO,
 } from "../validations/head-worker.validation.js";
 import { UserRole } from "../generated/prisma/index.js";
+import { toTitleCase } from "../utils/to-title-case.js";
 
 export class HeadWorkerServices {
   async createHeadWorker(
@@ -38,10 +39,13 @@ export class HeadWorkerServices {
     // hash password
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
+    // Ubah nama menjadi Title Case sebelum disave
+    const formattedName = toTitleCase(data.name);
+
     // create user
     const kepalaTukang = await prisma.user.create({
       data: {
-        name: data.name,
+        name: formattedName,
         username: data.username,
         email: data.email,
         password: hashedPassword,
@@ -128,7 +132,10 @@ export class HeadWorkerServices {
     // BUILD UPDATE DATA
     const updateData: any = {};
 
-    if (data.name !== undefined) updateData.name = data.name;
+    // Jika ada perubahan nama, format dulu ke Title Case
+    if (data.name !== undefined) {
+      updateData.name = toTitleCase(data.name);
+    }
     if (data.username !== undefined) updateData.username = data.username;
     if (data.email !== undefined) updateData.email = data.email;
     if (hashedPassword !== undefined) updateData.password = hashedPassword;
@@ -273,16 +280,18 @@ export class HeadWorkerServices {
       );
     }
 
-    const { page, limit } = query;
+    const { page, limit, mandorId } = query;
     const skip = (page - 1) * limit;
 
     const whereCondition = {
       role: UserRole.KEPALA_TUKANG,
       deletedAt: { not: null },
+      mandorId: { not: null }, // Ambil hanya yang masih punya Mandor (Belum di-hard delete)
+
       // Jika MANDOR, batasi hanya melihat Kepala Tukangnya sendiri. Jika ADMIN, lolos (melihat semua).
-      ...(currentUser.role === UserRole.MANDOR && {
-        mandorId: currentUser.id,
-      }),
+      ...(currentUser.role === UserRole.MANDOR
+        ? { mandorId: currentUser.id }
+        : { ...(mandorId && { mandorId }) }),
     };
 
     const [kepalaTukang, total] = await Promise.all([

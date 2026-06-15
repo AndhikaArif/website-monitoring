@@ -39,7 +39,7 @@ export default function TrashProjectPage() {
       setTotalPages(res.meta.totalPages || 1);
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response?.status !== 404) {
-        toast.error("Gagal mengambil data sampah");
+        toast.error("Gagal mengambil data riwayat proyek");
       }
     } finally {
       setLoading(false);
@@ -94,7 +94,7 @@ export default function TrashProjectPage() {
             </button>
             <div>
               <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-                Sampah
+                Riwayat Proyek
               </h1>
               <p className="text-gray-500 mt-1">
                 Pulihkan proyek yang dihapus.
@@ -186,7 +186,7 @@ export default function TrashProjectPage() {
                   <tr>
                     <td colSpan={2} className="text-center p-20 text-gray-400">
                       <FiTrash2 className="mx-auto mb-2 opacity-20" size={48} />
-                      <p>Tempat sampah kosong.</p>
+                      <p>Riwayat Proyek kosong</p>
                     </td>
                   </tr>
                 )}

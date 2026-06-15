@@ -95,7 +95,7 @@ export default function OwnerPage() {
 
   const handleDelete = async (id: string) => {
     if (
-      !confirm("Yakin mau hapus data klien? (Data akan dipindahkan ke sampah)")
+      !confirm("Yakin mau hapus data klien? (Data akan dipindahkan ke riwayat)")
     )
       return;
     try {
@@ -139,14 +139,14 @@ export default function OwnerPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* TOMBOL SAMPAH OWNER */}
+              {/* TOMBOL Riwayat OWNER */}
               <button
                 onClick={() => router.push("/mandor/owner/trashed")}
                 className="inline-flex items-center justify-center bg-white hover:bg-gray-50 text-gray-600 font-semibold px-5 py-2.5 rounded-xl transition-all border border-gray-200 active:scale-95 shadow-sm cursor-pointer"
-                title="Lihat Sampah"
+                title="Lihat Riwayat"
               >
                 <FiTrash className="w-5 h-5 md:mr-2" />
-                <span className="hidden md:inline">Sampah</span>
+                <span className="hidden md:inline">Riwayat</span>
               </button>
 
               <button
@@ -192,11 +192,14 @@ export default function OwnerPage() {
 
                 <tbody className="divide-y divide-gray-100">
                   {loading ? (
-                    Array.from({ length: 3 }).map((_, i) => (
-                      <tr key={i} className="animate-pulse">
-                        <td colSpan={4} className="p-8 bg-gray-50/20" />
-                      </tr>
-                    ))
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className="p-20 text-center animate-pulse text-gray-400"
+                      >
+                        Memproses data klien (owner)...
+                      </td>
+                    </tr>
                   ) : errorMsg ? (
                     <tr>
                       <td colSpan={4} className="text-center p-16">

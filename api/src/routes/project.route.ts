@@ -13,6 +13,8 @@ import {
   updateProjectSchema,
   adminTransferMandorSchema,
   adminUpdateProjectStatusSchema,
+  scheduleHolidaySchema,
+  deleteHolidayParamSchema,
 } from "../validations/project.validation.js";
 
 const router = Router();
@@ -182,6 +184,25 @@ router.post(
   validate(projectIdParam, "params"),
   // Tidak pakai validate body di sini karena endpoint ini tidak mengirimkan data apa-apa (cukup memanggil ID project di params)
   controller.unassignOwner,
+);
+
+// 🔥 SCHEDULE HOLIDAY (Set Libur Project)
+router.post(
+  "/:projectId/holidays",
+  AuthMiddleWare.verifyToken,
+  AuthMiddleWare.roleGuard(UserRole.MANDOR, UserRole.ADMIN),
+  validate(projectIdParam, "params"),
+  validate(scheduleHolidaySchema),
+  controller.scheduleHoliday,
+);
+
+// 🔥 DELETE HOLIDAY (Hapus Hari Libur Tertentu)
+router.delete(
+  "/:projectId/holidays/:dateString",
+  AuthMiddleWare.verifyToken,
+  AuthMiddleWare.roleGuard(UserRole.MANDOR, UserRole.ADMIN),
+  validate(deleteHolidayParamSchema, "params"),
+  controller.deleteProjectHoliday,
 );
 
 export default router;

@@ -7,13 +7,11 @@ export const createProjectSchema = z.object({
     .trim()
     .min(3, "Nama project minimal 3 karakter")
     .max(100, "Nama project maksimal 100 karakter"),
-
   location: z
     .string()
     .trim()
     .min(3, "Lokasi minimal 3 karakter")
     .max(255, "Lokasi maksimal 255 karakter"),
-
   description: z.string().trim().optional(),
 });
 
@@ -24,13 +22,15 @@ export const updateProjectSchema = z.object({
     .string()
     .trim()
     .min(3, "Nama project minimal 3 karakter")
-    .max(100, "Nama project maksimal 100 karakter"),
+    .max(100, "Nama project maksimal 100 karakter")
+    .optional(),
 
   location: z
     .string()
     .trim()
     .min(3, "Lokasi minimal 3 karakter")
-    .max(255, "Lokasi maksimal 255 karakter"),
+    .max(255, "Lokasi maksimal 255 karakter")
+    .optional(),
 
   description: z.string().trim().optional(),
 
@@ -106,3 +106,24 @@ export const adminUpdateProjectStatusSchema = z.object({
 export type AdminUpdateProjectStatusDTO = z.infer<
   typeof adminUpdateProjectStatusSchema
 >;
+
+export const scheduleHolidaySchema = z.object({
+  startDate: z
+    .string()
+    .regex(/^\d{2}-\d{2}-\d{4}$/, "Format tanggal mulai harus DD-MM-YYYY"),
+  endDate: z
+    .string()
+    .regex(/^\d{2}-\d{2}-\d{4}$/, "Format tanggal selesai harus DD-MM-YYYY"),
+});
+
+export type ScheduleHolidayDTO = z.infer<typeof scheduleHolidaySchema>;
+
+// Schema ini jika dateString dikirim melalui parameter URL (misal: /projects/:projectId/holidays/:dateString)
+export const deleteHolidayParamSchema = z.object({
+  projectId: z.string().uuid("Project ID tidak valid"),
+  dateString: z
+    .string()
+    .regex(/^\d{2}-\d{2}-\d{4}$/, "Format tanggal harus DD-MM-YYYY"),
+});
+
+export type DeleteHolidayParamDTO = z.infer<typeof deleteHolidayParamSchema>;

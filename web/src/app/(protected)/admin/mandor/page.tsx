@@ -91,7 +91,7 @@ export default function MandorPage() {
   }, [fetchData]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Yakin mau hapus mandor? (Data akan dipindahkan ke sampah)"))
+    if (!confirm("Yakin mau hapus mandor? (Data akan dipindahkan ke riwayat)"))
       return;
     try {
       await toast.promise(deleteMandor(id), {
@@ -137,14 +137,14 @@ export default function MandorPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* TOMBOL SAMPAH */}
+              {/* TOMBOL Riwayat */}
               <button
                 onClick={() => router.push("/admin/mandor/trashed")}
                 className="inline-flex items-center justify-center bg-white hover:bg-gray-50 text-gray-600 font-semibold px-5 py-2.5 rounded-xl transition-all border border-gray-200 active:scale-95 shadow-sm cursor-pointer"
-                title="Lihat Sampah"
+                title="Lihat Riwayat"
               >
                 <FiTrash className="w-5 h-5 md:mr-2" />
-                <span className="hidden md:inline">Sampah</span>
+                <span className="hidden md:inline">Riwayat</span>
               </button>
 
               <button
@@ -190,11 +190,14 @@ export default function MandorPage() {
 
                 <tbody className="divide-y divide-gray-100">
                   {loading ? (
-                    Array.from({ length: 3 }).map((_, i) => (
-                      <tr key={i} className="animate-pulse">
-                        <td colSpan={4} className="p-8 bg-gray-50/20" />
-                      </tr>
-                    ))
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className="p-20 text-center animate-pulse text-gray-400"
+                      >
+                        Memproses data mandor...
+                      </td>
+                    </tr>
                   ) : mandors.length > 0 ? (
                     mandors.map((m) => (
                       <tr

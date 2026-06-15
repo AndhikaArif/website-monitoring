@@ -23,7 +23,7 @@ export class HeadWorkerController {
       );
 
       return res.status(201).json({
-        message: "HeadWorker berhasil dibuat",
+        message: "Kepala Tukang berhasil dibuat",
         data: result,
       });
     } catch (error) {
@@ -46,7 +46,7 @@ export class HeadWorkerController {
       );
 
       return res.json({
-        message: "HeadWorker berhasil diupdate",
+        message: "Kepala Tukang berhasil diupdate",
         data: result,
       });
     } catch (error) {
@@ -84,7 +84,7 @@ export class HeadWorkerController {
       );
 
       return res.json({
-        message: "Data HeadWorker berhasil diambil",
+        message: "Data Kepala Tukang berhasil diambil",
         data: result,
       });
     } catch (error) {
@@ -104,7 +104,7 @@ export class HeadWorkerController {
       );
 
       return res.json({
-        message: "List Head Worker berhasil diambil",
+        message: "Daftar Kepala Tukang berhasil diambil",
         ...result,
       });
     } catch (error) {
@@ -122,7 +122,7 @@ export class HeadWorkerController {
       );
 
       return res.json({
-        message: "List sampah Head Worker berhasil diambil",
+        message: "Riwayat Kepala Tukang berhasil diambil",
         ...result,
       });
     } catch (error) {
@@ -143,7 +143,7 @@ export class HeadWorkerController {
       );
 
       return res.json({
-        message: "Head Worker berhasil dipulihkan",
+        message: "Kepala Tukang berhasil dipulihkan",
         data: result,
       });
     } catch (error) {

@@ -132,7 +132,7 @@ export default function OwnerDocumentationDetailPage() {
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                   <FiTarget className="text-amber-500" /> Target Pekerjaan
                 </h3>
-                <p className="text-gray-700 leading-relaxed bg-orange-50/50 border border-orange-100 p-4 rounded-2xl h-full">
+                <p className="text-gray-400 leading-relaxed bg-orange-50/50 border border-orange-100 p-4 rounded-2xl h-full">
                   {data.target || "Tidak ada rincian target yang dicantumkan."}
                 </p>
               </div>
@@ -142,7 +142,7 @@ export default function OwnerDocumentationDetailPage() {
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                   <FiActivity className="text-blue-500" /> Progres / Kendala
                 </h3>
-                <p className="text-gray-700 leading-relaxed bg-blue-50/50 border border-blue-100 p-4 rounded-2xl h-full whitespace-pre-wrap">
+                <p className="text-gray-400 leading-relaxed bg-blue-50/50 border border-blue-100 p-4 rounded-2xl h-full whitespace-pre-wrap">
                   {data.progress ||
                     "Tidak ada rincian progres atau kendala yang dicantumkan."}
                 </p>

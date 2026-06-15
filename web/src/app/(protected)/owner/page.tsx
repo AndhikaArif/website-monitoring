@@ -6,10 +6,8 @@ import axios from "axios";
 import { FiHome, FiMapPin, FiFilter, FiArrowRight } from "react-icons/fi";
 import toast from "react-hot-toast";
 
-// Asumsi: Kamu sudah membuat fungsi getOwnedProjects di project.service
-// Jika belum, kamu bisa menduplikat fungsi getAssignedProjects di BE/FE dan menyesuaikan filter ownerId-nya
 import { getOwnedProjects } from "@/services/project.service";
-import { AssignedProject } from "@/types/project.type"; // Pakai tipe yang sama jika strukturnya mirip
+import { AssignedProject } from "@/types/project.type";
 
 export default function OwnerProjectsPage() {
   const [projects, setProjects] = useState<AssignedProject[]>([]);
@@ -40,7 +38,7 @@ export default function OwnerProjectsPage() {
           err.response.data?.message || "Gagal mengambil data proyek sistem.";
 
         if (status === 404) {
-          // 🎯 404 di sini berarti tabel kosong. Biarkan user di halaman ini dan kosongkan state.
+          // 404 di sini berarti tabel kosong. Biarkan user di halaman ini dan kosongkan state.
           setProjects([]);
           setTotalPages(1);
           return;
@@ -51,7 +49,7 @@ export default function OwnerProjectsPage() {
           router.replace("/login");
           return;
         } else if (status === 403) {
-          // 🎯 Satukan ID toast dengan ProtectedLayout agar tidak bertumpuk jika bocor 1 milidetik
+          // Satukan ID toast dengan ProtectedLayout agar tidak bertumpuk jika bocor 1 milidetik
           toast.error(`Akses Ditolak: ${message}`, {
             id: "unauthorized-route",
           });
@@ -159,11 +157,14 @@ export default function OwnerProjectsPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {loading ? (
-                  Array.from({ length: 3 }).map((_, i) => (
-                    <tr key={i} className="animate-pulse">
-                      <td colSpan={4} className="p-8 bg-gray-50/20" />
-                    </tr>
-                  ))
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="p-20 text-center animate-pulse text-gray-400"
+                    >
+                      Memproses data proyek...
+                    </td>
+                  </tr>
                 ) : projects.length > 0 ? (
                   projects.map((p) => (
                     <tr

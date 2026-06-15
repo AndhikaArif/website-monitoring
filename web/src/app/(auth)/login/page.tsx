@@ -23,7 +23,7 @@ export default function LoginPage() {
         ADMIN: "/admin/mandor",
         MANDOR: "/mandor/project",
         KEPALA_TUKANG: "/head-worker",
-        OWNER: "/owner", // Antisipasi untuk role baru
+        OWNER: "/owner",
       };
       router.replace(paths[user.role as keyof typeof paths] || "/login");
     }
@@ -65,11 +65,11 @@ export default function LoginPage() {
 
                   if (status === 401) {
                     setErrors({
-                      username: "Username / password tidak valid",
-                      password: " ",
+                      username: " ",
+                      password: "Username / password tidak valid",
                     });
                   } else if (status === 500) {
-                    // 🔥 Penanganan Error Database Down / Timeout
+                    // Penanganan Error Database Down / Timeout
                     setGlobalError(
                       "Server atau database sedang mengalami gangguan. Silakan coba beberapa saat lagi.",
                     );

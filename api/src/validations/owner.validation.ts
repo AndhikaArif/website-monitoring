@@ -27,7 +27,7 @@ export type OwnerParamsDTO = z.infer<typeof ownerParamsSchema>;
 export const listOwnerQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(50).default(10),
-  search: z.string().optional(), // Tambahan untuk fitur pencarian
+  mandorId: z.string().uuid("Invalid ID").optional(),
 });
 
 export type ListOwnerQueryDTO = z.infer<typeof listOwnerQuerySchema>;

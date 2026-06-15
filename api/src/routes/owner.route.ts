@@ -26,7 +26,7 @@ router.get(
 router.get(
   "/trashed",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.MANDOR),
+  AuthMiddleWare.roleGuard(UserRole.MANDOR, UserRole.ADMIN),
   validate(listOwnerQuerySchema, "query"), // Menggunakan listOwnerQuerySchema agar fitur pencarian di sampah tetap berfungsi
   ownerController.listTrashedOwner,
 );
@@ -50,7 +50,7 @@ router.get(
 router.put(
   "/:id",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.MANDOR),
+  AuthMiddleWare.roleGuard(UserRole.MANDOR, UserRole.ADMIN),
   validate(ownerParamsSchema, "params"),
   validate(updateOwnerSchema),
   ownerController.updateOwner,
@@ -67,7 +67,7 @@ router.delete(
 router.put(
   "/:id/restore",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.MANDOR),
+  AuthMiddleWare.roleGuard(UserRole.MANDOR, UserRole.ADMIN),
   validate(ownerParamsSchema, "params"),
   ownerController.restoreOwner,
 );
@@ -75,7 +75,7 @@ router.put(
 router.delete(
   "/:id/hard-delete",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.MANDOR),
+  AuthMiddleWare.roleGuard(UserRole.ADMIN),
   validate(ownerParamsSchema, "params"),
   ownerController.hardDeleteOwner,
 );
