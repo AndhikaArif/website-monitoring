@@ -88,7 +88,7 @@ export class ProjectService {
     };
   }
 
-  // 1. Helper untuk mendapatkan tanggal hari ini (Format UTC 00:00:00 WIB)
+  // Helper untuk mendapatkan tanggal hari ini (Format UTC 00:00:00 WIB)
   private getTodayNormalized(): Date {
     const now = new Date();
     const wibFormatter = new Intl.DateTimeFormat("id-ID", {
@@ -101,7 +101,7 @@ export class ProjectService {
     return new Date(`${wibYear}-${wibMonth}-${wibDay}T00:00:00Z`);
   }
 
-  // 2. Helper untuk mengubah query status frontend menjadi logika pencarian Prisma
+  // Helper untuk mengubah query status frontend menjadi logika pencarian Prisma
   private buildComputedStatusFilter(status?: string) {
     if (!status) return {};
 
@@ -128,8 +128,8 @@ export class ProjectService {
     return {};
   }
 
-  // 3. Helper untuk menimpa field "status" pada JSON sebelum dikirim ke Frontend
-  private applyComputedStatus(project: any) {
+  // Helper untuk menimpa field "status" pada JSON sebelum dikirim ke Frontend
+  private applyComputedStatus(project: any, keepHolidays = false) {
     if (!project) return project;
 
     let computedStatus: ProjectStatus = ProjectStatus.AKTIF;
@@ -145,6 +145,8 @@ export class ProjectService {
     return {
       ...rest,
       status: computedStatus,
+      // Jika keepHolidays true, sertakan kembali datanya ke response
+      ...(keepHolidays && { projectHolidays }),
     };
   }
 
@@ -425,6 +427,21 @@ export class ProjectService {
       );
     }
 
+    // 2. QUERY TAMBAHAN: Ambil semua hari libur dari hari ini ke depan untuk kebutuhan list/looping di FE
+    const upcomingHolidays = await prisma.projectHoliday.findMany({
+      where: {
+        projectId: projectId,
+        date: { gte: today }, // Hari ini dan masa depan
+      },
+      select: {
+        id: true,
+        date: true,
+      },
+      orderBy: {
+        date: "asc",
+      },
+    });
+
     const latestDoc = project.documentations[0] ?? null;
 
     // ---> TIMPA STATUS SEBELUM RETURN <---
@@ -432,6 +449,7 @@ export class ProjectService {
 
     return {
       ...projectWithComputedStatus,
+      projectHolidays: upcomingHolidays,
       latestDocumentation: latestDoc,
       documentations: undefined,
     };
@@ -1308,6 +1326,14 @@ export class ProjectService {
     const [day, month, year] = dateString.split("-");
     const targetDate = new Date(`${year}-${month}-${day}T00:00:00Z`);
 
+    const today = this.getTodayNormalized();
+    if (targetDate < today) {
+      throw new AppError(
+        400,
+        "Tidak dapat menghapus hari libur yang sudah lewat demi menjaga integritas data laporan.",
+      );
+    }
+
     // 4. Cek apakah data liburnya memang terdaftar di database
     const existingHoliday = await prisma.projectHoliday.findUnique({
       where: {
@@ -1375,6 +1401,14 @@ export class ProjectService {
       throw new AppError(
         400,
         "Tanggal mulai libur tidak boleh lebih besar dari tanggal selesai.",
+      );
+    }
+
+    const today = this.getTodayNormalized();
+    if (start < today) {
+      throw new AppError(
+        400,
+        "Tidak dapat menjadwalkan hari libur di tanggal yang sudah lewat.",
       );
     }
 

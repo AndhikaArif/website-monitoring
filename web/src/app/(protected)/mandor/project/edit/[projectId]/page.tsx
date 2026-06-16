@@ -12,6 +12,7 @@ import {
   FiChevronLeft,
   FiEdit3,
   FiAlignLeft,
+  FiLoader,
 } from "react-icons/fi";
 
 import { updateProjectSchema } from "@/validation/project.validation";
@@ -113,7 +114,7 @@ export default function EditProjectPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="h-10 w-10 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
+        <FiLoader className="animate-spin text-purple-600 text-4xl" />
       </div>
     );
   }

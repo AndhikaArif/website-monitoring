@@ -55,9 +55,13 @@ export const scheduleHolidaySchema = z.object({
   startDate: z
     .string({ error: "Tanggal mulai wajib diisi" })
     .regex(/^\d{2}-\d{2}-\d{4}$/, "Format tanggal mulai harus DD-MM-YYYY"),
-  endDate: z
-    .string({ error: "Tanggal selesai wajib diisi" })
-    .regex(/^\d{2}-\d{2}-\d{4}$/, "Format tanggal selesai harus DD-MM-YYYY"),
+  endDate: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z
+      .string()
+      .regex(/^\d{2}-\d{2}-\d{4}$/, "Format tanggal selesai harus DD-MM-YYYY")
+      .optional(),
+  ),
 });
 
 export type ScheduleHolidayFormValues = z.infer<typeof scheduleHolidaySchema>;

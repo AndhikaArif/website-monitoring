@@ -496,9 +496,19 @@ export class DocumentationService {
       });
 
       if (isHoliday) {
+        const displayDate =
+          payload.reportDate ||
+          new Date(isHoliday.date)
+            .toLocaleDateString("id-ID", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })
+            .replace(/\//g, "-");
+
         throw new AppError(
           400,
-          "Tidak dapat memindahkan laporan ke tanggal tersebut karena telah ditetapkan sebagai hari libur.",
+          `Tidak dapat update laporan ini karena tanggal ${displayDate} telah ditetapkan sebagai hari libur.`,
         );
       }
 

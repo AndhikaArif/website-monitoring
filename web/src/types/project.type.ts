@@ -56,6 +56,12 @@ export interface LatestDocumentation {
   session: string;
 }
 
+export interface ProjectHoliday {
+  id: string;
+  projectId?: string;
+  date: string; // Format ISO dari database atau string tanggal
+}
+
 export interface ProjectDetail {
   id: string;
   projectName: string;
@@ -69,6 +75,7 @@ export interface ProjectDetail {
   kepalaTukang: HeadWorker[];
   owner?: ProjectOwner | null;
   latestDocumentation?: LatestDocumentation | null;
+  projectHolidays?: ProjectHoliday[];
   _count: {
     documentations: number;
   };
