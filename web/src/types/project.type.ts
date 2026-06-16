@@ -76,6 +76,7 @@ export interface ProjectDetail {
   owner?: ProjectOwner | null;
   latestDocumentation?: LatestDocumentation | null;
   projectHolidays?: ProjectHoliday[];
+  pastHistories?: ProjectHoliday[];
   _count: {
     documentations: number;
   };
@@ -148,7 +149,6 @@ export interface AdminProjectResponse {
   };
 }
 
-// Payload untuk endpoint pemindahan Mandor
 export interface TransferMandorPayload {
   newMandorId: string;
   keepKepalaTukang: boolean;
@@ -158,8 +158,17 @@ export interface AdminUpdateStatusPayload {
   status: "AKTIF" | "LIBUR" | "SELESAI";
 }
 
-// Payload untuk endpoint schedule holiday
 export interface ScheduleHolidayPayload {
   startDate: string; // Format: "DD-MM-YYYY"
   endDate: string; // Format: "DD-MM-YYYY"
+}
+
+export interface BulkDeleteHolidaysPayload {
+  dates: string[]; // Array format: ["DD-MM-YYYY", "DD-MM-YYYY"]
+}
+
+// Interface opsional jika ingin typed response dari backend
+export interface BulkDeleteHolidaysResponse {
+  message: string;
+  deletedCount: number;
 }

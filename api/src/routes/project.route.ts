@@ -15,6 +15,7 @@ import {
   adminUpdateProjectStatusSchema,
   scheduleHolidaySchema,
   deleteHolidayParamSchema,
+  bulkDeleteHolidaysSchema,
 } from "../validations/project.validation.js";
 
 const router = Router();
@@ -194,6 +195,16 @@ router.post(
   validate(projectIdParam, "params"),
   validate(scheduleHolidaySchema),
   controller.scheduleHoliday,
+);
+
+// 🔥 BULK DELETE HOLIDAYS (Hapus Hari Libur Massal)
+router.delete(
+  "/:projectId/holidays/bulk",
+  AuthMiddleWare.verifyToken,
+  AuthMiddleWare.roleGuard(UserRole.MANDOR, UserRole.ADMIN),
+  validate(projectIdParam, "params"),
+  validate(bulkDeleteHolidaysSchema, "body"), // Validasi body untuk array tanggal
+  controller.bulkDeleteProjectHolidays,
 );
 
 // 🔥 DELETE HOLIDAY (Hapus Hari Libur Tertentu)

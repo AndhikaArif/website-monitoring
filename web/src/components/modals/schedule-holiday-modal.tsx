@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Formik, Form } from "formik";
 import { toFormikValidationSchema } from "zod-formik-adapter";
 import axios from "axios";
@@ -26,6 +26,13 @@ export default function ScheduleHolidayModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMultiDay, setIsMultiDay] = useState(false);
 
+  // Reset checkbox tiap kali dibuka
+  useEffect(() => {
+    if (isOpen) {
+      setIsMultiDay(false);
+    }
+  }, [isOpen]);
+
   // Helper konversi format tanggal browser (YYYY-MM-DD) <-> backend (DD-MM-YYYY)
   const toBackendFormat = (htmlDate: string): string => {
     if (!htmlDate) return "";
@@ -37,6 +44,14 @@ export default function ScheduleHolidayModal({
     if (!beDate) return "";
     const [day, month, year] = beDate.split("-");
     return `${year}-${month}-${day}`;
+  };
+
+  const getNextDay = (dateStr: string) => {
+    if (!dateStr) return "";
+    const [day, month, year] = dateStr.split("-");
+    const date = new Date(`${year}-${month}-${day}`);
+    date.setDate(date.getDate() + 1);
+    return date.toLocaleDateString("sv-SE"); // Format YYYY-MM-DD
   };
 
   // Ambil tanggal hari ini dengan format YYYY-MM-DD sesuai timezone lokal
@@ -54,6 +69,7 @@ export default function ScheduleHolidayModal({
           </h2>
           <button
             type="button"
+            disabled={isSubmitting}
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer text-xl p-1 transition-colors"
           >
@@ -124,14 +140,17 @@ export default function ScheduleHolidayModal({
                   </label>
                   <input
                     type="date"
+                    disabled={isSubmitting}
                     min={todayHtml}
                     value={toHtmlFormat(values.startDate)}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setFieldValue(
                         "startDate",
                         toBackendFormat(e.target.value),
-                      )
-                    }
+                      );
+                      // Jika user ubah startDate, otomatis kosongkan endDate jika tglnya jadi tidak valid
+                      setFieldValue("endDate", "");
+                    }}
                     className={`w-full px-4 py-2.5 text-black rounded-xl border outline-none transition-all ${
                       errors.startDate && touched.startDate
                         ? "border-red-300 focus:ring-4 focus:ring-red-50"
@@ -149,6 +168,7 @@ export default function ScheduleHolidayModal({
                 <div className="flex items-center gap-2 pt-2">
                   <input
                     type="checkbox"
+                    disabled={isSubmitting}
                     id="isMultiDay"
                     checked={isMultiDay}
                     onChange={(e) => {
@@ -174,7 +194,8 @@ export default function ScheduleHolidayModal({
                     </label>
                     <input
                       type="date"
-                      min={todayHtml}
+                      disabled={isSubmitting}
+                      min={getNextDay(values.startDate)}
                       value={toHtmlFormat(values.endDate)}
                       onChange={(e) =>
                         setFieldValue(
@@ -208,6 +229,7 @@ export default function ScheduleHolidayModal({
                 <div className="flex gap-2 pt-4">
                   <button
                     type="button"
+                    disabled={isSubmitting}
                     onClick={onClose}
                     className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50 transition-all cursor-pointer bg-white"
                   >

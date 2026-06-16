@@ -213,6 +213,14 @@ export class ProjectService {
     // LOGIKA OTOMATIS: Jika status berubah jadi SELESAI, isi endDate
     if (data.status === ProjectStatus.SELESAI) {
       updatePayload.endDate = new Date();
+
+      const today = this.getTodayNormalized();
+      await prisma.projectHoliday.deleteMany({
+        where: {
+          projectId: projectId,
+          date: { gte: today },
+        },
+      });
     }
 
     const updated = await prisma.project.update({
@@ -427,7 +435,22 @@ export class ProjectService {
       );
     }
 
-    // 2. QUERY TAMBAHAN: Ambil semua hari libur dari hari ini ke depan untuk kebutuhan list/looping di FE
+    // Ambil semua hari libur dari hari ini ke belakang untuk kebutuhan list riwayat hari libur
+    const pastHolidays = await prisma.projectHoliday.findMany({
+      where: {
+        projectId: projectId,
+        date: { lt: today }, // <--- Mengambil tanggal sebelum hari ini
+      },
+      select: {
+        id: true,
+        date: true,
+      },
+      orderBy: {
+        date: "desc", // Mengurutkan dari yang paling baru berlalu ke yang paling lama
+      },
+    });
+
+    // Ambil semua hari libur dari hari ini ke depan untuk kebutuhan list/looping di FE
     const upcomingHolidays = await prisma.projectHoliday.findMany({
       where: {
         projectId: projectId,
@@ -449,6 +472,7 @@ export class ProjectService {
 
     return {
       ...projectWithComputedStatus,
+      pastHistories: pastHolidays,
       projectHolidays: upcomingHolidays,
       latestDocumentation: latestDoc,
       documentations: undefined,
@@ -1288,6 +1312,79 @@ export class ProjectService {
     }
   }
 
+  async scheduleProjectHolidays(
+    currentUser: IExistingUser,
+    projectId: string,
+    payload: { startDate: string; endDate: string }, // Format "DD-MM-YYYY"
+  ) {
+    // 1. Validasi Akses: Mandor atau Admin
+    if (
+      currentUser.role !== UserRole.MANDOR &&
+      currentUser.role !== UserRole.ADMIN
+    ) {
+      throw new AppError(
+        403,
+        "Akses ditolak. Hanya Mandor atau Admin yang dapat mengatur jadwal libur.",
+      );
+    }
+
+    // (Opsional) Jika yang login Mandor, pastikan ini proyek miliknya
+    if (currentUser.role === UserRole.MANDOR) {
+      const project = await prisma.project.findFirst({
+        where: { id: projectId, mandorId: currentUser.id },
+      });
+      if (!project)
+        throw new AppError(403, "Ini bukan proyek di bawah pengawasan Anda.");
+    }
+
+    // 2. Parse string menjadi Date UTC (kebal timezone)
+    const parseDate = (dateString: string) => {
+      const [day, month, year] = dateString.split("-");
+      return new Date(`${year}-${month}-${day}T00:00:00Z`);
+    };
+
+    const start = parseDate(payload.startDate);
+    const end = parseDate(payload.endDate);
+
+    if (start > end) {
+      throw new AppError(
+        400,
+        "Tanggal mulai libur tidak boleh lebih besar dari tanggal selesai.",
+      );
+    }
+
+    const today = this.getTodayNormalized();
+    if (start < today) {
+      throw new AppError(
+        400,
+        "Tidak dapat menjadwalkan hari libur di tanggal yang sudah lewat.",
+      );
+    }
+
+    // 3. Buat array yang berisi semua tanggal di antara start dan end
+    const holidayDates: Date[] = [];
+    let currentDate = new Date(start);
+
+    while (currentDate <= end) {
+      holidayDates.push(new Date(currentDate));
+      // Tambah 1 hari ke currentDate
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // 4. Masukkan ke database sekaligus secara efisien (Bulk Insert)
+    const result = await prisma.projectHoliday.createMany({
+      data: holidayDates.map((date) => ({
+        projectId: projectId,
+        date: date,
+      })),
+      skipDuplicates: true, // PENTING: Abaikan jika ada tanggal yang sudah pernah diset libur sebelumnya
+    });
+
+    return {
+      message: `Berhasil mengatur ${result.count} hari libur untuk proyek ini.`,
+    };
+  }
+
   async deleteProjectHoliday(
     currentUser: IExistingUser,
     projectId: string,
@@ -1363,76 +1460,70 @@ export class ProjectService {
     };
   }
 
-  async scheduleProjectHolidays(
+  async bulkDeleteProjectHolidays(
     currentUser: IExistingUser,
     projectId: string,
-    payload: { startDate: string; endDate: string }, // Format "DD-MM-YYYY"
+    dates: string[], // Menerima array of string, contoh: ["19-05-2026", "20-05-2026"]
   ) {
-    // 1. Validasi Akses: Mandor atau Admin
+    // 1. Validasi Akses
     if (
-      currentUser.role !== UserRole.MANDOR &&
-      currentUser.role !== UserRole.ADMIN
+      currentUser.role !== UserRole.ADMIN &&
+      currentUser.role !== UserRole.MANDOR
     ) {
       throw new AppError(
         403,
-        "Akses ditolak. Hanya Mandor atau Admin yang dapat mengatur jadwal libur.",
+        "Akses ditolak. Anda tidak memiliki otoritas untuk menghapus hari libur.",
       );
     }
 
-    // (Opsional) Jika yang login Mandor, pastikan ini proyek miliknya
+    // 2. Proteksi Khusus Mandor
     if (currentUser.role === UserRole.MANDOR) {
       const project = await prisma.project.findFirst({
-        where: { id: projectId, mandorId: currentUser.id },
+        where: {
+          id: projectId,
+          mandorId: currentUser.id,
+          deletedAt: null,
+        },
       });
-      if (!project)
-        throw new AppError(403, "Ini bukan proyek di bawah pengawasan Anda.");
+
+      if (!project) {
+        throw new AppError(
+          403,
+          "Akses ditolak. Anda hanya dapat mengelola hari libur pada proyek Anda sendiri.",
+        );
+      }
     }
 
-    // 2. Parse string menjadi Date UTC (kebal timezone)
-    const parseDate = (dateString: string) => {
-      const [day, month, year] = dateString.split("-");
-      return new Date(`${year}-${month}-${day}T00:00:00Z`);
-    };
-
-    const start = parseDate(payload.startDate);
-    const end = parseDate(payload.endDate);
-
-    if (start > end) {
-      throw new AppError(
-        400,
-        "Tanggal mulai libur tidak boleh lebih besar dari tanggal selesai.",
-      );
-    }
-
+    // 3. Parse dan Validasi Array Tanggal
     const today = this.getTodayNormalized();
-    if (start < today) {
-      throw new AppError(
-        400,
-        "Tidak dapat menjadwalkan hari libur di tanggal yang sudah lewat.",
-      );
+    const targetDates: Date[] = [];
+
+    for (const dateString of dates) {
+      const [day, month, year] = dateString.split("-");
+      const targetDate = new Date(`${year}-${month}-${day}T00:00:00Z`);
+
+      if (targetDate < today) {
+        throw new AppError(
+          400,
+          `Tidak dapat menghapus hari libur pada ${dateString} karena sudah lewat.`,
+        );
+      }
+      targetDates.push(targetDate);
     }
 
-    // 3. Buat array yang berisi semua tanggal di antara start dan end
-    const holidayDates: Date[] = [];
-    let currentDate = new Date(start);
-
-    while (currentDate <= end) {
-      holidayDates.push(new Date(currentDate));
-      // Tambah 1 hari ke currentDate
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    // 4. Masukkan ke database sekaligus secara efisien (Bulk Insert)
-    const result = await prisma.projectHoliday.createMany({
-      data: holidayDates.map((date) => ({
+    // 4. Hapus data secara efisien menggunakan operator `in` (Bulk Delete)
+    const result = await prisma.projectHoliday.deleteMany({
+      where: {
         projectId: projectId,
-        date: date,
-      })),
-      skipDuplicates: true, // PENTING: Abaikan jika ada tanggal yang sudah pernah diset libur sebelumnya
+        date: {
+          in: targetDates,
+        },
+      },
     });
 
     return {
-      message: `Berhasil mengatur ${result.count} hari libur untuk proyek ini.`,
+      message: `${result.count} hari libur berhasil dibatalkan.`,
+      deletedCount: result.count,
     };
   }
 }

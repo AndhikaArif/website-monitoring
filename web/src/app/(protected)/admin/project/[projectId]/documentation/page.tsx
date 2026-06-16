@@ -18,13 +18,18 @@ import axios from "axios";
 
 import { useAuth } from "@/context/auth-context";
 
-// Service & Types
 import {
   getProjectDocumentations,
   adminDeleteDocumentation,
 } from "@/services/documentation.service";
 import { getProjectDetail } from "@/services/project.service";
 import type { GroupedDocumentation } from "@/types/documentation.type";
+
+import { ProjectDetail } from "@/types/project.type";
+
+import ScheduleHolidayModal from "@/components/modals/schedule-holiday-modal";
+import UpcomingHolidays from "@/components/project/upcoming-holiday";
+import HolidayHistory from "@/components/project/holiday-history";
 
 interface ApiError {
   response?: {
@@ -46,6 +51,9 @@ export default function AdminProjectDocumentationPage() {
   const [loading, setLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // State untuk menyimpan full data proyek dari API
+  const [projectData, setProjectData] = useState<ProjectDetail | null>(null);
+
   // 2. STATE FILTER WAKTU & PENCARIAN
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(
@@ -65,14 +73,33 @@ export default function AdminProjectDocumentationPage() {
   const [projectStartDate, setProjectStartDate] = useState<Date | null>(null);
   const [projectEndDate, setProjectEndDate] = useState<Date | null>(null);
 
-  // --- AMBIL DETAIL PROYEK UNTUK BATAS TANGGAL & INITIAL VIEW ---
-  useEffect(() => {
-    const fetchProjectInfo = async () => {
+  // 4. STATE NAVIGASI TAB & MODAL HARI LIBUR
+  const [activeTab, setActiveTab] = useState<"laporan" | "libur">("laporan");
+  const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
+
+  // --- FUNGSI AMBIL DATA PROYEK (Bisa dipanggil ulang saat butuh refresh) ---
+  const fetchProjectData =
+    useCallback(async (): Promise<ProjectDetail | null> => {
+      if (!projectId) return null;
       try {
-        if (!projectId) return;
         const res = await getProjectDetail(projectId);
-        const rawStartDate = res.data?.startDate || res.data?.createdAt;
-        const rawEndDate = res.data?.endDate;
+        setProjectData(res.data);
+        return res.data;
+      } catch (error) {
+        console.error("Gagal mengambil data proyek", error);
+        toast.error("Gagal memuat konfigurasi proyek.");
+        return null;
+      }
+    }, [projectId]);
+
+  // --- INISIALISASI DETAIL PROYEK UNTUK BATAS TANGGAL & TAMPILAN AWAL ---
+  useEffect(() => {
+    const initializeProjectInfo = async () => {
+      const data = await fetchProjectData();
+
+      if (data) {
+        const rawStartDate = data.startDate || data.createdAt;
+        const rawEndDate = data.endDate;
 
         let start: Date | null = null;
         let end: Date | null = null;
@@ -84,7 +111,6 @@ export default function AdminProjectDocumentationPage() {
 
         if (rawEndDate) {
           end = new Date(rawEndDate);
-          // Opsi validasi tambahan: cegah 'Invalid Date' jika string tanggal rusak
           if (!isNaN(end.getTime())) {
             setProjectEndDate(end);
           } else {
@@ -98,11 +124,9 @@ export default function AdminProjectDocumentationPage() {
         let targetYear = today.getFullYear();
 
         if (end && today.getTime() > end.getTime()) {
-          // Kasus A: Proyek sudah selesai di masa lalu -> Buka bulan terakhir proyek aktif
           targetMonth = end.getMonth() + 1;
           targetYear = end.getFullYear();
         } else if (start && today.getTime() < start.getTime()) {
-          // Kasus B: Proyek belum mulai -> Buka bulan awal proyek
           targetMonth = start.getMonth() + 1;
           targetYear = start.getFullYear();
         }
@@ -111,16 +135,14 @@ export default function AdminProjectDocumentationPage() {
         setSelectedYear(targetYear);
         setDebouncedMonth(targetMonth);
         setDebouncedYear(targetYear);
-      } catch (error) {
-        console.error("Gagal mengambil data proyek", error);
-        toast.error("Gagal memuat konfigurasi tanggal proyek.");
-      } finally {
-        setIsInitialized(true);
       }
+      setIsInitialized(true);
     };
 
-    fetchProjectInfo();
-  }, [projectId]);
+    if (!isInitialized) {
+      initializeProjectInfo();
+    }
+  }, [fetchProjectData, isInitialized]);
 
   // --- LOGIKA PENGUNCIAN TOMBOL NAVIGASI BULAN ---
   const isPrevMonthDisabled = () => {
@@ -140,10 +162,7 @@ export default function AdminProjectDocumentationPage() {
     const limitYear = limitDate.getFullYear();
     const limitMonth = limitDate.getMonth() + 1;
 
-    // Kunci tombol next jika tahun yang dipilih lebih besar dari batas
     if (selectedYear > limitYear) return true;
-
-    // Kunci tombol next jika tahun sama, dan bulan yang dipilih sudah mencapai atau melewati batas
     if (selectedYear === limitYear && selectedMonth >= limitMonth) return true;
 
     return false;
@@ -190,7 +209,6 @@ export default function AdminProjectDocumentationPage() {
         ...(debouncedSearch && { search: debouncedSearch }),
       });
 
-      // VALIDASI: Abaikan jika request sudah usang
       if (currentTimestamp !== requestTimestampRef.current) {
         return;
       }
@@ -268,8 +286,8 @@ export default function AdminProjectDocumentationPage() {
 
     try {
       await adminDeleteDocumentation(docId);
+      fetchDocs();
       toast.success("Laporan berhasil dihapus dari sistem");
-      fetchDocs(); // Refresh data kalender
     } catch (error) {
       const err = error as ApiError;
       if (err?.response?.status === 500) {
@@ -285,7 +303,6 @@ export default function AdminProjectDocumentationPage() {
     }
   };
 
-  // Tahan render utama jika inisialisasi tanggal proyek belum selesai
   if (!isInitialized) {
     return (
       <div className="flex flex-col min-h-screen items-center justify-center bg-gray-50 text-black">
@@ -312,17 +329,17 @@ export default function AdminProjectDocumentationPage() {
           Kembali ke Daftar Proyek
         </button>
 
-        {/* ================= HEADER SECTION ================= */}
-        <div className="flex flex-col xl:flex-row xl:justify-between xl:items-center mb-8 gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 border-t-4 border-t-indigo-500">
+        {/* HEADER SECTION */}
+        <div className="flex flex-col xl:flex-row xl:justify-between xl:items-center mb-4 gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 border-t-4 border-t-indigo-500">
           <div className="flex flex-col gap-3">
             <div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">
-                Daftar Laporan Harian
+                Dokumentasi Proyek
               </h1>
               <p className="text-slate-500 text-sm mt-1">
                 {currentUser?.name
-                  ? `Halo ${currentUser.name}, selamat bekerja.`
-                  : "Selamat bekerja. Periksa bukti lapangan atau bersihkan laporan."}
+                  ? `Halo ${currentUser.name}, kelola progres harian dan konfigurasi operasional.`
+                  : "Kelola laporan progres harian dan konfigurasi kalender proyek."}
               </p>
             </div>
 
@@ -349,299 +366,384 @@ export default function AdminProjectDocumentationPage() {
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
-            {/* INPUT PENCARIAN */}
-            <div className="relative flex-1 sm:w-64">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
-                <FiSearch size={18} />
-              </span>
-              <input
-                type="text"
-                placeholder="Cari area / aktivitas..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 text-black placeholder-slate-400 transition-all"
-              />
-              {searchInput && (
-                <button
-                  type="button"
-                  onClick={() => setSearchInput("")}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"
-                >
-                  <FiX size={16} />
-                </button>
-              )}
-            </div>
-
-            {/* TOMBOL FILTER TERBARU/TERLAMA */}
+          {/* NAVIGASI SWITCHER TAB */}
+          <div className="flex bg-slate-100 p-1 rounded-xl w-full xl:w-auto self-end">
             <button
               type="button"
-              onClick={() =>
-                setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))
-              }
-              className="flex items-center justify-center px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors shadow-sm cursor-pointer whitespace-nowrap"
-              title="Ubah Urutan"
+              onClick={() => setActiveTab("laporan")}
+              className={`flex-1 xl:flex-none px-5 py-2.5 text-xs font-bold rounded-lg transition-all border-none cursor-pointer ${
+                activeTab === "laporan"
+                  ? "bg-white text-indigo-600 shadow-sm"
+                  : "text-slate-500 hover:text-slate-800 bg-transparent"
+              }`}
             >
-              Urutan:{" "}
-              <span className="ml-1 text-indigo-600 font-bold">
-                {sortOrder === "desc" ? "Terbaru" : "Terlama"}
-              </span>
+              Laporan Progres
             </button>
-
-            {/* BUNGKUSAN NAVIGASI BULAN */}
-            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-              <div className="flex items-center justify-between sm:justify-start gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-                <button
-                  type="button"
-                  onClick={handlePrevMonth}
-                  disabled={isPrevMonthDisabled()}
-                  className="p-2 hover:bg-white rounded-lg transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                  title="Bulan Sebelumnya"
-                >
-                  <FiChevronLeft size={20} className="text-slate-600" />
-                </button>
-                <div className="px-4 py-1.5 font-bold text-sm text-slate-700 min-w-35 text-center bg-white rounded-lg shadow-sm border border-slate-100">
-                  {new Date(selectedYear, selectedMonth - 1).toLocaleString(
-                    "id-ID",
-                    { month: "long", year: "numeric" },
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={handleNextMonth}
-                  disabled={isNextMonthDisabled()}
-                  className="p-2 hover:bg-white rounded-lg transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                  title="Bulan Selanjutnya"
-                >
-                  <FiChevronRight size={20} className="text-slate-600" />
-                </button>
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab("libur")}
+              className={`flex-1 xl:flex-none px-5 py-2.5 text-xs font-bold rounded-lg transition-all border-none cursor-pointer ${
+                activeTab === "libur"
+                  ? "bg-white text-indigo-600 shadow-sm"
+                  : "text-slate-500 hover:text-slate-800 bg-transparent"
+              }`}
+            >
+              Manajemen Hari Libur
+            </button>
           </div>
         </div>
 
-        {/* ================= DAFTAR WADAH LAPORAN PER TANGGAL ================= */}
-        {loading ? (
-          <div className="grid grid-cols-1 gap-6 animate-pulse">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-44 bg-slate-200 rounded-2xl" />
-            ))}
-          </div>
-        ) : docs.length > 0 ? (
-          <div className="flex flex-col gap-6">
-            {docs.map((dateGroup) => {
-              const dateObj = new Date(dateGroup.reportDate);
-              const displayDate = dateObj.toLocaleDateString("id-ID", {
-                weekday: "long",
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-              });
+        {/* KONTEN TAB 1: LAPORAN PROGRES */}
+        {activeTab === "laporan" && (
+          <>
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full justify-between">
+                {/* INPUT PENCARIAN */}
+                <div className="relative flex-1 max-w-md">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                    <FiSearch size={18} />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Cari area / aktivitas..."
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:bg-white focus:border-indigo-500 text-black placeholder-slate-400 transition-all"
+                  />
+                  {searchInput && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchInput("")}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 bg-transparent border-none cursor-pointer"
+                    >
+                      <FiX size={16} />
+                    </button>
+                  )}
+                </div>
 
-              return (
-                <div
-                  key={dateGroup.reportDate}
-                  className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden"
-                >
-                  {/* HEADER TANGGAL */}
-                  <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center gap-3">
-                    <div className="bg-indigo-100 p-2 rounded-lg text-indigo-600">
-                      <FiCalendar size={20} />
-                    </div>
-                    <h2 className="text-base font-bold text-slate-800">
-                      {displayDate}
-                    </h2>
-                  </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))
+                    }
+                    className="flex items-center justify-center px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors shadow-sm cursor-pointer whitespace-nowrap"
+                  >
+                    Urutan:{" "}
+                    <span className="ml-1 text-indigo-600 font-bold">
+                      {sortOrder === "desc" ? "Terbaru" : "Terlama"}
+                    </span>
+                  </button>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
-                    {/* ================= KOTAK SESI PAGI ================= */}
-                    <div className="p-6">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-[10px] font-extrabold bg-amber-50 text-amber-700 px-2.5 py-1 rounded border border-amber-200/40 tracking-wider">
-                          SESI PAGI
-                        </span>
-                      </div>
-
-                      {dateGroup.sessions.PAGI.length > 0 ? (
-                        <div className="space-y-3">
-                          {dateGroup.sessions.PAGI.map((docItem) => (
-                            <div
-                              key={docItem.id}
-                              onClick={() =>
-                                router.push(
-                                  `/admin/project/${projectId}/documentation/${docItem.id}`,
-                                )
-                              }
-                              className="group relative flex gap-4 bg-slate-50/50 border border-slate-200 rounded-xl p-3 hover:border-indigo-400 hover:bg-white hover:shadow-sm transition-all cursor-pointer overflow-hidden"
-                            >
-                              {/* TOMBOL HAPUS ADMIN (Hanya muncul saat di-hover/mobile) */}
-                              <div className="absolute top-2 right-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 z-10">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDelete(docItem.id);
-                                  }}
-                                  className="p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-all cursor-pointer border-none flex items-center gap-1.5 text-xs font-bold"
-                                  title="Hapus Laporan Sepihak"
-                                >
-                                  <FiTrash2 size={13} />
-                                </button>
-                              </div>
-
-                              <div className="w-24 h-20 bg-slate-200 rounded-lg relative overflow-hidden shrink-0">
-                                {docItem.files?.[0]?.fileType === "VIDEO" ? (
-                                  <div className="w-full h-full bg-slate-800 flex items-center justify-center text-white text-[10px] font-bold">
-                                    VIDEO
-                                  </div>
-                                ) : (
-                                  <Image
-                                    src={
-                                      docItem.files?.[0]?.fileUrl ||
-                                      "/placeholder.png"
-                                    }
-                                    alt="progres"
-                                    fill
-                                    className="object-cover"
-                                    unoptimized
-                                  />
-                                )}
-                              </div>
-                              <div className="flex flex-col justify-between min-w-0 pr-6 sm:pr-0">
-                                <div>
-                                  <h3 className="font-bold text-sm text-slate-800 line-clamp-1 group-hover:text-indigo-600 transition-colors">
-                                    {docItem.workArea}
-                                  </h3>
-                                  <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">
-                                    {docItem.task}
-                                  </p>
-                                </div>
-                                <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-2 truncate">
-                                  <FiUser size={12} className="shrink-0" />
-                                  <span className="truncate">
-                                    {docItem.createdBy?.name || "Tim Lapangan"}
-                                  </span>
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : /* KONDISI KOSONG (READ-ONLY) */
-                      dateGroup.existingSessions?.PAGI ? (
-                        <div className="w-full h-16 flex items-center justify-center border border-dashed border-slate-200 rounded-xl bg-slate-50/50 text-slate-400 text-[11px] text-center px-4 italic">
-                          Laporan pagi ada (Disembunyikan oleh pencarian)
-                        </div>
-                      ) : (
-                        <div className="w-full h-16 flex items-center justify-center border border-dashed border-slate-200 rounded-xl bg-slate-50/50 text-slate-400 text-xs italic">
-                          Belum ada laporan pagi
-                        </div>
+                  <div className="flex items-center justify-between gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={handlePrevMonth}
+                      disabled={isPrevMonthDisabled()}
+                      className="p-2 hover:bg-white rounded-lg transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <FiChevronLeft size={20} className="text-slate-600" />
+                    </button>
+                    <div className="px-4 py-1.5 font-bold text-sm text-slate-700 min-w-35 text-center bg-white rounded-lg shadow-sm border border-slate-100">
+                      {new Date(selectedYear, selectedMonth - 1).toLocaleString(
+                        "id-ID",
+                        { month: "long", year: "numeric" },
                       )}
                     </div>
-
-                    {/* ================= KOTAK SESI SORE ================= */}
-                    <div className="p-6">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-[10px] font-extrabold bg-blue-50 text-blue-700 px-2.5 py-1 rounded border border-blue-200/40 tracking-wider">
-                          SESI SORE
-                        </span>
-                      </div>
-
-                      {dateGroup.sessions.SORE.length > 0 ? (
-                        <div className="space-y-3">
-                          {dateGroup.sessions.SORE.map((docItem) => (
-                            <div
-                              key={docItem.id}
-                              onClick={() =>
-                                router.push(
-                                  `/admin/project/${projectId}/documentation/${docItem.id}`,
-                                )
-                              }
-                              className="group relative flex gap-4 bg-slate-50/50 border border-slate-200 rounded-xl p-3 hover:border-indigo-400 hover:bg-white hover:shadow-sm transition-all cursor-pointer overflow-hidden"
-                            >
-                              {/* TOMBOL HAPUS ADMIN (Hanya muncul saat di-hover/mobile) */}
-                              <div className="absolute top-2 right-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 z-10">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDelete(docItem.id);
-                                  }}
-                                  className="p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-all cursor-pointer border-none flex items-center gap-1.5 text-xs font-bold"
-                                  title="Hapus Laporan Sepihak"
-                                >
-                                  <FiTrash2 size={13} />
-                                </button>
-                              </div>
-
-                              <div className="w-24 h-20 bg-slate-200 rounded-lg relative overflow-hidden shrink-0">
-                                {docItem.files?.[0]?.fileType === "VIDEO" ? (
-                                  <div className="w-full h-full bg-slate-800 flex items-center justify-center text-white text-[10px] font-bold">
-                                    VIDEO
-                                  </div>
-                                ) : (
-                                  <Image
-                                    src={
-                                      docItem.files?.[0]?.fileUrl ||
-                                      "/placeholder.png"
-                                    }
-                                    alt="progres"
-                                    fill
-                                    className="object-cover"
-                                    unoptimized
-                                  />
-                                )}
-                              </div>
-                              <div className="flex flex-col justify-between min-w-0 pr-6 sm:pr-0">
-                                <div>
-                                  <h3 className="font-bold text-sm text-slate-800 line-clamp-1 group-hover:text-indigo-600 transition-colors">
-                                    {docItem.workArea}
-                                  </h3>
-                                  <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">
-                                    {docItem.task}
-                                  </p>
-                                </div>
-                                <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-2 truncate">
-                                  <FiUser size={12} className="shrink-0" />
-                                  <span className="truncate">
-                                    {docItem.createdBy?.name || "Tim Lapangan"}
-                                  </span>
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : /* KONDISI KOSONG (READ-ONLY) */
-                      dateGroup.existingSessions?.SORE ? (
-                        <div className="w-full h-16 flex items-center justify-center border border-dashed border-slate-200 rounded-xl bg-slate-50/50 text-slate-400 text-[11px] text-center px-4 italic">
-                          Laporan sore ada (Disembunyikan oleh pencarian)
-                        </div>
-                      ) : (
-                        <div className="w-full h-16 flex items-center justify-center border border-dashed border-slate-200 rounded-xl bg-slate-50/50 text-slate-400 text-xs italic">
-                          Belum ada laporan sore
-                        </div>
-                      )}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={handleNextMonth}
+                      disabled={isNextMonthDisabled()}
+                      className="p-2 hover:bg-white rounded-lg transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <FiChevronRight size={20} className="text-slate-600" />
+                    </button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-24 px-4 bg-white rounded-2xl border border-slate-100 shadow-sm text-center">
-            <div className="bg-slate-50 p-5 rounded-full mb-5">
-              <FiSearch size={36} className="text-slate-400" />
+              </div>
             </div>
-            <h3 className="text-lg font-bold text-slate-800 mb-2">
-              {debouncedSearch
-                ? "Laporan Tidak Ditemukan"
-                : "Belum Ada Laporan"}
-            </h3>
-            <p className="text-slate-500 max-w-md mx-auto text-sm leading-relaxed">
-              {debouncedSearch
-                ? `Tidak ada hasil laporan yang cocok dengan kata kunci "${debouncedSearch}".`
-                : "Tim lapangan belum mengunggah laporan progres untuk bulan ini."}
-            </p>
+
+            {/* DAFTAR WADAH LAPORAN PER TANGGAL */}
+            {loading ? (
+              <div className="grid grid-cols-1 gap-6 animate-pulse">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-44 bg-slate-200 rounded-2xl" />
+                ))}
+              </div>
+            ) : docs.length > 0 ? (
+              <div className="flex flex-col gap-6">
+                {docs.map((dateGroup) => {
+                  const dateObj = new Date(dateGroup.reportDate);
+                  const displayDate = dateObj.toLocaleDateString("id-ID", {
+                    weekday: "long",
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
+                  });
+
+                  return (
+                    <div
+                      key={dateGroup.reportDate}
+                      className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden"
+                    >
+                      <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center gap-3">
+                        <div className="bg-indigo-100 p-2 rounded-lg text-indigo-600">
+                          <FiCalendar size={20} />
+                        </div>
+                        <h2 className="text-base font-bold text-slate-800">
+                          {displayDate}
+                        </h2>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+                        {/* SESI PAGI */}
+                        <div className="p-6">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-[10px] font-extrabold bg-amber-50 text-amber-700 px-2.5 py-1 rounded border border-amber-200/40 tracking-wider">
+                              SESI PAGI
+                            </span>
+                          </div>
+                          {dateGroup.sessions.PAGI.length > 0 ? (
+                            <div className="space-y-3">
+                              {dateGroup.sessions.PAGI.map((docItem) => (
+                                <div
+                                  key={docItem.id}
+                                  onClick={() =>
+                                    router.push(
+                                      `/admin/project/${projectId}/documentation/${docItem.id}`,
+                                    )
+                                  }
+                                  className="group relative flex gap-4 bg-slate-50/50 border border-slate-200 rounded-xl p-3 hover:border-indigo-400 hover:bg-white hover:shadow-sm transition-all cursor-pointer overflow-hidden"
+                                >
+                                  <div className="absolute top-2 right-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 z-10">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDelete(docItem.id);
+                                      }}
+                                      className="p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-all cursor-pointer border-none flex items-center gap-1.5 text-xs font-bold"
+                                    >
+                                      <FiTrash2 size={13} />
+                                    </button>
+                                  </div>
+                                  <div className="w-24 h-20 bg-slate-200 rounded-lg relative overflow-hidden shrink-0">
+                                    {docItem.files?.[0]?.fileType ===
+                                    "VIDEO" ? (
+                                      <div className="w-full h-full bg-slate-800 flex items-center justify-center text-white text-[10px] font-bold">
+                                        VIDEO
+                                      </div>
+                                    ) : (
+                                      <Image
+                                        src={
+                                          docItem.files?.[0]?.fileUrl ||
+                                          "/placeholder.png"
+                                        }
+                                        alt="progres"
+                                        fill
+                                        className="object-cover"
+                                        unoptimized
+                                      />
+                                    )}
+                                  </div>
+                                  <div className="flex flex-col justify-between min-w-0 pr-6 sm:pr-0">
+                                    <div>
+                                      <h3 className="font-bold text-sm text-slate-800 line-clamp-1 group-hover:text-indigo-600 transition-colors">
+                                        {docItem.workArea}
+                                      </h3>
+                                      <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">
+                                        {docItem.task}
+                                      </p>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-2 truncate">
+                                      <FiUser size={12} className="shrink-0" />
+                                      <span className="truncate">
+                                        {docItem.createdBy?.name ||
+                                          "Tim Lapangan"}
+                                      </span>
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : dateGroup.existingSessions?.PAGI ? (
+                            <div className="w-full h-16 flex items-center justify-center border border-dashed border-slate-200 rounded-xl bg-slate-50/50 text-slate-400 text-[11px] text-center px-4 italic">
+                              Laporan pagi ada (Disembunyikan)
+                            </div>
+                          ) : (
+                            <div className="w-full h-16 flex items-center justify-center border border-dashed border-slate-200 rounded-xl bg-slate-50/50 text-slate-400 text-xs italic">
+                              Belum ada laporan
+                            </div>
+                          )}
+                        </div>
+
+                        {/* SESI SORE */}
+                        <div className="p-6">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-[10px] font-extrabold bg-blue-50 text-blue-700 px-2.5 py-1 rounded border border-blue-200/40 tracking-wider">
+                              SESI SORE
+                            </span>
+                          </div>
+                          {dateGroup.sessions.SORE.length > 0 ? (
+                            <div className="space-y-3">
+                              {dateGroup.sessions.SORE.map((docItem) => (
+                                <div
+                                  key={docItem.id}
+                                  onClick={() =>
+                                    router.push(
+                                      `/admin/project/${projectId}/documentation/${docItem.id}`,
+                                    )
+                                  }
+                                  className="group relative flex gap-4 bg-slate-50/50 border border-slate-200 rounded-xl p-3 hover:border-indigo-400 hover:bg-white hover:shadow-sm transition-all cursor-pointer overflow-hidden"
+                                >
+                                  <div className="absolute top-2 right-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 z-10">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDelete(docItem.id);
+                                      }}
+                                      className="p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-all cursor-pointer border-none flex items-center gap-1.5 text-xs font-bold"
+                                    >
+                                      <FiTrash2 size={13} />
+                                    </button>
+                                  </div>
+                                  <div className="w-24 h-20 bg-slate-200 rounded-lg relative overflow-hidden shrink-0">
+                                    {docItem.files?.[0]?.fileType ===
+                                    "VIDEO" ? (
+                                      <div className="w-full h-full bg-slate-800 flex items-center justify-center text-white text-[10px] font-bold">
+                                        VIDEO
+                                      </div>
+                                    ) : (
+                                      <Image
+                                        src={
+                                          docItem.files?.[0]?.fileUrl ||
+                                          "/placeholder.png"
+                                        }
+                                        alt="progres"
+                                        fill
+                                        className="object-cover"
+                                        unoptimized
+                                      />
+                                    )}
+                                  </div>
+                                  <div className="flex flex-col justify-between min-w-0 pr-6 sm:pr-0">
+                                    <div>
+                                      <h3 className="font-bold text-sm text-slate-800 line-clamp-1 group-hover:text-indigo-600 transition-colors">
+                                        {docItem.workArea}
+                                      </h3>
+                                      <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">
+                                        {docItem.task}
+                                      </p>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-2 truncate">
+                                      <FiUser size={12} className="shrink-0" />
+                                      <span className="truncate">
+                                        {docItem.createdBy?.name ||
+                                          "Tim Lapangan"}
+                                      </span>
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : dateGroup.existingSessions?.SORE ? (
+                            <div className="w-full h-16 flex items-center justify-center border border-dashed border-slate-200 rounded-xl bg-slate-50/50 text-slate-400 text-[11px] text-center px-4 italic">
+                              Laporan sore ada (Disembunyikan)
+                            </div>
+                          ) : (
+                            <div className="w-full h-16 flex items-center justify-center border border-dashed border-slate-200 rounded-xl bg-slate-50/50 text-slate-400 text-xs italic">
+                              Belum ada laporan
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-24 px-4 bg-white rounded-2xl border border-slate-100 shadow-sm text-center">
+                <div className="bg-slate-50 p-5 rounded-full mb-5">
+                  <FiSearch size={36} className="text-slate-400" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-800 mb-2">
+                  {debouncedSearch
+                    ? "Laporan Tidak Ditemukan"
+                    : "Belum Ada Laporan"}
+                </h3>
+                <p className="text-slate-500 max-w-md mx-auto text-sm leading-relaxed">
+                  {debouncedSearch
+                    ? `Tidak ada hasil laporan yang cocok dengan kata kunci "${debouncedSearch}".`
+                    : "Tim lapangan belum mengunggah laporan progres untuk bulan ini."}
+                </p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* KONTEN TAB 2: MANAJEMEN HARI LIBUR */}
+        {activeTab === "libur" && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col gap-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800">
+                  Kalender Libur Operasional Proyek
+                </h2>
+                <p className="text-slate-500 text-xs">
+                  Atur hari libur agar sistem tahu tanggal penonaktifan laporan
+                  harian.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsHolidayModalOpen(true)}
+                className="w-full sm:w-auto text-xs font-bold px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all border-none cursor-pointer flex items-center justify-center gap-2 shadow-sm shadow-indigo-100"
+              >
+                <FiCalendar size={14} /> Atur Tanggal Libur Baru
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* KOLOM KIRI: UPCOMING */}
+              <div className="bg-slate-50/50 border border-slate-200/60 rounded-xl p-5">
+                <h3 className="font-bold text-sm text-slate-800 flex items-center gap-2 mb-4">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                  Hari Libur Mendatang
+                </h3>
+                <UpcomingHolidays
+                  projectId={projectId}
+                  projectStatus={projectData?.status ?? "AKTIF"}
+                  holidays={projectData?.projectHolidays || []}
+                  onRefresh={async () => {
+                    await fetchProjectData();
+                  }}
+                />
+              </div>
+
+              {/* KOLOM KANAN: HISTORY */}
+              <div className="bg-slate-50/50 border border-slate-200/60 rounded-xl p-5">
+                <h3 className="font-bold text-sm text-slate-800 flex items-center gap-2 mb-4">
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+                  Riwayat Libur Berlalu
+                </h3>
+                <HolidayHistory
+                  pastHistories={projectData?.pastHistories || []}
+                  limit={24}
+                />
+              </div>
+            </div>
           </div>
         )}
       </div>
+
+      <ScheduleHolidayModal
+        isOpen={isHolidayModalOpen}
+        onClose={() => setIsHolidayModalOpen(false)}
+        projectId={projectId}
+        onSuccess={async () => {
+          await fetchProjectData(); // Refresh data libur di background
+          setIsHolidayModalOpen(false); // Tutup modal setelah API hit sukses
+        }}
+      />
     </div>
   );
 }

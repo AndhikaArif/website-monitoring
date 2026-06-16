@@ -9,6 +9,7 @@ import {
   TransferMandorPayload,
   AdminUpdateStatusPayload,
   ScheduleHolidayPayload,
+  BulkDeleteHolidaysPayload,
 } from "../types/project.type";
 
 const API_URL = process.env.NEXT_PUBLIC_API_DOMAIN;
@@ -268,6 +269,20 @@ export const deleteProjectHoliday = async (
   const res = await axios.delete(
     `${API_URL}/api/project/${projectId}/holidays/${dateString}`,
     { withCredentials: true },
+  );
+  return res.data;
+};
+
+export const bulkDeleteProjectHolidays = async (
+  projectId: string,
+  data: BulkDeleteHolidaysPayload,
+) => {
+  const res = await axios.delete(
+    `${API_URL}/api/project/${projectId}/holidays/bulk`,
+    {
+      data, // PENTING: Di Axios, request body untuk method DELETE harus dibungkus di dalam properti 'data'
+      withCredentials: true,
+    },
   );
   return res.data;
 };

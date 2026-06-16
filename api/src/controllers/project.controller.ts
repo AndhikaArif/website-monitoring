@@ -12,6 +12,7 @@ import type {
   AdminUpdateProjectStatusDTO,
   ScheduleHolidayDTO,
   DeleteHolidayParamDTO,
+  BulkDeleteHolidaysDTO,
 } from "../validations/project.validation.js";
 
 const projectService = new ProjectService();
@@ -350,6 +351,31 @@ export class ProjectController {
         req.currentUser,
         projectId,
         dateString,
+      );
+
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async bulkDeleteProjectHolidays(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) {
+    try {
+      if (!req.currentUser) throw new AppError(401, "Unauthenticated");
+
+      const { projectId } = req.validatedParams as ProjectIdParamDTO;
+
+      // Ambil array dates dari body yang sudah divalidasi
+      const { dates } = req.validatedBody as BulkDeleteHolidaysDTO;
+
+      const result = await projectService.bulkDeleteProjectHolidays(
+        req.currentUser,
+        projectId,
+        dates,
       );
 
       res.status(200).json(result);

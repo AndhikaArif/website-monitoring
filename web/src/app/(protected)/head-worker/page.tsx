@@ -227,7 +227,9 @@ export default function AssignedProjectsPage() {
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                             p.status === "AKTIF"
                               ? "bg-green-100 text-green-700"
-                              : "bg-gray-100 text-gray-700"
+                              : p.status === "LIBUR"
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-gray-100 text-gray-700"
                           }`}
                         >
                           {p.status}

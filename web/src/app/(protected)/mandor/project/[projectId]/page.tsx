@@ -24,10 +24,11 @@ import {
   unassignHeadWorker,
   unassignOwner,
   updateProject,
-  deleteProjectHoliday,
 } from "@/services/project.service";
 import { ProjectDetail } from "@/types/project.type";
 import ScheduleHolidayModal from "@/components/modals/schedule-holiday-modal";
+import UpcomingHolidays from "@/components/project/upcoming-holiday";
+import HolidayHistory from "@/components/project/holiday-history";
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams() as { projectId: string };
@@ -35,14 +36,7 @@ export default function ProjectDetailPage() {
 
   const [data, setData] = useState<ProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
-
   const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
-  const [deletingHolidayId, setDeletingHolidayId] = useState<string | null>(
-    null,
-  );
-
-  const [selectedHolidayIds, setSelectedHolidayIds] = useState<string[]>([]);
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const fetchDetail = useCallback(async () => {
     try {
@@ -76,10 +70,8 @@ export default function ProjectDetailPage() {
         kepalaTukangIds: [kepalaTukangId],
       });
 
-      toast.success(`${kepalaTukangName} berhasil dihapus dari proyek`);
-
-      // Refresh data project agar list kepala tukang langsung terupdate di UI
       await fetchDetail();
+      toast.success(`${kepalaTukangName} berhasil dihapus dari proyek`);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         toast.error(err.response?.data?.message || "Gagal menghapus pekerja");
@@ -99,11 +91,13 @@ export default function ProjectDetailPage() {
 
     try {
       await unassignOwner(projectId);
-      toast.success(`Klien berhasil dilepas dari proyek`);
       await fetchDetail();
+      toast.success(`Klien berhasil dilepas dari proyek`);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         toast.error(err.response?.data?.message || "Gagal melepas klien");
+      } else if (err instanceof Error) {
+        toast.error(err.message);
       }
     }
   };
@@ -116,126 +110,18 @@ export default function ProjectDetailPage() {
     if (confirmSelesai) {
       try {
         await updateProject(projectId, { status: "SELESAI" });
-        toast.success("Proyek telah selesai!");
+
         await fetchDetail();
+        toast.success("Proyek telah selesai!");
       } catch (err: unknown) {
         if (axios.isAxiosError(err)) {
           toast.error(
             err.response?.data?.message || "Gagal menyelesaikan proyek",
           );
+        } else if (err instanceof Error) {
+          toast.error(err.message);
         }
       }
-    }
-  };
-
-  const handleDeleteHoliday = async (
-    holidayId: string,
-    dateString: string,
-    formattedDate: string,
-  ) => {
-    if (deletingHolidayId !== null) return;
-
-    const isConfirmed = window.confirm(
-      `Apakah Anda yakin ingin menghapus hari libur pada tanggal ${formattedDate}?`,
-    );
-
-    if (!isConfirmed) return;
-
-    setDeletingHolidayId(holidayId);
-
-    try {
-      // Parsing string ISO dari DB ke objek Date
-      const d = new Date(dateString);
-
-      // Ambil Day, Month, Year lalu pad dengan '0' jika satuan
-      const day = String(d.getDate()).padStart(2, "0");
-      const month = String(d.getMonth() + 1).padStart(2, "0"); // Bulan di JS mulai dari 0
-      const year = d.getFullYear();
-
-      // Satukan menjadi format DD-MM-YYYY sesuai request Backend
-      const cleanDateParam = `${day}-${month}-${year}`;
-
-      await deleteProjectHoliday(projectId, cleanDateParam);
-      await fetchDetail();
-
-      toast.success(`Hari libur tanggal ${formattedDate} berhasil dihapus`);
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        toast.error(
-          err.response?.data?.message || "Gagal menghapus hari libur",
-        );
-      }
-    } finally {
-      setDeletingHolidayId(null); // Matikan loading setelah selesai (sukses/gagal)
-    }
-  };
-
-  // Fungsi untuk memilih / membatalkan pilihan checkbox individual
-  const handleToggleSelectHoliday = (id: string) => {
-    setSelectedHolidayIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
-    );
-  };
-
-  // Fungsi untuk Pilih Semua / Batal Pilih Semua
-  const handleSelectAllHolidays = () => {
-    if (!data?.projectHolidays) return;
-
-    // Cek apakah semua libur sudah terpilih
-    const isAllSelected =
-      selectedHolidayIds.length === data.projectHolidays.length;
-
-    if (isAllSelected) {
-      // Jika sudah terpilih semua, kosongkan state (Batal Pilih)
-      setSelectedHolidayIds([]);
-    } else {
-      // Jika belum, ambil semua ID libur dan masukkan ke state
-      const allHolidayIds = data.projectHolidays.map((holiday) => holiday.id);
-      setSelectedHolidayIds(allHolidayIds);
-    }
-  };
-
-  // Fungsi eksekusi hapus massal
-  const handleBulkDeleteHolidays = async () => {
-    if (selectedHolidayIds.length === 0) return;
-
-    const isConfirmed = window.confirm(
-      `Apakah Anda yakin ingin menghapus ${selectedHolidayIds.length} hari libur yang terpilih?`,
-    );
-
-    if (!isConfirmed) return;
-
-    setIsBulkDeleting(true);
-
-    try {
-      // Filter data libur dari state utama yang ID-nya masuk daftar centang
-      const targets = (data?.projectHolidays || []).filter((h) =>
-        selectedHolidayIds.includes(h.id),
-      );
-
-      // Kirim request ke backend secara bersamaan (paralel)
-      await Promise.all(
-        targets.map(async (holiday) => {
-          const d = new Date(holiday.date);
-          const day = String(d.getDate()).padStart(2, "0");
-          const month = String(d.getMonth() + 1).padStart(2, "0");
-          const year = d.getFullYear();
-          const cleanDateParam = `${day}-${month}-${year}`;
-
-          return deleteProjectHoliday(projectId, cleanDateParam);
-        }),
-      );
-
-      await fetchDetail(); // Refresh UI
-
-      toast.success(`${selectedHolidayIds.length} hari libur berhasil dihapus`);
-      setSelectedHolidayIds([]); // Reset daftar centang jika sukses
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        toast.error("Gagal menghapus beberapa hari libur");
-      }
-    } finally {
-      setIsBulkDeleting(false);
     }
   };
 
@@ -271,7 +157,9 @@ export default function ProjectDetailPage() {
                     className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase ${
                       data.status === "AKTIF"
                         ? "bg-green-100 text-green-700"
-                        : "bg-gray-100 text-gray-700"
+                        : data.status === "LIBUR"
+                          ? "bg-amber-100 text-amber-700"
+                          : "bg-gray-100 text-gray-700"
                     }`}
                   >
                     {data.status}
@@ -288,6 +176,7 @@ export default function ProjectDetailPage() {
                   {data.status !== "SELESAI" && (
                     <>
                       <button
+                        type="button"
                         onClick={handleSelesaikanProyek}
                         className="px-4 py-3 bg-red-50 text-red-600 rounded-2xl hover:bg-red-100 hover:text-red-700 transition-all font-bold text-sm border-none cursor-pointer"
                       >
@@ -327,7 +216,7 @@ export default function ProjectDetailPage() {
                   <FiFileText className="text-purple-600" /> Dokumentasi
                 </h3>
                 <span className="bg-purple-100 text-purple-700 px-4 py-1 rounded-xl text-sm font-bold">
-                  {data._count.documentations} Laporan
+                  {data._count?.documentations || 0} Laporan
                 </span>
               </div>
 
@@ -428,139 +317,16 @@ export default function ProjectDetailPage() {
                   </div>
                 )}
 
-                {/* LIST HARI LIBUR MENDATANG */}
-                <div className="border-t border-gray-100 pt-4 mt-2">
-                  {/* Header Section dengan Judul Dinamis & Tombol Aksi Massal */}
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                        Hari Libur{" "}
-                        {selectedHolidayIds.length > 0 &&
-                          `(${selectedHolidayIds.length})`}
-                      </p>
+                {/* KOMPONEN UPCOMING HOLIDAYS */}
+                <UpcomingHolidays
+                  projectId={data.id}
+                  projectStatus={data.status}
+                  holidays={data.projectHolidays}
+                  onRefresh={fetchDetail}
+                />
 
-                      {/* Tombol Pilih Semua (Hanya muncul jika ada data libur & proyek belum SELESAI) */}
-                      {data.projectHolidays &&
-                        data.projectHolidays.length > 0 &&
-                        data.status !== "SELESAI" && (
-                          <button
-                            onClick={handleSelectAllHolidays}
-                            disabled={
-                              isBulkDeleting || deletingHolidayId !== null
-                            }
-                            className="text-[10px] text-purple-600 font-bold hover:text-purple-700 bg-transparent border-none cursor-pointer disabled:opacity-50 transition-colors"
-                          >
-                            {selectedHolidayIds.length ===
-                            data.projectHolidays.length
-                              ? "Batal Pilih"
-                              : "Pilih Semua"}
-                          </button>
-                        )}
-                    </div>
-
-                    {/* Tombol Hapus Terpilih */}
-                    {selectedHolidayIds.length > 0 && (
-                      <button
-                        onClick={handleBulkDeleteHolidays}
-                        disabled={isBulkDeleting || deletingHolidayId !== null}
-                        className="text-[10px] text-red-600 font-bold hover:text-red-700 bg-transparent border-none cursor-pointer disabled:opacity-50 flex items-center gap-1"
-                      >
-                        {isBulkDeleting ? (
-                          <>
-                            <FiLoader className="animate-spin" size={10} />{" "}
-                            Menghapus...
-                          </>
-                        ) : (
-                          "Hapus Terpilih"
-                        )}
-                      </button>
-                    )}
-                  </div>
-
-                  {data.projectHolidays && data.projectHolidays.length > 0 ? (
-                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
-                      {data.projectHolidays.map((holiday) => {
-                        const dateObj = new Date(holiday.date);
-                        const formatted = dateObj.toLocaleDateString("id-ID", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        });
-
-                        const isCurrentlyIndividualLoading =
-                          deletingHolidayId === holiday.id;
-                        const isAnyLoading =
-                          isBulkDeleting || deletingHolidayId !== null;
-
-                        return (
-                          <div
-                            key={holiday.id}
-                            className="group flex items-center justify-between p-2 bg-purple-50/50 hover:bg-purple-50 rounded-xl transition-colors text-xs gap-2"
-                          >
-                            {/* Bagian Kiri: Checkbox + Tanggal */}
-                            <div className="flex items-center gap-2">
-                              {data.status !== "SELESAI" && (
-                                <input
-                                  type="checkbox"
-                                  checked={selectedHolidayIds.includes(
-                                    holiday.id,
-                                  )}
-                                  onChange={() =>
-                                    handleToggleSelectHoliday(holiday.id)
-                                  }
-                                  disabled={isAnyLoading}
-                                  className="rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer h-3.5 w-3.5 disabled:opacity-40 disabled:cursor-not-allowed"
-                                />
-                              )}
-                              <span className="font-semibold text-purple-700">
-                                {formatted}
-                              </span>
-                            </div>
-
-                            {/* Bagian Kanan: Tombol Tong Sampah Satuan */}
-                            {data.status !== "SELESAI" && (
-                              <button
-                                onClick={() =>
-                                  handleDeleteHoliday(
-                                    holiday.id,
-                                    holiday.date,
-                                    formatted,
-                                  )
-                                }
-                                disabled={isAnyLoading}
-                                className={`p-1 text-red-400 rounded-md transition-all border-none bg-transparent ${
-                                  isCurrentlyIndividualLoading
-                                    ? "opacity-100 cursor-wait"
-                                    : isAnyLoading
-                                      ? "opacity-20 cursor-not-allowed text-gray-300"
-                                      : "opacity-0 group-hover:opacity-100 hover:text-red-600 hover:bg-red-50 cursor-pointer"
-                                }`}
-                                title={
-                                  isAnyLoading
-                                    ? "Mohon tunggu..."
-                                    : "Hapus Hari Libur"
-                                }
-                              >
-                                {isCurrentlyIndividualLoading ? (
-                                  <FiLoader
-                                    size={14}
-                                    className="animate-spin text-purple-600"
-                                  />
-                                ) : (
-                                  <FiTrash2 size={14} />
-                                )}
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-400 italic">
-                      Tidak ada jadwal libur mendatang.
-                    </p>
-                  )}
-                </div>
+                {/* KOMPONEN HOLIDAY HISTORY */}
+                <HolidayHistory pastHistories={data.pastHistories} />
               </div>
             </div>
 
@@ -650,7 +416,7 @@ export default function ProjectDetailPage() {
               </div>
 
               <div className="space-y-3">
-                {data.kepalaTukang.length > 0 ? (
+                {data.kepalaTukang?.length > 0 ? (
                   data.kepalaTukang.map((hw) => (
                     <div
                       key={hw.id}

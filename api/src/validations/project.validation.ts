@@ -127,3 +127,15 @@ export const deleteHolidayParamSchema = z.object({
 });
 
 export type DeleteHolidayParamDTO = z.infer<typeof deleteHolidayParamSchema>;
+
+export const bulkDeleteHolidaysSchema = z.object({
+  dates: z
+    .array(
+      z
+        .string()
+        .regex(/^\d{2}-\d{2}-\d{4}$/, "Format tanggal harus DD-MM-YYYY"),
+    )
+    .min(1, "Minimal pilih 1 tanggal untuk dihapus"),
+});
+
+export type BulkDeleteHolidaysDTO = z.infer<typeof bulkDeleteHolidaysSchema>;
