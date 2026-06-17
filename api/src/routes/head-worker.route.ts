@@ -19,7 +19,7 @@ const kepalaTukangController = new HeadWorkerController();
 router.get(
   "/",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.MANDOR),
+  AuthMiddleWare.roleGuard(UserRole.MANDOR, UserRole.ADMIN),
   validate(listHeadWorkerQuerySchema, "query"),
   kepalaTukangController.listHeadWorker,
 );
@@ -43,7 +43,7 @@ router.post(
 router.get(
   "/:id",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.MANDOR),
+  AuthMiddleWare.roleGuard(UserRole.MANDOR, UserRole.ADMIN),
   validate(kepalaTukangParamsSchema, "params"),
   kepalaTukangController.getHeadWorkerById,
 );

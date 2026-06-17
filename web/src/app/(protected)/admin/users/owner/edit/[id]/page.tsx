@@ -13,7 +13,7 @@ import { getOwnerById, updateOwner } from "@/services/owner.service";
 import { UpdateOwnerPayload } from "@/types/owner.type";
 import PasswordField from "@/components/form/passwordField";
 
-export default function EditOwnerPage() {
+export default function AdminEditOwnerPage() {
   const router = useRouter();
   const { id } = useParams();
   const [initialData, setInitialData] = useState<UpdateOwnerPayload | null>(
@@ -25,12 +25,13 @@ export default function EditOwnerPage() {
     const loadOwner = async () => {
       try {
         const res = await getOwnerById(id as string);
-        setInitialData(res.data);
+        // Sesuaikan 'res.data' atau 'res' tergantung bentuk response interceptor axios-mu
+        setInitialData(res.data || res);
       } catch (error: unknown) {
         if (axios.isAxiosError(error)) {
           if (!error.response) {
             toast.error("Gagal terhubung ke server.", { id: "network-error" });
-            router.push("/mandor/owner");
+            router.push("/admin/users");
             return;
           }
 
@@ -46,24 +47,24 @@ export default function EditOwnerPage() {
             toast.error(`Akses Ditolak: ${message}`, {
               id: "unauthorized-route",
             });
-            router.replace("/mandor/owner");
+            router.replace("/admin/users");
           } else if (status === 404 || status === 400) {
-            toast.error("Proyek tidak ditemukan atau URL tidak valid.", {
+            toast.error("Data tidak ditemukan atau URL tidak valid.", {
               id: "not-found-error",
             });
-            router.replace("/mandor/owner");
+            router.replace("/admin/users");
           } else if (status === 500) {
             toast.error("Server sedang bermasalah. Silakan coba lagi.", {
               id: "server-error",
             });
-            router.replace("/mandor/owner");
+            router.replace("/admin/users");
           } else {
             toast.error(message, { id: "general-error" });
-            router.replace("/mandor/owner");
+            router.replace("/admin/users");
           }
         } else {
           toast.error("Terjadi kesalahan sistem.", { id: "unknown-error" });
-          router.replace("/mandor/owner");
+          router.replace("/admin/users");
         }
       } finally {
         setLoading(false);
@@ -75,7 +76,7 @@ export default function EditOwnerPage() {
   if (loading || !initialData) {
     return (
       <div className="min-h-screen flex flex-col justify-center items-center gap-4 bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-solid border-purple-600 border-r-transparent"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-solid border-indigo-600 border-r-transparent"></div>
         <p className="text-gray-500 font-medium animate-pulse">
           Mengambil data klien...
         </p>
@@ -88,19 +89,19 @@ export default function EditOwnerPage() {
       <div className="max-w-2xl mx-auto">
         {/* BACK BUTTON */}
         <button
-          onClick={() => router.push("/mandor/owner")}
-          className="flex items-center text-gray-500 hover:text-purple-600 transition-colors mb-6 group cursor-pointer border-none bg-transparent"
+          onClick={() => router.push("/admin/users")}
+          className="flex items-center text-gray-500 hover:text-indigo-600 transition-colors mb-6 group cursor-pointer border-none bg-transparent font-medium"
         >
           <FiChevronLeft className="mr-1 group-hover:-translate-x-1 transition-transform" />
-          Kembali ke Daftar Klien
+          Kembali ke Daftar Pengguna
         </button>
 
         {/* CARD CONTAINER */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-          {/* HEADER DENGAN GRADIENT UNGU */}
-          <div className="bg-linear-to-r from-purple-600 to-purple-700 px-8 py-10 text-white">
+          {/* HEADER DENGAN GRADIENT INDIGO */}
+          <div className="bg-linear-to-r from-blue-600 to-blue-700 px-8 py-10 text-white">
             <h1 className="text-3xl font-bold">Edit Profil Klien</h1>
-            <p className="text-purple-100 mt-2 opacity-90">
+            <p className="text-indigo-100 mt-2 opacity-90">
               Perbarui informasi akun dan kredensial akses klien.
             </p>
           </div>
@@ -118,6 +119,8 @@ export default function EditOwnerPage() {
                 try {
                   const payload: UpdateOwnerPayload = {
                     name: values.name,
+                    username: values.username,
+                    email: values.email,
                   };
 
                   if (values.password && values.password.trim() !== "") {
@@ -125,8 +128,8 @@ export default function EditOwnerPage() {
                   }
 
                   await updateOwner(id as string, payload);
-                  toast.success("Data klien berhasil diperbarui!");
-                  router.push("/mandor/owner");
+                  toast.success("Data Klien berhasil diperbarui!");
+                  router.push("/admin/users");
                 } catch (err: unknown) {
                   if (axios.isAxiosError(err)) {
                     const serverMessage =
@@ -135,8 +138,11 @@ export default function EditOwnerPage() {
                     if (err.response?.status === 400) {
                       const msg = serverMessage.toLowerCase();
                       setErrors({
-                        name: msg.includes("nama")
-                          ? "Nama tidak valid"
+                        email: msg.includes("email")
+                          ? "Email sudah digunakan atau tidak valid"
+                          : undefined,
+                        username: msg.includes("username")
+                          ? "Username sudah digunakan"
                           : undefined,
                       });
                     }
@@ -151,15 +157,15 @@ export default function EditOwnerPage() {
                   {/* NAMA LENGKAP */}
                   <div>
                     <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                      <FiUser className="mr-2 text-purple-500" /> Nama Klien
+                      <FiUser className="mr-2 text-indigo-500" /> Nama Lengkap
                     </label>
                     <Field
                       name="name"
-                      placeholder="Masukkan nama lengkap klien"
+                      placeholder="Masukkan nama lengkap"
                       className={`w-full px-4 py-3 text-black rounded-xl border outline-none transition-all focus:ring-4 ${
                         errors.name && touched.name
                           ? "border-red-300 focus:ring-red-50"
-                          : "border-gray-200 focus:border-purple-500 focus:ring-purple-50"
+                          : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-50"
                       }`}
                     />
                     <ErrorMessage
@@ -172,19 +178,18 @@ export default function EditOwnerPage() {
                   {/* EMAIL */}
                   <div>
                     <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                      <FiMail className="mr-2 text-purple-500" /> Email
+                      <FiMail className="mr-2 text-indigo-500" /> Email
                     </label>
                     <Field
                       name="email"
                       type="email"
-                      disabled
-                      placeholder="klien@email.com"
-                      className="w-full px-4 py-3 text-gray-500 bg-gray-100 rounded-xl border border-gray-200 outline-none cursor-not-allowed"
+                      placeholder="kepalatukang@email.com"
+                      className={`w-full px-4 py-3 text-black rounded-xl border outline-none transition-all focus:ring-4 ${
+                        errors.email && touched.email
+                          ? "border-red-300 focus:ring-red-50"
+                          : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-50"
+                      }`}
                     />
-                    <p className="text-[10px] text-amber-600 mt-2 ml-1 font-medium leading-tight">
-                      *Hanya Admin yang memiliki kewenangan untuk mengubah
-                      email.
-                    </p>
                     <ErrorMessage
                       name="email"
                       component="div"
@@ -195,19 +200,18 @@ export default function EditOwnerPage() {
                   {/* USERNAME */}
                   <div>
                     <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                      <span className="mr-2 text-purple-500 font-bold">@</span>{" "}
+                      <span className="mr-2 text-indigo-500 font-bold">@</span>{" "}
                       Username
                     </label>
                     <Field
                       name="username"
-                      disabled
-                      placeholder="username_klien"
-                      className="w-full px-4 py-3 text-gray-500 bg-gray-100 rounded-xl border border-gray-200 outline-none cursor-not-allowed"
+                      placeholder="username_baru"
+                      className={`w-full px-4 py-3 text-black rounded-xl border outline-none transition-all focus:ring-4 ${
+                        errors.username && touched.username
+                          ? "border-red-300 focus:ring-red-50"
+                          : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-50"
+                      }`}
                     />
-                    <p className="text-[10px] text-amber-600 mt-2 ml-1 font-medium leading-tight">
-                      *Hanya Admin yang memiliki kewenangan untuk mengubah
-                      username.
-                    </p>
                     <ErrorMessage
                       name="username"
                       component="div"
@@ -215,18 +219,18 @@ export default function EditOwnerPage() {
                     />
                   </div>
 
-                  {/* PASSWORD DENGAN TEMA UNGU */}
-                  <div className="bg-purple-50/50 p-5 rounded-2xl border border-purple-100">
+                  {/* PASSWORD DENGAN TEMA INDIGO */}
+                  <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100">
                     <PasswordField
                       name="password"
                       label="Password Baru"
-                      role="MANDOR"
-                      placeholder="Kosongkan jika tidak diubah"
-                      className="py-3 rounded-xl border-gray-200 focus:border-purple-500 focus:ring-purple-50"
+                      role="ADMIN"
+                      placeholder="Password baru"
+                      className="py-3 rounded-xl border-gray-200 focus:border-indigo-500 focus:ring-indigo-50"
                     />
-                    <p className="text-[11px] text-purple-600 mt-2 italic flex items-start leading-tight">
+                    <p className="text-[11px] text-indigo-600 mt-2 italic flex items-start leading-tight">
                       <span className="mr-1 mt-0.5">•</span> Biarkan kosong jika
-                      tidak ingin mengubah password lama klien.
+                      tidak ingin mengubah password lama.
                     </p>
                   </div>
 
@@ -234,18 +238,18 @@ export default function EditOwnerPage() {
                   <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-50">
                     <button
                       type="button"
-                      onClick={() => router.push("/mandor/owner")}
-                      className="flex-1 py-3 px-6 border border-gray-200 rounded-xl font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 cursor-pointer bg-white"
+                      onClick={() => router.push("/admin/users")}
+                      className="flex-1 py-3 px-6 border border-gray-200 rounded-xl font-bold text-gray-600 hover:bg-gray-50 transition-all active:scale-95 cursor-pointer"
                     >
                       Batal
                     </button>
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className={`flex-2 py-3 px-6 rounded-xl text-white font-bold flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer border-none ${
+                      className={`flex-2 py-3 px-6 rounded-xl text-white font-bold flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer ${
                         isSubmitting
                           ? "bg-gray-400 cursor-not-allowed"
-                          : "bg-purple-600 hover:bg-purple-700 active:scale-95 shadow-purple-200"
+                          : "bg-indigo-600 hover:bg-indigo-700 active:scale-95 shadow-indigo-200"
                       }`}
                     >
                       {isSubmitting ? (

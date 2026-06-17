@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import axios from "axios";
 import {
-  FiRefreshCcw,
-  FiTrash2,
+  FiEdit2,
   FiMail,
   FiBriefcase,
   FiAlertTriangle,
@@ -12,32 +12,24 @@ import {
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 
-// Import Services & Types
-import {
-  getTrashedHeadWorkers,
-  restoreHeadWorker,
-  hardDeleteHeadWorker,
-} from "@/services/head-worker.service";
-import {
-  getTrashedOwners,
-  restoreOwner,
-  hardDeleteOwner,
-} from "@/services/owner.service";
+import { getHeadWorkers } from "@/services/head-worker.service";
+import { getOwners } from "@/services/owner.service";
 import { getMandors } from "@/services/mandor.service";
 
 import type { HeadWorker } from "@/types/head-worker.type";
 import type { Owner } from "@/types/owner.type";
 import type { Mandor } from "@/types/mandor.type";
 
-// Tipe gabungan untuk state agar mendukung kedua data
-type ArchiveItem = HeadWorker | Owner;
+// Tipe gabungan untuk akun aktif
+type UserItem = HeadWorker | Owner;
 
-export default function AdminArchivePage() {
+export default function AdminUserManagementPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"head-worker" | "owner">(
     "head-worker",
   );
 
-  const [items, setItems] = useState<ArchiveItem[]>([]);
+  const [items, setItems] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [page, setPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
@@ -49,7 +41,6 @@ export default function AdminArchivePage() {
   useEffect(() => {
     const fetchMandorList = async () => {
       try {
-        // Ambil dengan limit besar agar semua mandor masuk ke dropdown
         const res = await getMandors(1, 50);
         setMandorList(res.data || []);
       } catch (err) {
@@ -59,24 +50,25 @@ export default function AdminArchivePage() {
     fetchMandorList();
   }, []);
 
-  const fetchArchiveData = useCallback(async () => {
+  const fetchActiveUsers = useCallback(async () => {
     setLoading(true);
     setItems([]);
 
     try {
+      // Memanggil API khusus akun aktif (deletedAt: null)
       const res =
         activeTab === "head-worker"
-          ? await getTrashedHeadWorkers(page, 10, selectedMandor || undefined)
-          : await getTrashedOwners(page, 10, selectedMandor || undefined);
+          ? await getHeadWorkers(page, 10, selectedMandor || undefined)
+          : await getOwners(page, 10, selectedMandor || undefined);
 
       setItems(res.data || []);
       setTotalPages(res.meta?.totalPages || 1);
     } catch (err: unknown) {
-      console.error("DETAIL ERROR FETCH:", err);
+      console.error("DETAIL ERROR FETCH ACTIVE USERS:", err);
 
       if (axios.isAxiosError(err)) {
         toast.error(
-          err.response?.data?.message || "Gagal mengambil data arsip",
+          err.response?.data?.message || "Gagal mengambil data pengguna",
         );
       } else {
         toast.error("Terjadi kesalahan sistem");
@@ -87,69 +79,19 @@ export default function AdminArchivePage() {
   }, [page, activeTab, selectedMandor]);
 
   useEffect(() => {
-    fetchArchiveData();
-  }, [fetchArchiveData]);
-
-  // Handle Aksi dengan Strict Error Handling
-  const handleRestore = async (id: string, name: string) => {
-    try {
-      if (activeTab === "head-worker") {
-        await restoreHeadWorker(id);
-      } else {
-        await restoreOwner(id);
-      }
-
-      toast.success(`${name} berhasil dipulihkan ke mandor asalnya`);
-      fetchArchiveData();
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        toast.error(err.response?.data?.message || "Gagal memulihkan data");
-      }
-    }
-  };
-
-  const handleHardDelete = async (id: string, name: string) => {
-    const isConfirmed = window.confirm(
-      `PERINGATAN: Hapus permanen "${name}"?\n\nData akan di-scramble, username & email akan dilepaskan, dan akun tidak akan bisa dipulihkan lagi.`,
-    );
-    if (!isConfirmed) return;
-
-    try {
-      const deletePromise =
-        activeTab === "head-worker"
-          ? hardDeleteHeadWorker(id)
-          : hardDeleteOwner(id);
-
-      await toast.promise(deletePromise, {
-        loading: "Menghancurkan data...",
-        success: "Data berhasil dihapus permanen dari sistem",
-        error: (err) =>
-          axios.isAxiosError(err) && err.response?.data?.message
-            ? err.response.data.message
-            : "Gagal menghapus permanen",
-      });
-
-      // Mundurkan halaman jika item terakhir di halaman dihapus
-      if (items.length === 1 && page > 1) {
-        setPage(page - 1);
-      } else {
-        fetchArchiveData();
-      }
-    } catch (err: unknown) {
-      // Error sudah di-handle oleh toast.promise
-      console.error(err);
-    }
-  };
+    fetchActiveUsers();
+  }, [fetchActiveUsers]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8 text-black">
       <div className="max-w-7xl mx-auto">
         <header className="mb-8">
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-            Pusat Arsip Global
+            Manajemen Pengguna
           </h1>
           <p className="text-slate-500 mt-1">
-            Kelola data yang dihapus oleh seluruh Mandor di sistem.
+            Kelola data operasional Kepala Tukang dan Owner aktif yang terdaftar
+            di sistem.
           </p>
         </header>
 
@@ -195,7 +137,6 @@ export default function AdminArchivePage() {
               className="bg-transparent border-none text-sm font-medium outline-none text-slate-700 cursor-pointer min-w-37.5"
             >
               <option value="">Semua Mandor</option>
-              {/* Mapping Dinamis dari State mandorList */}
               {mandorList.map((mandor) => (
                 <option key={mandor.id} value={mandor.id}>
                   {mandor.name}
@@ -205,15 +146,15 @@ export default function AdminArchivePage() {
           </div>
         </div>
 
-        {/* TABEL ARSIP */}
+        {/* TABEL PENGGUNA AKTIF */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest">
                 <tr>
                   <th className="p-5">Informasi Akun</th>
-                  <th className="p-5">Dihapus Dari (Mandor)</th>
-                  <th className="p-5">Tanggal Hapus</th>
+                  <th className="p-5">Terhubung Ke (Mandor)</th>
+                  <th className="p-5">Tanggal Terdaftar</th>
                   <th className="p-5 text-right">Aksi</th>
                 </tr>
               </thead>
@@ -224,7 +165,7 @@ export default function AdminArchivePage() {
                       colSpan={4}
                       className="p-20 text-center animate-pulse text-slate-400"
                     >
-                      Memproses data arsip...
+                      Memuat data pengguna aktif...
                     </td>
                   </tr>
                 ) : items.length > 0 ? (
@@ -234,7 +175,6 @@ export default function AdminArchivePage() {
                       className="hover:bg-slate-50/50 transition-colors"
                     >
                       <td className="p-5">
-                        {/* Ikon Profil */}
                         <div className="flex items-center gap-3">
                           <div
                             className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold border ${
@@ -246,7 +186,6 @@ export default function AdminArchivePage() {
                             {item.name.charAt(0).toUpperCase()}
                           </div>
 
-                          {/* Teks Nama & Email */}
                           <div>
                             <p className="font-bold text-slate-800">
                               {item.name}
@@ -263,17 +202,20 @@ export default function AdminArchivePage() {
                           <FiBriefcase className="text-slate-400" />
                           <div>
                             <p className="text-xs font-bold text-slate-700">
-                              {item.mandor?.name || "Global"}
+                              {item.mandor?.name || "Global / Tidak Ada"}
                             </p>
                             <p className="text-[10px] text-slate-400 mt-0.5">
-                              @{item.mandor?.username || "admin"}
+                              {item.mandor?.username
+                                ? `@${item.mandor.username}`
+                                : "-"}
                             </p>
                           </div>
                         </div>
                       </td>
+
                       <td className="p-5 text-xs text-slate-500 font-medium">
-                        {item.deletedAt
-                          ? new Date(item.deletedAt).toLocaleDateString(
+                        {item.createdAt
+                          ? new Date(item.createdAt).toLocaleDateString(
                               "id-ID",
                               {
                                 day: "2-digit",
@@ -283,20 +225,19 @@ export default function AdminArchivePage() {
                             )
                           : "-"}
                       </td>
+
                       <td className="p-5 text-right">
                         <div className="flex justify-end gap-2">
+                          {/* Tombol Edit Mengarah ke Form Edit */}
                           <button
-                            onClick={() => handleRestore(item.id, item.name)}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-600 rounded-lg font-bold hover:bg-green-100 transition-all border-none cursor-pointer text-xs"
+                            onClick={() =>
+                              router.push(
+                                `/admin/users/${activeTab === "head-worker" ? "head-worker" : "owner"}/edit/${item.id}`,
+                              )
+                            }
+                            className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg font-bold hover:bg-blue-100 transition-all border-none cursor-pointer text-xs"
                           >
-                            <FiRefreshCcw size={14} /> Pulihkan
-                          </button>
-                          <button
-                            onClick={() => handleHardDelete(item.id, item.name)}
-                            className="flex items-center justify-center w-9 h-9 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all border-none cursor-pointer"
-                            title="Hard Delete (Permanen)"
-                          >
-                            <FiTrash2 size={16} />
+                            <FiEdit2 size={14} /> Edit Akun
                           </button>
                         </div>
                       </td>
@@ -311,10 +252,11 @@ export default function AdminArchivePage() {
                           className="mb-2 opacity-20"
                         />
                         <p className="font-bold">
-                          Tidak ada riwayat akun ditemukan
+                          Tidak ada data pengguna aktif ditemukan
                         </p>
                         <p className="text-xs">
-                          Data terhapus akan muncul di sini sesuai filter.
+                          Akun yang aktif akan muncul di sini sesuai dengan
+                          filter.
                         </p>
                       </div>
                     </td>

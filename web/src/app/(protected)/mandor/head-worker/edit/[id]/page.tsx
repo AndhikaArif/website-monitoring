@@ -122,8 +122,6 @@ export default function EditHeadWorkerPage() {
                 try {
                   const payload: UpdateHeadWorkerPayload = {
                     name: values.name,
-                    username: values.username,
-                    email: values.email,
                   };
 
                   if (values.password && values.password.trim() !== "") {
@@ -141,11 +139,8 @@ export default function EditHeadWorkerPage() {
                     if (err.response?.status === 400) {
                       const msg = serverMessage.toLowerCase();
                       setErrors({
-                        email: msg.includes("email")
-                          ? "Email sudah digunakan"
-                          : undefined,
-                        username: msg.includes("username")
-                          ? "Username sudah digunakan"
+                        name: msg.includes("nama")
+                          ? "Nama tidak valid"
                           : undefined,
                       });
                     }
@@ -178,52 +173,50 @@ export default function EditHeadWorkerPage() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* USERNAME */}
-                    <div>
-                      <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                        <span className="mr-2 text-purple-500 font-bold">
-                          @
-                        </span>{" "}
-                        Username
-                      </label>
-                      <Field
-                        name="username"
-                        placeholder="username_baru"
-                        className={`w-full px-4 py-3 text-black rounded-xl border outline-none transition-all focus:ring-4 ${
-                          errors.username && touched.username
-                            ? "border-red-300 focus:ring-red-50"
-                            : "border-gray-200 focus:border-purple-500 focus:ring-purple-50"
-                        }`}
-                      />
-                      <ErrorMessage
-                        name="username"
-                        component="div"
-                        className="text-red-500 text-xs mt-2 ml-1"
-                      />
-                    </div>
+                  {/* EMAIL */}
+                  <div>
+                    <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                      <FiMail className="mr-2 text-purple-500" /> Email
+                    </label>
+                    <Field
+                      name="email"
+                      type="email"
+                      disabled
+                      placeholder="mandor@perusahaan.com"
+                      className="w-full px-4 py-3 text-gray-500 bg-gray-100 rounded-xl border border-gray-200 outline-none cursor-not-allowed"
+                    />
+                    <p className="text-[10px] text-amber-600 mt-2 ml-1 font-medium leading-tight">
+                      *Hanya Admin yang memiliki kewenangan untuk mengubah
+                      email.
+                    </p>
+                    <ErrorMessage
+                      name="email"
+                      component="div"
+                      className="text-red-500 text-xs mt-2 ml-1"
+                    />
+                  </div>
 
-                    {/* EMAIL */}
-                    <div>
-                      <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                        <FiMail className="mr-2 text-purple-500" /> Email
-                      </label>
-                      <Field
-                        name="email"
-                        type="email"
-                        placeholder="mandor@perusahaan.com"
-                        className={`w-full px-4 py-3 text-black rounded-xl border outline-none transition-all focus:ring-4 ${
-                          errors.email && touched.email
-                            ? "border-red-300 focus:ring-red-50"
-                            : "border-gray-200 focus:border-purple-500 focus:ring-purple-50"
-                        }`}
-                      />
-                      <ErrorMessage
-                        name="email"
-                        component="div"
-                        className="text-red-500 text-xs mt-2 ml-1"
-                      />
-                    </div>
+                  {/* USERNAME */}
+                  <div>
+                    <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                      <span className="mr-2 text-purple-500 font-bold">@</span>{" "}
+                      Username
+                    </label>
+                    <Field
+                      name="username"
+                      disabled
+                      placeholder="username_baru"
+                      className="w-full px-4 py-3 text-gray-500 bg-gray-100 rounded-xl border border-gray-200 outline-none cursor-not-allowed"
+                    />
+                    <p className="text-[10px] text-amber-600 mt-2 ml-1 font-medium leading-tight">
+                      *Hanya Admin yang memiliki kewenangan untuk mengubah
+                      username.
+                    </p>
+                    <ErrorMessage
+                      name="username"
+                      component="div"
+                      className="text-red-500 text-xs mt-2 ml-1"
+                    />
                   </div>
 
                   {/* PASSWORD DENGAN TEMA UNGU */}

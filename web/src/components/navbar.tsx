@@ -123,6 +123,14 @@ export default function Navbar() {
                 >
                   Arsip
                 </Link>
+
+                <Link
+                  href="/admin/users"
+                  onClick={() => setIsOpen(false)}
+                  className="text-gray-600 font-medium"
+                >
+                  Users
+                </Link>
               </>
             )}
 
@@ -260,6 +268,14 @@ export default function Navbar() {
                   className="text-gray-600 font-medium"
                 >
                   Arsip
+                </Link>
+
+                <Link
+                  href="/admin/users"
+                  onClick={() => setIsOpen(false)}
+                  className="text-gray-600 font-medium"
+                >
+                  Users
                 </Link>
               </>
             )}

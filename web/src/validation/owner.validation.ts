@@ -14,11 +14,15 @@ export const createOwnerSchema = z.object({
 });
 
 export const updateOwnerSchema = z.object({
-  name: z.string({ error: "Nama wajib diisi" }).min(3, "Minimal 3 karakter"),
+  name: z
+    .string({ error: "Nama wajib diisi" })
+    .min(3, "Minimal 3 karakter")
+    .optional(),
   username: z
     .string({ error: "Username wajib diisi" })
-    .min(3, "Minimal 3 karakter"),
-  email: z.email("Format email salah").min(1, "Email wajib diisi"),
+    .min(3, "Minimal 3 karakter")
+    .optional(),
+  email: z.email("Format email salah").min(1, "Email wajib diisi").optional(),
   // Password boleh kosong, tapi kalau diisi minimal 5 karakter
   password: z
     .string()

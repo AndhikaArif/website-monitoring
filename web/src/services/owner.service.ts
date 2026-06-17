@@ -3,11 +3,20 @@ import { OwnerResponse, UpdateOwnerPayload } from "../types/owner.type";
 
 const API_URL = process.env.NEXT_PUBLIC_API_DOMAIN;
 
-export const getOwners = async (page = 1, limit = 10, search = "") => {
-  const res = await axios.get<OwnerResponse>(
-    `${API_URL}/api/owner?page=${page}&limit=${limit}&search=${search}`,
-    { withCredentials: true },
-  );
+export const getOwners = async (page = 1, limit = 10, mandorId?: string) => {
+  const params: { page: number; limit: number; mandorId?: string } = {
+    page,
+    limit,
+  };
+
+  if (mandorId) {
+    params.mandorId = mandorId;
+  }
+
+  const res = await axios.get<OwnerResponse>(`${API_URL}/api/owner`, {
+    params,
+    withCredentials: true,
+  });
 
   console.log("FETCH URL:", res);
 

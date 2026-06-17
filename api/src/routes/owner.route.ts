@@ -18,7 +18,7 @@ const ownerController = new OwnerController();
 router.get(
   "/",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.MANDOR),
+  AuthMiddleWare.roleGuard(UserRole.MANDOR, UserRole.ADMIN),
   validate(listOwnerQuerySchema, "query"),
   ownerController.listOwner,
 );
@@ -27,7 +27,7 @@ router.get(
   "/trashed",
   AuthMiddleWare.verifyToken,
   AuthMiddleWare.roleGuard(UserRole.MANDOR, UserRole.ADMIN),
-  validate(listOwnerQuerySchema, "query"), // Menggunakan listOwnerQuerySchema agar fitur pencarian di sampah tetap berfungsi
+  validate(listOwnerQuerySchema, "query"),
   ownerController.listTrashedOwner,
 );
 
@@ -42,7 +42,7 @@ router.post(
 router.get(
   "/:id",
   AuthMiddleWare.verifyToken,
-  AuthMiddleWare.roleGuard(UserRole.MANDOR),
+  AuthMiddleWare.roleGuard(UserRole.MANDOR, UserRole.ADMIN),
   validate(ownerParamsSchema, "params"),
   ownerController.getOwnerById,
 );

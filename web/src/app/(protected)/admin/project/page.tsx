@@ -432,15 +432,19 @@ export default function AdminProjectsPage() {
                                 : "bg-gray-100 text-gray-700"
                           }`}
                         >
+                          {/* OPSI AKTIF: Dikunci jika status saat ini adalah LIBUR */}
                           <option
                             value="AKTIF"
-                            className="bg-white text-gray-900 font-medium"
+                            className="bg-white text-gray-900 font-medium disabled:text-gray-300 disabled:italic"
+                            hidden={p.status === "LIBUR"}
                           >
                             AKTIF
                           </option>
+                          {/* OPSI LIBUR: Dikunci jika status saat ini BUKAN LIBUR (mencegah Admin manual set ke libur) */}{" "}
                           <option
                             value="LIBUR"
-                            className="bg-white text-gray-900 font-medium"
+                            className="bg-white text-gray-900 font-medium disabled:text-gray-300 disabled:italic"
+                            hidden={p.status !== "LIBUR"}
                           >
                             LIBUR
                           </option>

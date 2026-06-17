@@ -173,24 +173,37 @@ export class OwnerServices {
   }
 
   async getOwnerById(currentUser: IExistingUser, ownerId: string) {
-    if (currentUser.role !== UserRole.MANDOR) {
-      throw new AppError(403, "Hanya mandor yang bisa melihat detail owner");
+    if (
+      currentUser.role !== UserRole.MANDOR &&
+      currentUser.role !== UserRole.ADMIN
+    ) {
+      throw new AppError(
+        403,
+        "Hanya mandor atau admin yang bisa melihat detail owner",
+      );
+    }
+
+    // Susun filter pencarian
+    const whereClause: any = {
+      id: ownerId,
+      role: UserRole.OWNER,
+      deletedAt: null,
+    };
+
+    // Jika Mandor, pastikan owner adalah miliknya (atau memiliki proyek di bawahnya)
+    if (currentUser.role === UserRole.MANDOR) {
+      whereClause.OR = [
+        { mandorId: currentUser.id },
+        {
+          ownedProjects: {
+            some: { mandorId: currentUser.id, deletedAt: null },
+          },
+        },
+      ];
     }
 
     const owner = await prisma.user.findFirst({
-      where: {
-        id: ownerId,
-        role: UserRole.OWNER,
-        deletedAt: null,
-        OR: [
-          { mandorId: currentUser.id },
-          {
-            ownedProjects: {
-              some: { mandorId: currentUser.id, deletedAt: null },
-            },
-          },
-        ],
-      },
+      where: whereClause,
       select: {
         id: true,
         name: true,
@@ -209,25 +222,38 @@ export class OwnerServices {
   }
 
   async listOwner(currentUser: IExistingUser, query: ListOwnerQueryDTO) {
-    if (currentUser.role !== UserRole.MANDOR) {
-      throw new AppError(403, "Hanya mandor yang bisa melihat daftar owner");
+    if (
+      currentUser.role !== UserRole.MANDOR &&
+      currentUser.role !== UserRole.ADMIN
+    ) {
+      throw new AppError(
+        403,
+        "Hanya mandor atau admin yang bisa melihat daftar owner",
+      );
     }
-    const { page, limit } = query;
-
+    const { page, limit, mandorId } = query;
     const skip = (page - 1) * limit;
 
+    // Susun kondisi pencarian utama
     const whereClause: any = {
       role: UserRole.OWNER,
       deletedAt: null,
-      OR: [
-        { mandorId: currentUser.id }, // Didaftarkan oleh Mandor ini
+    };
+
+    if (currentUser.role === UserRole.MANDOR) {
+      // Logic Mandor: Didaftarkan oleh Mandor ini ATAU Punya proyek aktif di bawah Mandor ini
+      whereClause.OR = [
+        { mandorId: currentUser.id },
         {
           ownedProjects: {
             some: { mandorId: currentUser.id, deletedAt: null },
           },
-        }, // Punya proyek aktif di bawah Mandor ini
-      ],
-    };
+        },
+      ];
+    } else if (currentUser.role === UserRole.ADMIN && mandorId) {
+      // Logic Admin: Filter opsional berdasarkan mandor tertentu
+      whereClause.mandorId = mandorId;
+    }
 
     const [owners, total] = await Promise.all([
       prisma.user.findMany({
@@ -245,6 +271,14 @@ export class OwnerServices {
           phoneNumber: true,
           address: true,
           createdAt: true,
+
+          mandor: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+            },
+          },
         },
       }),
 

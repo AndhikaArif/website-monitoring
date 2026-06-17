@@ -6,10 +6,26 @@ import {
 
 const API_URL = process.env.NEXT_PUBLIC_API_DOMAIN;
 
-export const getHeadWorkers = async (page = 1, limit = 10) => {
+export const getHeadWorkers = async (
+  page = 1,
+  limit = 10,
+  mandorId?: string,
+) => {
+  const params: { page: number; limit: number; mandorId?: string } = {
+    page,
+    limit,
+  };
+
+  if (mandorId) {
+    params.mandorId = mandorId;
+  }
+
   const res = await axios.get<HeadWorkerResponse>(
-    `${API_URL}/api/head-worker?page=${page}&limit=${limit}`,
-    { withCredentials: true },
+    `${API_URL}/api/head-worker`,
+    {
+      params,
+      withCredentials: true,
+    },
   );
 
   console.log("FETCH URL:", res);

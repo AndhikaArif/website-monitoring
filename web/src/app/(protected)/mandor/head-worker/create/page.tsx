@@ -107,52 +107,48 @@ export default function CreateHeadWorkerPage() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* FIELD USERNAME */}
-                    <div>
-                      <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                        <span className="mr-2 text-purple-500 font-bold">
-                          @
-                        </span>{" "}
-                        Username
-                      </label>
-                      <Field
-                        name="username"
-                        placeholder="username123"
-                        className={`w-full px-4 py-3 text-black rounded-xl border outline-none transition-all focus:ring-4 ${
-                          errors.username && touched.username
-                            ? "border-red-300 focus:ring-red-50"
-                            : "border-gray-200 focus:border-purple-500 focus:ring-purple-50"
-                        }`}
-                      />
-                      <ErrorMessage
-                        name="username"
-                        component="div"
-                        className="text-red-500 text-xs mt-2 ml-1"
-                      />
-                    </div>
+                  {/* FIELD EMAIL */}
+                  <div>
+                    <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                      <FiMail className="mr-2 text-purple-500" /> Email
+                    </label>
+                    <Field
+                      name="email"
+                      type="email"
+                      placeholder="nama@email.com"
+                      className={`w-full px-4 py-3 text-black rounded-xl border outline-none transition-all focus:ring-4 ${
+                        errors.email && touched.email
+                          ? "border-red-300 focus:ring-red-50"
+                          : "border-gray-200 focus:border-purple-500 focus:ring-purple-50"
+                      }`}
+                    />
+                    <ErrorMessage
+                      name="email"
+                      component="div"
+                      className="text-red-500 text-xs mt-2 ml-1"
+                    />
+                  </div>
 
-                    {/* FIELD EMAIL */}
-                    <div>
-                      <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                        <FiMail className="mr-2 text-purple-500" /> Email
-                      </label>
-                      <Field
-                        name="email"
-                        type="email"
-                        placeholder="nama@email.com"
-                        className={`w-full px-4 py-3 text-black rounded-xl border outline-none transition-all focus:ring-4 ${
-                          errors.email && touched.email
-                            ? "border-red-300 focus:ring-red-50"
-                            : "border-gray-200 focus:border-purple-500 focus:ring-purple-50"
-                        }`}
-                      />
-                      <ErrorMessage
-                        name="email"
-                        component="div"
-                        className="text-red-500 text-xs mt-2 ml-1"
-                      />
-                    </div>
+                  {/* FIELD USERNAME */}
+                  <div>
+                    <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                      <span className="mr-2 text-purple-500 font-bold">@</span>{" "}
+                      Username
+                    </label>
+                    <Field
+                      name="username"
+                      placeholder="username123"
+                      className={`w-full px-4 py-3 text-black rounded-xl border outline-none transition-all focus:ring-4 ${
+                        errors.username && touched.username
+                          ? "border-red-300 focus:ring-red-50"
+                          : "border-gray-200 focus:border-purple-500 focus:ring-purple-50"
+                      }`}
+                    />
+                    <ErrorMessage
+                      name="username"
+                      component="div"
+                      className="text-red-500 text-xs mt-2 ml-1"
+                    />
                   </div>
 
                   {/* FIELD PASSWORD */}

@@ -6,7 +6,7 @@ export interface HeadWorker {
   phoneNumber?: string | null;
   address?: string | null;
   createdAt: string;
-  deletedAt: string;
+  deletedAt?: string;
   mandor?: {
     id: string;
     name: string;

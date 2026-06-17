@@ -178,10 +178,13 @@ export class HeadWorkerServices {
   }
 
   async getHeadWorkerById(currentUser: IExistingUser, kepalaTukangId: string) {
-    if (currentUser.role !== UserRole.MANDOR) {
+    if (
+      currentUser.role !== UserRole.MANDOR &&
+      currentUser.role !== UserRole.ADMIN
+    ) {
       throw new AppError(
         403,
-        "Hanya mandor yang bisa melihat detail Kepala Tukang",
+        "Hanya mandor atau admin yang bisa melihat detail Kepala Tukang",
       );
     }
 
@@ -190,7 +193,9 @@ export class HeadWorkerServices {
         id: kepalaTukangId,
         role: UserRole.KEPALA_TUKANG,
         deletedAt: null,
-        mandorId: currentUser.id,
+        ...(currentUser.role === UserRole.MANDOR && {
+          mandorId: currentUser.id,
+        }),
       },
       select: {
         id: true,
@@ -213,23 +218,29 @@ export class HeadWorkerServices {
     currentUser: IExistingUser,
     query: ListHeadWorkerQueryDTO,
   ) {
-    if (currentUser.role !== UserRole.MANDOR) {
+    if (
+      currentUser.role !== UserRole.MANDOR &&
+      currentUser.role !== UserRole.ADMIN
+    ) {
       throw new AppError(
         403,
-        "Hanya mandor yang bisa melihat daftar Kepala Tukang",
+        "Hanya mandor atau admin yang bisa melihat daftar Kepala Tukang",
       );
     }
-    const { page, limit } = query;
-
+    const { page, limit, mandorId } = query;
     const skip = (page - 1) * limit;
+
+    const whereCondition = {
+      role: UserRole.KEPALA_TUKANG,
+      deletedAt: null,
+      ...(currentUser.role === UserRole.MANDOR
+        ? { mandorId: currentUser.id }
+        : { ...(mandorId && { mandorId }) }),
+    };
 
     const [kepalaTukang, total] = await Promise.all([
       prisma.user.findMany({
-        where: {
-          role: UserRole.KEPALA_TUKANG,
-          deletedAt: null,
-          mandorId: currentUser.id,
-        },
+        where: whereCondition,
         skip,
         take: limit,
         orderBy: {
@@ -243,15 +254,19 @@ export class HeadWorkerServices {
           phoneNumber: true,
           address: true,
           createdAt: true,
+
+          mandor: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+            },
+          },
         },
       }),
 
       prisma.user.count({
-        where: {
-          role: UserRole.KEPALA_TUKANG,
-          deletedAt: null,
-          mandorId: currentUser.id,
-        },
+        where: whereCondition,
       }),
     ]);
 
