@@ -25,6 +25,7 @@ export default function HeadWorkerPage() {
   const [kepalaTukang, setHeadWorkers] = useState<HeadWorker[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalHeadWorkers, setTotalHeadWorkers] = useState(0);
   const [loading, setLoading] = useState(false);
 
   const [selectedHeadWorker, setSelectedHeadWorker] =
@@ -39,6 +40,7 @@ export default function HeadWorkerPage() {
       const res = await getHeadWorkers(page);
       setHeadWorkers(res.data || []);
       setTotalPages(res.meta.totalPages || 1);
+      setTotalHeadWorkers(res.meta.total || 0);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         if (!err.response) {
@@ -53,6 +55,7 @@ export default function HeadWorkerPage() {
         if (status === 404) {
           setHeadWorkers([]);
           setTotalPages(1);
+          setTotalHeadWorkers(0);
           return;
         } else if (status === 401) {
           toast.error("Sesi telah berakhir. Silakan login kembali.", {
@@ -83,6 +86,7 @@ export default function HeadWorkerPage() {
       }
       setHeadWorkers([]);
       setTotalPages(1);
+      setTotalHeadWorkers(0);
     } finally {
       setLoading(false);
     }
@@ -174,7 +178,7 @@ export default function HeadWorkerPage() {
                   Total Kepala Tukang Aktif
                 </p>
                 <h3 className="text-2xl font-bold text-gray-800">
-                  {kepalaTukang.length}{" "}
+                  {totalHeadWorkers}{" "}
                   <span className="text-sm font-normal text-gray-400">org</span>
                 </h3>
               </div>

@@ -24,6 +24,7 @@ export default function OwnerPage() {
   const [owners, setOwners] = useState<Owner[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalOwners, setTotalOwners] = useState(0);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -40,6 +41,7 @@ export default function OwnerPage() {
       const res = await getOwners(page);
       setOwners(res.data || []);
       setTotalPages(res.meta.totalPages || 1);
+      setTotalOwners(res.meta.total || 0);
       setErrorMsg(null); // Bersihkan pesan error jika sukses
     } catch (err: unknown) {
       setOwners([]);
@@ -60,6 +62,7 @@ export default function OwnerPage() {
 
         if (status === 404) {
           // 404 berarti belum ada data klien (tabel kosong), bukan error sistem
+          setTotalOwners(0);
           setErrorMsg(null);
         } else if (status === 401) {
           toast.error("Sesi telah berakhir. Silakan login kembali.", {
@@ -84,6 +87,9 @@ export default function OwnerPage() {
         setErrorMsg("Terjadi kesalahan sistem yang tidak terduga.");
         toast.error("Terjadi kesalahan sistem.", { id: "unknown-error" });
       }
+      setOwners([]);
+      setTotalPages(1);
+      setTotalOwners(0);
     } finally {
       setLoading(false);
     }
@@ -170,7 +176,7 @@ export default function OwnerPage() {
                   Total Klien Aktif
                 </p>
                 <h3 className="text-2xl font-bold text-gray-800">
-                  {owners.length}{" "}
+                  {totalOwners}{" "}
                   <span className="text-sm font-normal text-gray-400">org</span>
                 </h3>
               </div>

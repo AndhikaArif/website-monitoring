@@ -281,7 +281,7 @@ export default function MandorProjectDocumentationPage() {
           <div className="flex flex-col gap-3">
             <div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">
-                Riwayat Laporan Harian
+                Daftar Laporan Harian
               </h1>
               <p className="text-slate-500 text-sm mt-1">
                 {currentUser?.name

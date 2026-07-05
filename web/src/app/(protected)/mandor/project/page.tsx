@@ -21,6 +21,7 @@ export default function MyProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalProjects, setTotalProjects] = useState(0);
   const [loading, setLoading] = useState(false);
 
   const [status, setStatus] = useState("");
@@ -34,6 +35,7 @@ export default function MyProjectsPage() {
       const res = await getMyProjects(page, 10, status, sortBy);
       setProjects(res.data || []);
       setTotalPages(res.meta.totalPages || 1);
+      setTotalProjects(res.meta.total || 0);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         if (!err.response) {
@@ -49,6 +51,7 @@ export default function MyProjectsPage() {
           // 404 di sini berarti tabel kosong. Biarkan user di halaman ini dan kosongkan state.
           setProjects([]);
           setTotalPages(1);
+          setTotalProjects(0);
           return;
         } else if (status === 401) {
           toast.error("Sesi telah berakhir. Silakan login kembali.", {
@@ -77,6 +80,9 @@ export default function MyProjectsPage() {
           id: "unknown-error",
         });
       }
+      setProjects([]);
+      setTotalPages(1);
+      setTotalProjects(0);
     } finally {
       setLoading(false);
     }
@@ -146,7 +152,7 @@ export default function MyProjectsPage() {
             <div>
               <p className="text-sm text-gray-500 font-medium">Total Proyek</p>
               <h3 className="text-2xl font-bold text-gray-800">
-                {projects.length} Proyek
+                {totalProjects} Proyek
               </h3>
             </div>
           </div>

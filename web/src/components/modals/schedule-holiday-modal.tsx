@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 
 import { scheduleProjectHoliday } from "@/services/project.service";
 import { scheduleHolidaySchema } from "@/validation/project.validation";
+import { useAuth } from "@/context/auth-context";
 
 interface ScheduleHolidayModalProps {
   isOpen: boolean;
@@ -25,6 +26,24 @@ export default function ScheduleHolidayModal({
 }: ScheduleHolidayModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMultiDay, setIsMultiDay] = useState(false);
+
+  const { user } = useAuth();
+  const userRole = user?.role?.toUpperCase(); // Menyeragamkan menjadi UPPERCASE
+
+  const isColorAdmin = userRole === "ADMIN";
+  const theme = {
+    headerBg: isColorAdmin ? "bg-blue-50/50" : "bg-purple-50/50",
+    iconText: isColorAdmin ? "text-blue-600" : "text-purple-600",
+    inputFocus: isColorAdmin
+      ? "focus:border-blue-500 focus:ring-blue-50"
+      : "focus:border-purple-500 focus:ring-purple-50",
+    checkbox: isColorAdmin
+      ? "text-blue-600 focus:ring-blue-500"
+      : "text-purple-600 focus:ring-purple-500",
+    btnSubmit: isColorAdmin
+      ? "bg-blue-600 hover:bg-blue-700"
+      : "bg-purple-600 hover:bg-purple-700",
+  };
 
   // Reset checkbox tiap kali dibuka
   useEffect(() => {
@@ -65,7 +84,7 @@ export default function ScheduleHolidayModal({
         {/* HEADER */}
         <div className="bg-purple-50/50 px-6 py-5 text-black flex items-center justify-between border-b border-gray-100">
           <h2 className="text-xl font-bold flex items-center gap-2 text-gray-800">
-            <FiCalendar className="text-purple-600" /> Jadwal Libur Proyek
+            <FiCalendar className={theme.iconText} /> Jadwal Libur Proyek
           </h2>
           <button
             type="button"
@@ -154,7 +173,7 @@ export default function ScheduleHolidayModal({
                     className={`w-full px-4 py-2.5 text-black rounded-xl border outline-none transition-all ${
                       errors.startDate && touched.startDate
                         ? "border-red-300 focus:ring-4 focus:ring-red-50"
-                        : "border-gray-200 focus:border-purple-500 focus:ring-4 focus:ring-purple-50"
+                        : `border-gray-200 ${theme.inputFocus}`
                     }`}
                   />
                   {errors.startDate && touched.startDate && (
@@ -176,7 +195,7 @@ export default function ScheduleHolidayModal({
                       // Reset nilai endDate jika opsi multi-hari dimatikan
                       if (!e.target.checked) setFieldValue("endDate", "");
                     }}
-                    className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 cursor-pointer"
+                    className={`w-4 h-4 bg-gray-100 border-gray-300 rounded cursor-pointer ${theme.checkbox}`}
                   />
                   <label
                     htmlFor="isMultiDay"
@@ -206,7 +225,7 @@ export default function ScheduleHolidayModal({
                       className={`w-full px-4 py-2.5 text-black rounded-xl border outline-none transition-all ${
                         errors.endDate && touched.endDate
                           ? "border-red-300 focus:ring-4 focus:ring-red-50"
-                          : "border-gray-200 focus:border-purple-500 focus:ring-4 focus:ring-purple-50"
+                          : `border-gray-200 ${theme.inputFocus}`
                       }`}
                     />
                     {errors.endDate && touched.endDate && (
@@ -239,9 +258,7 @@ export default function ScheduleHolidayModal({
                     type="submit"
                     disabled={isSubmitting}
                     className={`flex-1 py-2.5 text-white rounded-xl font-semibold transition-all cursor-pointer border-none ${
-                      isSubmitting
-                        ? "bg-gray-400"
-                        : "bg-purple-600 hover:bg-purple-700"
+                      isSubmitting ? "bg-gray-400" : theme.btnSubmit
                     }`}
                   >
                     {isSubmitting ? "Menyimpan..." : "Simpan Libur"}

@@ -4,6 +4,7 @@ import { IoClose } from "react-icons/io5";
 import { FiMapPin, FiMail } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 import { ProfileTarget } from "@/types/profile.type";
+import { useAuth } from "@/context/auth-context";
 
 interface ViewProfileModalProps {
   isOpen: boolean;
@@ -17,31 +18,26 @@ function getModalTheme(role?: string) {
       return {
         avatarBg: "from-blue-100 to-blue-50 border-blue-100",
         avatarText: "text-blue-600",
-        button: "bg-indigo-600 hover:bg-indigo-700",
       };
     case "MANDOR":
       return {
         avatarBg: "from-purple-100 to-purple-50 border-purple-100",
         avatarText: "text-purple-600",
-        button: "bg-purple-600 hover:bg-purple-700",
       };
     case "KEPALA_TUKANG":
       return {
         avatarBg: "from-emerald-100 to-emerald-50 border-emerald-100",
         avatarText: "text-emerald-600",
-        button: "bg-emerald-600 hover:bg-emerald-700",
       };
     case "OWNER":
       return {
         avatarBg: "from-amber-100 to-amber-50 border-amber-100",
         avatarText: "text-amber-600",
-        button: "bg-amber-500 hover:bg-amber-600",
       };
     default:
       return {
         avatarBg: "from-gray-100 to-gray-50 border-gray-100",
         avatarText: "text-gray-600",
-        button: "bg-slate-800 hover:bg-slate-900",
       };
   }
 }
@@ -63,10 +59,18 @@ export default function ViewProfileModal({
   onClose,
   user: targetUser,
 }: ViewProfileModalProps) {
+  const { user: currentUser } = useAuth();
+
   if (!isOpen || !targetUser) return null;
 
   // Asumsi role targetUser ada di properti role, jika tidak ada, fallback ke tema default
   const theme = getModalTheme(targetUser.role);
+
+  const currentUserRole = currentUser?.role?.toUpperCase();
+  const isColorAdmin = currentUserRole === "ADMIN";
+  const buttonTheme = isColorAdmin
+    ? "bg-blue-600 hover:bg-blue-700"
+    : "bg-purple-600 hover:bg-purple-700";
 
   const waNumber = formatWhatsAppNumber(targetUser.phoneNumber);
 
@@ -178,7 +182,7 @@ export default function ViewProfileModal({
         <div className="px-6 py-3 bg-gray-50 border-t border-gray-100 flex justify-end">
           <button
             onClick={onClose}
-            className={`px-5 py-2 text-white font-medium text-sm rounded-xl transition-colors cursor-pointer ${theme.button}`}
+            className={`px-5 py-2 text-white font-medium text-sm rounded-xl transition-colors cursor-pointer ${buttonTheme}`}
           >
             Tutup
           </button>

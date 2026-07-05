@@ -59,9 +59,9 @@ export default function CreateProjectPage() {
                     description: values.description || undefined,
                   };
 
-                  const res = await createProject(payload);
-                  toast.success("Proyek berhasil dibuat! 🏗️");
-                  router.push(`/mandor/project/${res.data.id}`);
+                  await createProject(payload);
+                  toast.success("Proyek berhasil dibuat!");
+                  router.push(`/mandor/project`);
                 } catch (err: unknown) {
                   if (axios.isAxiosError(err)) {
                     toast.error(

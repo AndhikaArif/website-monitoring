@@ -1,5 +1,6 @@
 import { FiCalendar } from "react-icons/fi";
 import { ProjectHoliday } from "@/types/project.type";
+import { useAuth } from "@/context/auth-context";
 
 interface HistoryHolidayModalProps {
   isOpen: boolean;
@@ -12,6 +13,14 @@ export default function HistoryHolidayModal({
   onClose,
   histories,
 }: HistoryHolidayModalProps) {
+  const { user } = useAuth();
+  const userRole = user?.role?.toUpperCase();
+  const isColorAdmin = userRole === "ADMIN";
+
+  const theme = {
+    iconText: isColorAdmin ? "text-blue-600" : "text-purple-600",
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -20,7 +29,7 @@ export default function HistoryHolidayModal({
         {/* Header Modal */}
         <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
           <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-            <FiCalendar className="text-purple-600" /> Riwayat Libur Lengkap
+            <FiCalendar className={theme.iconText} /> Riwayat Libur Lengkap
           </h3>
           <button
             onClick={onClose}

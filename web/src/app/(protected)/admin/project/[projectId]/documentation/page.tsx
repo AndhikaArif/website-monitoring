@@ -727,7 +727,7 @@ export default function AdminProjectDocumentationPage() {
                 </h3>
                 <HolidayHistory
                   pastHistories={projectData?.pastHistories || []}
-                  limit={24}
+                  limit={36}
                 />
               </div>
             </div>

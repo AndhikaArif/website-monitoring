@@ -18,7 +18,8 @@ export const createDocSchema = z.object({
   progress: z.string().optional(),
   files: z
     .array(fileSchema)
-    .min(1, "Minimal wajib mengunggah 1 foto/video dokumentasi"),
+    .min(4, "Minimal wajib mengunggah 4 foto/video dokumentasi")
+    .max(20, "Batas maksimal adalah 20 file dokumentasi"),
 });
 
 // Skema untuk Update Documentation (Semua field jadi opsional, kecuali validasi isinya jika diisi)
