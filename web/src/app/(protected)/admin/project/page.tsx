@@ -493,7 +493,7 @@ export default function AdminProjectsPage() {
                 ) : (
                   <tr>
                     <td colSpan={6} className="text-center p-20 text-gray-400">
-                      Belum ada proyek di dalam basis data.
+                      Belum ada proyek di dalam database.
                     </td>
                   </tr>
                 )}

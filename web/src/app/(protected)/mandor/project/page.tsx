@@ -330,7 +330,7 @@ export default function MyProjectsPage() {
                 ) : (
                   <tr>
                     <td colSpan={5} className="text-center p-20 text-gray-400">
-                      Belum ada proyek.
+                      Proyek tidak ditemukan.
                     </td>
                   </tr>
                 )}

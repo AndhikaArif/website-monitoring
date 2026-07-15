@@ -225,7 +225,7 @@ export default function OwnerProjectsPage() {
                 ) : (
                   <tr>
                     <td colSpan={4} className="text-center p-20 text-gray-400">
-                      Belum ada proyek yang terdaftar atas nama Anda.
+                      Proyek tidak ditemukan.
                     </td>
                   </tr>
                 )}

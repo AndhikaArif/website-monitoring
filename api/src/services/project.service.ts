@@ -108,19 +108,26 @@ export class ProjectService {
     const today = this.getTodayNormalized();
 
     if (status === ProjectStatus.SELESAI) {
-      return { endDate: { not: null } };
+      return { 
+        OR: [
+          { status: ProjectStatus.SELESAI },
+          { endDate: { not: null } }
+        ]
+      };
     }
 
     if (status === ProjectStatus.LIBUR) {
       return {
-        endDate: null, // Belum selesai
+        status: { not: ProjectStatus.SELESAI }, // Pastikan belum selesai
+        endDate: null,
         projectHolidays: { some: { date: today } }, // Hari ini masuk daftar libur
       };
     }
 
     if (status === ProjectStatus.AKTIF) {
       return {
-        endDate: null, // Belum selesai
+        status: { not: ProjectStatus.SELESAI }, // Pastikan belum selesai
+        endDate: null,
         projectHolidays: { none: { date: today } }, // Hari ini TIDAK masuk daftar libur
       };
     }
@@ -132,12 +139,19 @@ export class ProjectService {
   private applyComputedStatus(project: any, keepHolidays = false) {
     if (!project) return project;
 
-    let computedStatus: ProjectStatus = ProjectStatus.AKTIF;
+    let computedStatus: ProjectStatus = project.status;
 
-    if (project.endDate) {
+    // 1. Jika proyek sudah diset SELESAI secara manual, atau ada endDate, kunci statusnya.
+    if (project.status === ProjectStatus.SELESAI || project.endDate) {
       computedStatus = ProjectStatus.SELESAI;
-    } else if (project.projectHolidays && project.projectHolidays.length > 0) {
+    } 
+    // 2. Jika belum selesai, cek apakah hari ini ada jadwal libur.
+    else if (project.projectHolidays && project.projectHolidays.length > 0) {
       computedStatus = ProjectStatus.LIBUR;
+    } 
+    // 3. Jika belum selesai dan tidak ada jadwal libur, berarti sedang jalan.
+    else {
+      computedStatus = ProjectStatus.AKTIF;
     }
 
     // Ekstrak dan buang data projectHolidays agar respons API tetap bersih
@@ -986,14 +1000,42 @@ export class ProjectService {
 
     // 2. Susun aturan pencarian dan pengurutan standar
     const base = this.buildQuery(query);
+    const statusFilter = this.buildComputedStatusFilter(query.status);
+    const today = this.getTodayNormalized(); // <--- Ambil tanggal hari ini
 
     // 3. Murni menggunakan properti bawaan antarmuka DTO
     const whereClause: any = {
       ...base.where,
-      ...(query.status && { status: query.status }),
+      ...statusFilter,
+      deletedAt: null,
     };
 
-    const today = this.getTodayNormalized(); // <--- Ambil tanggal hari ini
+    // Logika Filter Status Dinamis
+  if (query.status) {
+    if (query.status === "LIBUR") {
+      // Proyek dianggap LIBUR jika statusnya memang LIBUR secara statis,
+      // ATAU statusnya AKTIF tapi hari ini terjadwal libur di projectHolidays
+      whereClause.OR = [
+        { status: "LIBUR" },
+        {
+          status: "AKTIF",
+          projectHolidays: {
+            some: { date: today },
+          },
+        },
+      ];
+    } else if (query.status === "AKTIF") {
+      // Proyek dianggap AKTIF jika statusnya AKTIF di DB
+      // DAN hari ini TIDAK ada jadwal libur di projectHolidays
+      whereClause.status = "AKTIF";
+      whereClause.projectHolidays = {
+        none: { date: today },
+      };
+    } else {
+      // Untuk status lainnya (misal: SELESAI), filter secara langsung
+      whereClause.status = query.status;
+    }
+  }
 
     // 4. Ambil data secara paralel untuk efisiensi performa server
     const [projects, total] = await Promise.all([
@@ -1014,7 +1056,7 @@ export class ProjectService {
           endDate: true,
           createdAt: true,
 
-          // Status proyek
+          // Ambil data libur hari ini untuk computed status di runtime
           projectHolidays: {
             where: { date: today },
             select: { id: true },
@@ -1270,6 +1312,7 @@ export class ProjectService {
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
+        deletedAt: null,
       },
     });
 
@@ -1328,10 +1371,10 @@ export class ProjectService {
       );
     }
 
-    // (Opsional) Jika yang login Mandor, pastikan ini proyek miliknya
+    // Jika yang login Mandor, pastikan ini proyek miliknya
     if (currentUser.role === UserRole.MANDOR) {
       const project = await prisma.project.findFirst({
-        where: { id: projectId, mandorId: currentUser.id },
+        where: { id: projectId, mandorId: currentUser.id, deletedAt: null, },
       });
       if (!project)
         throw new AppError(403, "Ini bukan proyek di bawah pengawasan Anda.");
