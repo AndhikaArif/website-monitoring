@@ -116,7 +116,7 @@ export class OwnerController {
       );
 
       return res.json({
-        message: "List sampah Owner berhasil diambil",
+        message: "List Riwayat Owner berhasil diambil",
         ...result,
       });
     } catch (error) {

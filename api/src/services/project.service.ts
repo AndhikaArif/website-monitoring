@@ -330,7 +330,7 @@ export class ProjectService {
     });
 
     if (!project) {
-      throw new AppError(404, "Project tidak ditemukan di tempat sampah");
+      throw new AppError(404, "Project tidak ditemukan di riwayat");
     }
 
     await prisma.$transaction(async (tx) => {
@@ -578,7 +578,7 @@ export class ProjectService {
       query,
     );
 
-    // OVERRIDE: Paksa deletedAt menjadi not null untuk halaman sampah
+    // OVERRIDE: Paksa deletedAt menjadi not null untuk halaman riwayat
     const trashedWhere = {
       ...whereClause,
       deletedAt: { not: null },

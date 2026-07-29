@@ -224,7 +224,7 @@ export class AuthServices {
     query: ListMandorQueryDTO,
   ) {
     if (currentUser.role !== UserRole.ADMIN) {
-      throw new AppError(403, "Hanya admin yang bisa melihat sampah mandor");
+      throw new AppError(403, "Hanya admin yang bisa melihat riwayat mandor");
     }
     const { page, limit } = query;
     const skip = (page - 1) * limit;
@@ -276,7 +276,7 @@ export class AuthServices {
       },
     });
 
-    if (!user) throw new AppError(404, "Mandor tidak ditemukan di sampah");
+    if (!user) throw new AppError(404, "Mandor tidak ditemukan di riwayat");
 
     return await prisma.user.update({
       where: { id: userId },
@@ -300,7 +300,7 @@ export class AuthServices {
       },
     });
 
-    if (!user) throw new AppError(404, "Mandor tidak ditemukan di sampah");
+    if (!user) throw new AppError(404, "Mandor tidak ditemukan di riwayat");
 
     // Hitung apakah Mandor masih memiliki Proyek
     const projectCount = await prisma.project.count({

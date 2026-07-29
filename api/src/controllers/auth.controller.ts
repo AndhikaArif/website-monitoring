@@ -118,7 +118,7 @@ export class AuthController {
       );
 
       return res.json({
-        message: "List sampah Mandor berhasil diambil",
+        message: "List Riwayat Mandor berhasil diambil",
         ...result,
       });
     } catch (error) {

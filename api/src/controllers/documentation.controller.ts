@@ -138,7 +138,7 @@ export class DocumentationController {
 
       return res.status(200).json({
         success: true,
-        message: "File sampah berhasil dibersihkan",
+        message: "File Riwayat berhasil dibersihkan",
       });
     } catch (error) {
       next(error);
