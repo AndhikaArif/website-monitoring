@@ -10,10 +10,10 @@ export const createOwnerSchema = z.object({
 export type CreateOwnerDTO = z.infer<typeof createOwnerSchema>;
 
 export const updateOwnerSchema = z.object({
-  name: z.string().min(3).optional(),
-  username: z.string().min(3).optional(),
+  name: z.string().min(3, "Name must be at least 3 characters").optional(),
+  username: z.string().min(3, "Username must be at least 3 characters").optional(),
   email: z.email("Invalid Email format").optional(),
-  password: z.string().min(5).optional(),
+  password: z.string().min(5, "Password must be at least 5 characters").optional(),
 });
 
 export type UpdateOwnerDTO = z.infer<typeof updateOwnerSchema>;

@@ -15,12 +15,11 @@ export const createHeadWorkerSchema = z.object({
 
 export const updateHeadWorkerSchema = z.object({
   name: z
-    .string({ error: "Nama wajib diisi" })
-    .min(3, "Minimal 3 karakter")
-    .optional(),
+    .string({ error: "Nama Lengkap wajib diisi" })
+    .min(3, "Nama Lengkap minimal 3 karakter"),
   username: z
     .string({ error: "Username wajib diisi" })
-    .min(3, "Minimal 3 karakter")
+    .min(3, "Username minimal 3 karakter")
     .optional(),
   email: z.email("Format email salah").min(1, "Email wajib diisi").optional(),
   // Password boleh kosong, tapi kalau diisi minimal 5 karakter

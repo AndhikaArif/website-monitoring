@@ -110,7 +110,7 @@ export default function AdminArchivePage() {
 
   const handleHardDelete = async (id: string, name: string) => {
     const isConfirmed = window.confirm(
-      `PERINGATAN: Hapus permanen "${name}"?\n\nData akan di-scramble, username & email akan dilepaskan, dan akun tidak akan bisa dipulihkan lagi.`,
+      `PERINGATAN: Hapus permanen "${name}"?\n\nAkun tidak akan bisa dipulihkan lagi.`,
     );
     if (!isConfirmed) return;
 

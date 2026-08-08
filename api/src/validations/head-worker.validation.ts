@@ -10,10 +10,10 @@ export const createHeadWorkerSchema = z.object({
 export type CreateHeadWorkerDTO = z.infer<typeof createHeadWorkerSchema>;
 
 export const updateHeadWorkerSchema = z.object({
-  name: z.string().min(3).optional(),
-  username: z.string().min(3).optional(),
+  name: z.string().min(3, "Name must be at least 3 characters").optional(),
+  username: z.string().min(3, "Username must be at least 3 characters").optional(),
   email: z.email("Invalid Email format").optional(),
-  password: z.string().min(5).optional(),
+  password: z.string().min(5, "Password must be at least 5 characters").optional(),
 });
 
 export type UpdateHeadWorkerDTO = z.infer<typeof updateHeadWorkerSchema>;
