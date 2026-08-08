@@ -76,7 +76,7 @@ export default function AdminArchivePage() {
 
       if (axios.isAxiosError(err)) {
         toast.error(
-          err.response?.data?.message || "Gagal mengambil data arsip",
+          err.response?.data?.message || "Gagal mengambil data riwayat",
         );
       } else {
         toast.error("Terjadi kesalahan sistem");
@@ -146,7 +146,7 @@ export default function AdminArchivePage() {
       <div className="max-w-7xl mx-auto">
         <header className="mb-8">
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-            Pusat Arsip Global
+            Pusat Riwayat Akun
           </h1>
           <p className="text-slate-500 mt-1">
             Kelola data yang dihapus oleh seluruh Mandor di sistem.
@@ -205,7 +205,7 @@ export default function AdminArchivePage() {
           </div>
         </div>
 
-        {/* TABEL ARSIP */}
+        {/* TABEL RIWAYAT */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
@@ -224,7 +224,7 @@ export default function AdminArchivePage() {
                       colSpan={4}
                       className="p-20 text-center animate-pulse text-slate-400"
                     >
-                      Memproses data arsip...
+                      Memproses data riwayat...
                     </td>
                   </tr>
                 ) : items.length > 0 ? (

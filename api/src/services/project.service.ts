@@ -1326,9 +1326,18 @@ export class ProjectService {
     };
 
     // LOGIKA OTOMATIS: Jika diset SELESAI, isi endDate.
-    // Jika dikembalikan dari SELESAI ke AKTIF/LIBUR, kosongkan endDate.
+    // Jika dikembalikan dari SELESAI ke AKTIF kosongkan endDate.
     if (data.status === ProjectStatus.SELESAI) {
       updatePayload.endDate = new Date();
+
+      // --- MULAI LOGIKA SAPU BERSIH LIBUR ---
+      const today = this.getTodayNormalized();
+      await prisma.projectHoliday.deleteMany({
+        where: {
+          projectId: projectId,
+          date: { gte: today },
+        },
+      });
     } else {
       updatePayload.endDate = null;
     }
@@ -1371,6 +1380,15 @@ export class ProjectService {
       );
     }
 
+    // Ambil data proyek untuk mengecek kepemilikan dan STATUS
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, deletedAt: null },
+    });
+
+    if (!project) {
+      throw new AppError(404, "Proyek tidak ditemukan.");
+    }
+
     // Jika yang login Mandor, pastikan ini proyek miliknya
     if (currentUser.role === UserRole.MANDOR) {
       const project = await prisma.project.findFirst({
@@ -1378,6 +1396,14 @@ export class ProjectService {
       });
       if (!project)
         throw new AppError(403, "Ini bukan proyek di bawah pengawasan Anda.");
+    }
+
+    // BLOKIR JIKA PROYEK SUDAH SELESAI
+    if (project.status === "SELESAI") {
+      throw new AppError(
+        400,
+        "Tidak dapat menjadwalkan hari libur pada proyek yang sudah berstatus SELESAI.",
+      );
     }
 
     // 2. Parse string menjadi Date UTC (kebal timezone)

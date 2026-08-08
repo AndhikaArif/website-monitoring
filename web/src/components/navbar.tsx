@@ -121,7 +121,7 @@ export default function Navbar() {
                   onClick={() => setIsOpen(false)}
                   className="text-gray-600 font-medium"
                 >
-                  Arsip
+                  Riwayat Akun
                 </Link>
 
                 <Link
@@ -267,7 +267,7 @@ export default function Navbar() {
                   onClick={() => setIsOpen(false)}
                   className="text-gray-600 font-medium"
                 >
-                  Arsip
+                  Riwayat Akun
                 </Link>
 
                 <Link

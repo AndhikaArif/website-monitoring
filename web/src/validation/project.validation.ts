@@ -14,13 +14,13 @@ const ProjectStatusEnum = ["AKTIF", "LIBUR", "SELESAI"] as const;
 
 export const updateProjectSchema = z.object({
   projectName: z
-    .string()
+    .string({ error: "Nama proyek wajib diisi" })
     .trim()
     .min(3, "Nama project minimal 3 karakter")
     .max(100, "Nama project maksimal 100 karakter"),
 
   location: z
-    .string()
+    .string({ error: "Lokasi wajib diisi" })
     .trim()
     .min(3, "Lokasi minimal 3 karakter")
     .max(255, "Lokasi maksimal 255 karakter"),

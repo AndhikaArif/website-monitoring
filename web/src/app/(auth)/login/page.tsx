@@ -6,6 +6,7 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { FiUser, FiLock, FiEye, FiEyeOff, FiAlertCircle } from "react-icons/fi";
+import Image from "next/image";
 
 import { loginSchemaFront } from "@/validation/login.validation";
 import { useAuth } from "@/context/auth-context";
@@ -45,14 +46,21 @@ export default function LoginPage() {
         <div className="relative flex-1 sm:flex-none flex flex-col justify-center bg-white sm:bg-white/90 sm:backdrop-blur-sm sm:rounded-[2.5rem] sm:shadow-2xl sm:shadow-slate-200/60 sm:border sm:border-white p-6 sm:p-12 pt-12 sm:pt-12">
           
           <div className="text-center mb-10">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-slate-900 rounded-3xl shadow-lg shadow-slate-400/30 mb-6 text-white transform transition hover:scale-105">
-              <span className="text-4xl font-black tracking-tighter">PP</span>
+            <div className="inline-flex items-center justify-center w-56 h-16 bg-black rounded-2xl shadow-lg shadow-slate-400/30 mb-6 transform transition hover:scale-105 overflow-hidden">
+              <Image 
+                src="/logo-pojok-property.jpeg" 
+                alt="Logo PT Pojok Property" 
+                width={224}
+                height={64}
+                className="w-full h-full object-contain" // Gunakan object-contain agar tidak dipotong
+                priority
+              />
             </div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight mb-2">
-              Pojok Property
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
+              Selamat Datang
             </h1>
             <p className="text-slate-500 font-medium tracking-wide">
-              Sistem Informasi Monitoring Progress Pekerjaan
+              Sistem Informasi Monitoring Perkembangan Proyek
             </p>
           </div>
 
@@ -193,7 +201,7 @@ export default function LoginPage() {
 
         {/* 4. FOOTER: Di HP terdorong otomatis ke dasar layar berkat mt-auto */}
         <div className="mt-auto sm:mt-8 pb-8 sm:pb-0 text-center text-sm text-slate-400 sm:text-slate-500 font-medium relative z-10">
-          &copy; {new Date().getFullYear()} PT. Pojok Property <br />
+          &copy; {new Date().getFullYear()} PT. Pilar Tangguh Persada <br />
           <span className="text-[11px] font-bold tracking-widest uppercase opacity-40 mt-1 block">
             Internal Secure Access
           </span>
