@@ -338,8 +338,8 @@ export default function AdminProjectDocumentationPage() {
               </h1>
               <p className="text-slate-500 text-sm mt-1">
                 {currentUser?.name
-                  ? `Halo ${currentUser.name}, kelola progres harian dan konfigurasi operasional.`
-                  : "Kelola laporan progres harian dan konfigurasi kalender proyek."}
+                  ? `Halo ${currentUser.name}, kelola laporan harian dan konfigurasi operasional.`
+                  : "Kelola laporan harian dan konfigurasi kalender proyek."}
               </p>
             </div>
 
@@ -377,7 +377,7 @@ export default function AdminProjectDocumentationPage() {
                   : "text-slate-500 hover:text-slate-800 bg-transparent"
               }`}
             >
-              Laporan Progres
+              Laporan Harian
             </button>
             <button
               type="button"

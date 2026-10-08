@@ -60,7 +60,7 @@ export default function LoginPage() {
               Selamat Datang
             </h1>
             <p className="text-slate-500 font-medium tracking-wide">
-              Sistem Informasi Monitoring Perkembangan Proyek
+              Sistem Informasi Proyek Konstruksi
             </p>
           </div>
 
