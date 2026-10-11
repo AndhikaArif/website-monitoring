@@ -282,7 +282,7 @@ export default function OwnerProjectDocumentationPage() {
               </h1>
               <p className="text-slate-500 text-sm mt-1">
                 {currentUser?.name
-                  ? `Halo Bapak/Ibu ${currentUser.name}, Pantau progres proyek rumah Anda secara transparan disini.`
+                  ? `Halo Bapak/Ibu ${currentUser.name}, Pantau laporan harian proyek Anda secara transparan disini.`
                   : "Selamat datang. "}
               </p>
             </div>

@@ -344,7 +344,7 @@ export default function HeadWorkerDocumentationPage() {
               </h1>
               <p className="text-slate-500 text-sm mt-1">
                 {currentUser?.name
-                  ? `Halo ${currentUser.name}, Unggah progres harian di sini.`
+                  ? `Halo ${currentUser.name}, Unggah laporan harian di sini.`
                   : "Selamat bekerja. "}
               </p>
             </div>
